@@ -9,7 +9,10 @@ insert into feed_expectations (feed, label, expected_interval, grace, active) va
   ('forecast',    'Forecast (3 providers)',       interval '6 hours',    interval '1 hour',     true),
   ('lottery',     'Lottery draw results',         interval '1 hour',     interval '30 minutes', true),
   ('static',      'Static records',               interval '7 days',     interval '1 day',      true),
-  ('fixtures',    'Football fixtures',            interval '1 hour',     interval '20 minutes', true)
+  ('fixtures',    'Football fixtures',            interval '1 hour',     interval '20 minutes', true),
+  -- Push delivery: if the sender stops, alerts stop reaching phones.
+  ('notify:send', 'Push delivery',                interval '1 minute',   interval '10 minutes', true),
+  ('notify:plan', 'Engagement planner',           interval '15 minutes', interval '15 minutes', true)
 on conflict (feed) do update
   set label = excluded.label, expected_interval = excluded.expected_interval,
       grace = excluded.grace, active = excluded.active;

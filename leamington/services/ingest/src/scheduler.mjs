@@ -18,6 +18,7 @@ import { ingestForecast } from "./feeds/forecast.mjs";
 import { ingestLottery } from "./feeds/lottery.mjs";
 import { ingestStatic } from "./feeds/static.mjs";
 import { ingestFixtures } from "./feeds/fixtures.mjs";
+import { sendDueNotifications, planEngagement } from "./feeds/notify.mjs";
 
 const log = logger("scheduler");
 
@@ -30,6 +31,9 @@ export const FIXED_JOBS = [
   { feed: "fixtures",  cron: "5 * * * *",    tz: "UTC", fn: (ctx) => ingestFixtures(ctx, { offsetDays: 0 }),  label: "Football fixtures today (hourly)" },
   { feed: "fixtures",  cron: "35 4 * * *",   tz: "UTC", fn: (ctx) => ingestFixtures(ctx, { offsetDays: -1 }), label: "Football results yesterday (late kickoffs)" },
   { feed: "fixtures",  cron: "35 12 * * *",  tz: "UTC", fn: (ctx) => ingestFixtures(ctx, { offsetDays: 1 }),  label: "Football fixtures tomorrow" },
+  // Push: alerts go out within a minute of being queued; engagement is planned per client hour.
+  { feed: "notify:send", cron: "* * * * *",         tz: "UTC", fn: (ctx) => sendDueNotifications(ctx), label: "Push delivery (alerts first)" },
+  { feed: "notify:plan", cron: "2,17,32,47 * * * *", tz: "UTC", fn: (ctx) => planEngagement(ctx),       label: "Daily engagement planner" },
 ];
 
 /**
