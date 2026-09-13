@@ -1,0 +1,10 @@
+[
+  { "country": "GT", "label": "PNC (Policía Nacional Civil), emergencias", "number": "110", "verified_at": "2026-09-13", "verified_by": "claude-code (checked against source_url)", "source_url": "https://conred.gob.gt/numeros-de-emergencia/" },
+  { "country": "GT", "label": "PNC (Policía Nacional Civil), emergencias", "number": "120", "verified_at": "2026-09-13", "verified_by": "claude-code (checked against source_url)", "source_url": "https://conred.gob.gt/numeros-de-emergencia/" },
+  { "country": "GT", "label": "CONRED, teléfono de emergencia", "number": "119", "verified_at": "2026-09-13", "verified_by": "claude-code (checked against source_url)", "source_url": "https://conred.gob.gt/numeros-de-emergencia/" },
+  { "country": "GT", "label": "Bomberos Voluntarios, emergencias", "number": "122", "verified_at": "2026-09-13", "verified_by": "claude-code (checked against source_url)", "source_url": "https://conred.gob.gt/numeros-de-emergencia/" },
+  { "country": "GT", "label": "Bomberos Municipales (CBM), emergencias", "number": "123", "verified_at": "2026-09-13", "verified_by": "claude-code (checked against source_url)", "source_url": "https://conred.gob.gt/numeros-de-emergencia/" },
+  { "country": "GT", "label": "Bomberos Departamentales, emergencias", "number": "1554", "verified_at": "2026-09-13", "verified_by": "claude-code (checked against source_url)", "source_url": "https://conred.gob.gt/numeros-de-emergencia/" },
+  { "country": "GT", "label": "Cruz Roja Guatemalteca", "number": "125", "verified_at": "2026-09-13", "verified_by": "claude-code (checked against source_url)", "source_url": "https://conred.gob.gt/numeros-de-emergencia/" },
+  { "country": "GT", "label": "PROVIAL, asistencia vial", "number": "1520", "verified_at": "2026-09-13", "verified_by": "claude-code (checked against source_url)", "source_url": "https://conred.gob.gt/numeros-de-emergencia/" }
+]

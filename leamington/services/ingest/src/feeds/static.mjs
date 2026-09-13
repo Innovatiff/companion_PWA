@@ -48,6 +48,24 @@ const WRITERS = {
            services = excluded.services, verified_at = excluded.verified_at`,
     [r.country, r.city, r.address ?? null, r.hours ?? null, r.phone ?? null, r.email ?? null,
      r.booking_url ?? null, r.services ? JSON.stringify(r.services) : null, r.verified_at, r.source_url ?? null]),
+
+  emergency_contacts: async (r) => query(
+    `insert into emergency_contacts (country, region, label, number, notes, verified_at, source_url)
+     values ($1,$2,$3,$4,$5,$6,$7)
+     on conflict (country, region, label) do update
+       set number = excluded.number, notes = excluded.notes,
+           verified_at = excluded.verified_at, source_url = excluded.source_url`,
+    [r.country, r.region ?? "", r.label, r.number, r.notes ?? null, r.verified_at, r.source_url ?? null]),
+
+  transit: async (r) => query(
+    `insert into transit (area, operator, kind, name, description, fares, schedule_url, contact, verified_at, source_url)
+     values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+     on conflict (area, operator, name) do update
+       set kind = excluded.kind, description = excluded.description, fares = excluded.fares,
+           schedule_url = excluded.schedule_url, contact = excluded.contact,
+           verified_at = excluded.verified_at, source_url = excluded.source_url`,
+    [r.area, r.operator, r.kind, r.name, r.description ?? null, r.fares ?? null, r.schedule_url ?? null,
+     r.contact ?? null, r.verified_at, r.source_url ?? null]),
 };
 
 export async function ingestStatic(ctx) {

@@ -56,7 +56,15 @@ export async function lotteryJobs(delayMinutes = 4) {
       });
     }
   }
-  return jobs;
+  // Several games share a draw slot (e.g. 21:04 Mexico City). One run covers
+  // every game, so one job per (cron, timezone) is enough.
+  const bySlot = new Map();
+  for (const j of jobs) {
+    const key = `${j.cron}|${j.tz}`;
+    if (bySlot.has(key)) bySlot.get(key).label += `; ${j.label}`;
+    else bySlot.set(key, { ...j });
+  }
+  return [...bySlot.values()];
 }
 
 // croner does not catch a job that throws unless given a handler, and the

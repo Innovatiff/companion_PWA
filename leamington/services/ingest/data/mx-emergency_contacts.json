@@ -1,0 +1,4 @@
+[
+  { "country": "MX", "label": "Número Único de Llamadas de Emergencias", "number": "911", "verified_at": "2026-09-13", "verified_by": "claude-code (checked against source_url)", "source_url": "https://www.gob.mx/911/articulos/numero-unico-de-emergencias-9-1-1" },
+  { "country": "MX", "region": "Leamington, Ontario (Canadá)", "label": "Consulado de México en Leamington: teléfono de emergencia", "number": "(519) 324-1481", "notes": "Para emergencias fuera del horario de atención, fines de semana y días feriados. Número canadiense.", "verified_at": "2026-09-13", "verified_by": "claude-code (checked against source_url)", "source_url": "https://consulmex.sre.gob.mx/leamington/index.php/contacto/ubicacion-horarios-y-tels" }
+]

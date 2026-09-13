@@ -1,0 +1,42 @@
+[
+  {
+    "country": "HN",
+    "city": "Ottawa",
+    "office": "Embajada de Honduras en Canadá (servicios consulares)",
+    "address": "130 Albert Street, Suite 504, Ottawa, Ontario K1P 5G4",
+    "phone": "(613) 233-8900",
+    "email": "sflores@embassyhonduras.hn",
+    "booking_url": "https://citaconsular.sreci.gob.hn/citaconsular/pages/layout/CitaConsular.php",
+    "services": [
+      {
+        "name": "Pasaporte 5 años (Oficina Consular)",
+        "cost": "60 USD (pago con Bank Draft en dólares americanos a nombre de CONSULATE OF HONDURAS; no se aceptan CAD). Menores de edad solo pueden tramitar pasaporte de cinco años.",
+        "documents": [
+          "Cédula de Identidad de Honduras o Documento Nacional de Identificación (DNI)",
+          "Partida de Nacimiento de Honduras (obligatorio traerla el día de la cita)",
+          "Pasaporte anterior (si lo tiene); si no, un documento con fotografía",
+          "Sobre pre-pagado con identificación (tracking) de Canada Post para la devolución del pasaporte"
+        ]
+      },
+      {
+        "name": "Pasaporte 10 años (Oficina Consular)",
+        "cost": "75 USD (pago con Bank Draft en dólares americanos a nombre de CONSULATE OF HONDURAS; no se aceptan CAD)",
+        "documents": [
+          "Cédula de Identidad de Honduras o Documento Nacional de Identificación (DNI)",
+          "Partida de Nacimiento de Honduras (obligatorio traerla el día de la cita)",
+          "Pasaporte anterior (si lo tiene); si no, un documento con fotografía",
+          "Sobre pre-pagado con identificación (tracking) de Canada Post para la devolución del pasaporte"
+        ]
+      },
+      { "name": "Expedición del salvoconducto con fotografía", "cost": "USD 10.00" },
+      { "name": "Registro de nacimientos", "cost": "25,00 USD" },
+      { "name": "Fé de vida", "cost": "25,00 USD" },
+      { "name": "Poder General", "cost": "150,00 USD" },
+      { "name": "Poder Especial", "cost": "200,00 USD" }
+    ],
+    "verified_at": "2026-09-13",
+    "verified_by": "claude-code (checked against source_url)",
+    "source_url": "https://embajadahondurasencanada.hn/pasaportes/",
+    "source_urls": ["https://embajadahondurasencanada.hn/pasaportes/", "https://embajadahondurasencanada.hn/tasa/"]
+  }
+]

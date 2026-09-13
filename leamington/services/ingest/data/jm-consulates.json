@@ -1,0 +1,30 @@
+[
+  {
+    "country": "JM",
+    "city": "Toronto",
+    "office": "Consulate General of Jamaica at Toronto",
+    "address": "303 Eglinton Avenue East, Toronto, Ontario M4P 1L3",
+    "phone": "(416) 598-3008 / 2639 / 3053",
+    "email": "info-jcgtoronto@mfaft.gov.jm",
+    "services": [
+      { "name": "Passport, first-time applicant (adult)", "cost": "C$115.00" },
+      { "name": "Passport, first-time applicant (minor)", "cost": "C$85.00" },
+      { "name": "Passport renewal (adult)", "cost": "C$115.00" },
+      { "name": "Passport renewal (minor)", "cost": "C$85.00" },
+      { "name": "Passport replacement: damaged, lost, stolen, confiscated or more than one year of validity remaining (adult)", "cost": "C$195.00" },
+      { "name": "Passport replacement: damaged, lost, stolen, confiscated or more than one year of validity remaining (minor)", "cost": "C$135.00" },
+      { "name": "Emergency Certificate (emergency travel document)", "cost": "C$105.00" },
+      { "name": "Authentication of Jamaican Driver's Licence", "cost": "C$30.00" },
+      { "name": "Notarisation/Certification of Jamaican Documents", "cost": "C$20.00 per signature" },
+      { "name": "Apostille (originals only)", "cost": "C$55.00" },
+      { "name": "Authentication of Documents (Certified True Copy)", "cost": "C$30.00 per signature" },
+      { "name": "Citizenship by Descent", "cost": "C$145.00" },
+      { "name": "Registration of Minors (citizenship)", "cost": "C$145.00" }
+    ],
+    "fees_note": "Fees as of 1st April 2026; all fees include consular, administrative and mailing charges. Payment: cash or debit card (in-person applicants only); bank draft/money order payable to Consulate General of Jamaica (mail-in from the GTHA).",
+    "verified_at": "2026-09-13",
+    "verified_by": "claude-code (checked against source_url)",
+    "source_url": "https://jcgtoronto.ca/fees/",
+    "source_urls": ["https://jcgtoronto.ca/fees/", "https://jcgtoronto.ca/wp-content/uploads/2026/03/Revised-Fees-2026.pdf", "https://jcgtoronto.ca/contact-us/"]
+  }
+]

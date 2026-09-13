@@ -1,0 +1,41 @@
+[
+  {
+    "area": "Leamington",
+    "operator": "Municipality of Leamington",
+    "kind": "local",
+    "name": "LTGO On-Demand Transit",
+    "description": "On-demand service with no fixed route or schedule; trips are booked and buses pick up and drop off at 117 transit stops within the Leamington operating zone. Book with the Blaise Transit app, the Blaise Transit website, or by phone, up to seven days ahead or at least 45 minutes before a same-day trip. Hours of operation (beginning September 8, 2026): Monday to Friday 6:00 AM to 9:30 PM; Saturday 8:00 AM to 7:00 PM.",
+    "fares": "Adult $3.00 per ride or $65.00 for a 30-day pass; Senior 60+ $2.50 or $55.00; Student (valid ID required) $2.50 or $55.00; children under 12 with an adult ride free. Pay in the app or on the bus by debit/credit card, or cash on the bus (exact fare only).",
+    "schedule_url": "https://www.leamington.ca/our-community/transit/ltgo-on-demand-transit/",
+    "contact": "LT-Go booking agent: 519-325-5960",
+    "verified_at": "2026-09-13",
+    "verified_by": "claude-code (checked against source_url)",
+    "source_url": "https://www.leamington.ca/our-community/transit/ltgo-on-demand-transit/"
+  },
+  {
+    "area": "Windsor",
+    "operator": "Transit Windsor (City of Windsor)",
+    "kind": "local",
+    "name": "Transit Windsor",
+    "description": "City of Windsor bus network. Schedules and route maps are published per route; schedule and route changes may occur without advance notification.",
+    "fares": "Cash: $3.95 for adult, senior or youth (includes 2-hour transfer); exact fare required, operators cannot make change, debit and credit cards cannot be used on the bus. Children 12 and under ride free on City service with a full-paying passenger. Smart Ride 5 rides: adult $17.00, senior/youth $13.25.",
+    "schedule_url": "https://www.citywindsor.ca/residents/transit-windsor/Routes-and-Schedules",
+    "contact": "519-944-4111",
+    "verified_at": "2026-09-13",
+    "verified_by": "claude-code (checked against source_url)",
+    "source_url": "https://www.citywindsor.ca/residents/transit-windsor/fares"
+  },
+  {
+    "area": "Windsor-Essex",
+    "operator": "Transit Windsor (City of Windsor)",
+    "kind": "intercity",
+    "name": "Amherstburg 605",
+    "description": "Transit Windsor route serving Amherstburg.",
+    "fares": "Cash fare: $6.00. Riders boarding with a TW smart ride card or TW smart pass pay a $1.00 top-up at boarding (exact change).",
+    "schedule_url": "https://www.citywindsor.ca/residents/transit-windsor/Routes-and-Schedules",
+    "contact": "519-944-4111",
+    "verified_at": "2026-09-13",
+    "verified_by": "claude-code (checked against source_url)",
+    "source_url": "https://www.citywindsor.ca/residents/transit-windsor/fares"
+  }
+]

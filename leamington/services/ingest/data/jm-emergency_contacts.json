@@ -1,0 +1,4 @@
+[
+  { "country": "JM", "label": "Police Emergency (Jamaica Constabulary Force)", "number": "119", "verified_at": "2026-09-13", "verified_by": "claude-code (checked against source_url)", "source_url": "https://jcf.gov.jm/" },
+  { "country": "JM", "label": "Crime Stop", "number": "311", "notes": "Not an emergency line; for reporting crime information.", "verified_at": "2026-09-13", "verified_by": "claude-code (checked against source_url)", "source_url": "https://jcf.gov.jm/" }
+]

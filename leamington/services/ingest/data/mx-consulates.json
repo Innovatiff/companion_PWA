@@ -1,0 +1,14 @@
+[
+  {
+    "country": "MX",
+    "city": "Leamington",
+    "address": "350 Highway 77, Leamington, ON N8H 3V5, Canada",
+    "hours": "Lunes a viernes (excepto días feriados de Canadá) 9:00 a 13:00 horas y de 14:00 a 17:00 horas",
+    "phone": "(519) 325-1460",
+    "email": "infolea@sre.gob.mx",
+    "emergency_phone": "(519) 324-1481",
+    "verified_at": "2026-09-13",
+    "verified_by": "claude-code (checked against source_url)",
+    "source_url": "https://consulmex.sre.gob.mx/leamington/index.php/contacto/ubicacion-horarios-y-tels"
+  }
+]
