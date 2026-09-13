@@ -31,12 +31,29 @@ async function snapshot() {
   };
 }
 
+/**
+ * When preflight cannot pass, the health endpoint reports THAT rather than
+ * querying a database we know is unusable.
+ */
+let fatalState = null;
+export function setHealthFatal(state, detail) { fatalState = { state, detail }; }
+
 export function startHealthServer(port = Number(process.env.PORT || 0)) {
   if (!port) return null;
 
   const server = createServer(async (req, res) => {
     if (!req.url?.startsWith("/health")) {
       res.writeHead(404).end();
+      return;
+    }
+    if (fatalState) {
+      res.writeHead(503, { "content-type": "application/json" });
+      res.end(JSON.stringify({
+        status: "misconfigured",
+        state: fatalState.state,
+        detail: fatalState.detail,
+        note: "the service is running but cannot start work until this is fixed; restarting will not help",
+      }, null, 2));
       return;
     }
     try {

@@ -11,7 +11,7 @@ import { runFeed } from "./run-feed.mjs";
 import { checkStaleness } from "./monitor/staleness.mjs";
 import { closePool } from "./db.mjs";
 import { logger } from "./log.mjs";
-import { startHealthServer } from "./health.mjs";
+import { startHealthServer, setHealthFatal } from "./health.mjs";
 import { preflight } from "./preflight.mjs";
 
 const log = logger("ingest");
@@ -41,9 +41,27 @@ if (args.includes("--once")) {
 let check = await preflight();
 if (!check.ok) {
   process.stderr.write(`\n[preflight:${check.state}] ${check.detail}\n\n`);
-  if (check.fatal) process.exit(1);
 
+  // A fatal misconfiguration cannot be retried away. Exiting is the honest
+  // semantic, but on a platform that restarts on failure it just prints this
+  // message ten times and buries it. So when a health port is expected (PORT is
+  // set, i.e. something is watching /health), stay up and report the problem
+  // through the health check instead: one legible message, and a red check that
+  // says why. Without a health port -- a local run, CI -- exit as usual.
+  if (check.fatal && !process.env.PORT) process.exit(1);
+
+  if (check.fatal) setHealthFatal(check.state, check.detail);
   const health = startHealthServer();
+  if (check.fatal) {
+    log.error("preflight.fatal", {
+      state: check.state,
+      note: "not restarting: this cannot be fixed by retrying. /health reports 503 with the reason.",
+    });
+    // Hold the process open so the platform surfaces a failing health check
+    // rather than a restart loop. Nothing is scheduled.
+    await new Promise(() => {});
+  }
+
   const retryMs = Number(process.env.PREFLIGHT_RETRY_MS || 15_000);
   log.warn("preflight.retrying", { state: check.state, retryMs,
     note: "health endpoint is up and reporting the problem" });
