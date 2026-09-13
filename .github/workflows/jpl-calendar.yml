@@ -1,0 +1,29 @@
+name: jpl-calendar
+
+# Does the Jamaica Premier League have a published fixture calendar? This gates
+# the Jamaican home screen's football anchor, and with it apps/app
+# (leamington/docs/OPEN-DECISIONS.md #2).
+#
+# Fails until a fixture more than 3 days ahead is listed. A failing run means
+# "not published yet" or "could not tell", never "no season"; the run summary
+# says which.
+on:
+  schedule:
+    - cron: "40 11 * * *"
+  workflow_dispatch:
+    inputs:
+      days:
+        description: Days ahead to sweep
+        default: "56"
+
+jobs:
+  calendar:
+    name: Jamaica Premier League fixtures published ahead
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - name: Sweep TheSportsDB day by day
+        working-directory: leamington/services/ingest
+        run: node verify/jpl-calendar.mjs --days "${{ github.event.inputs.days || '56' }}"
