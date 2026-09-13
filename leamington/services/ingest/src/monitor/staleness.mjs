@@ -18,31 +18,22 @@
 import { query } from "../db.mjs";
 import { logger } from "../log.mjs";
 import { describeError } from "../run-feed.mjs";
+import { sendOwnerAlert } from "./notify.mjs";
 
 const log = logger("monitor:staleness");
 
 const RENOTIFY_AFTER_MS = Number(process.env.RENOTIFY_AFTER_MS || 6 * 60 * 60 * 1000);
-const DELIVERY_TIMEOUT_MS = 15_000;
 
 /**
- * Pluggable delivery. Returns { delivered, status?, error? }.
- *
- * The timeout matters: the monitor job is overlap-protected, so a webhook call
- * that hangs would silently stop every later check.
+ * Pluggable delivery. Returns { delivered, status?, error? }. The webhook call
+ * has a timeout (see notify.mjs): the monitor job is overlap-protected, so a
+ * call that hangs would hold it and later checks would be skipped.
  */
 export async function defaultNotifier(alert) {
   log.error("owner.alert", {
     kind: alert.kind, feed: alert.feed, summary: alert.summary, detail: alert.detail,
   });
-  const url = process.env.OWNER_ALERT_WEBHOOK;
-  if (!url) return { delivered: false, error: "no OWNER_ALERT_WEBHOOK configured" };
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(alert),
-    signal: AbortSignal.timeout(DELIVERY_TIMEOUT_MS),
-  });
-  return { delivered: res.ok, status: res.status, error: res.ok ? null : `HTTP ${res.status}` };
+  return sendOwnerAlert(process.env.OWNER_ALERT_WEBHOOK, alert);
 }
 
 /**
