@@ -279,19 +279,26 @@ features, so:
   `app.queue_alert_notification` by `app.client_has_paid_access`.
 - A client the owner deactivated is different: they cannot sign in at all.
 
-### 3.6a Renewals collected by any affiliate (0029)
+### 3.6a Renewals at any business (0029, 0031)
 
-- **Who can collect:** any active affiliate, by the code on the client's
-  receipt. The commission always goes to the registering affiliate, at that
-  affiliate's current rate, even if their shop has closed.
-  - The collector is recorded separately (`collected_by_affiliate_id`); owner
-    renewals record no collector.
-  - The collector does not gain the client: it stays out of their client list.
-  - The collector sees the renewal on a receipt and in "Cobros de renovación",
-    so they know the cash they hold.
-- **Cash:** a collector keeps nothing from someone else's client's renewal and
-  owes the owner the full $20. Admin shows cash collected against commission
-  earned per affiliate, so the owner can reconcile.
+- **Owner's rule (2026-09-13, replacing "always the original affiliate"):**
+  every client can renew at any business running the affiliate portal. The
+  business that registers a client earns the registration commission. Whoever
+  collects a renewal earns that renewal's commission, at its own rate. A client
+  who started at Domcub and renews elsewhere pays the other business.
+  - The client stays registered to the first business (their client list and
+    "registered by"); each payment records the registering business at the
+    time.
+  - The collector does not gain the client in their list. Their renewals, with
+    each client's name and "registrado por", are on their earnings page.
+  - The registering business sees when its client renewed elsewhere, as
+    information rather than money.
+- **Owner renewals:** a renewal the owner marks paid in admin was collected by
+  no business, so it earns no commission (house affiliate, $0). Businesses earn
+  renewals by collecting them in their own portal.
+- **Cash:** every business owes the owner the $20 it collects, less its own
+  commission under 3.4. Admin shows cash collected against commission per
+  business, so the owner can reconcile.
 - **Double taps:** each renewal form carries a request key, so a resubmitted
   form returns the same renewal. A different form for the same client within
   10 minutes must be confirmed ("ya se renovó hace un momento"), so paying for a
