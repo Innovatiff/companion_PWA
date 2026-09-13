@@ -1,0 +1,19 @@
+{
+  "name": "leamington",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "services/*"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "verify:sources": "node services/ingest/verify/run.mjs",
+    "db:test": "packages/db/test/run-migrations.sh && packages/db/test/run-tests.sh",
+    "verify:football": "node services/ingest/verify/football.mjs",
+    "verify:publishers": "node services/ingest/verify/alert-publishers.mjs"
+  }
+}
