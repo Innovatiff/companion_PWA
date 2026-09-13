@@ -92,7 +92,7 @@ async function insertAlert(client, source, doc) {
         source_id, country, cap_identifier, cap_sender, cap_sent, msg_type,
         event, headline, description, instruction, area_desc,
         severity_raw, level, issued_at, effective_at, expires_at,
-        area_geog, center_geog, radius_m, source_url, raw)
+        area_geog, center_geog, radius_m, source_url, raw, cap_references, cap_reference_ids)
      values (
         $1,$2,$3,$4,$5,$6,
         $7,$8,$9,$10,$11,
@@ -104,7 +104,7 @@ async function insertAlert(client, source, doc) {
         end,
         case when $18::text is null then null
              else extensions.ST_GeomFromText($18,4326)::extensions.geography end,
-        $19, $20, jsonb_build_object('xml', $21::text))
+        $19, $20, jsonb_build_object('xml', $21::text), $22, coalesce($23::text[], '{}'))
      on conflict (source_id, cap_identifier, cap_sent) do nothing
      returning id`,
     [
@@ -112,7 +112,8 @@ async function insertAlert(client, source, doc) {
       doc.event, doc.headline, doc.description, doc.instruction, doc.areaDesc,
       doc.severityRaw, doc.level, doc.issuedAt, doc.effectiveAt, doc.expiresAt,
       doc.polygonWkts.length ? doc.polygonWkts : null,
-      doc.centerWkt, doc.radiusM, doc.sourceUrl, doc.raw,
+      doc.centerWkt, doc.radiusM, doc.sourceUrl, doc.raw, doc.capReferences ?? null,
+      doc.referencedIdentifiers?.length ? doc.referencedIdentifiers : null,
     ],
   );
   return rows[0]?.id ?? null;
@@ -139,26 +140,20 @@ async function queueForAlert(client, alertId, log) {
   const { rows: matches } = await client.query(
     `select client_id, is_home from app.clients_for_alert($1)`, [alertId]);
 
+  // ALERT QUEUE: uncapped and immediate. An alert never competes with the
+  // engagement slot, and a second same-severity alert (a shifted hurricane
+  // track) always sends -- it is the message that changes what a person does.
   let queued = 0;
+  const outcomes = {};
   for (const m of matches) {
     const { rows: [r] } = await client.query(
-      `select app.queue_notification(
-         c.id,
-         (now() at time zone c.timezone)::date,
-         'weather_alert',
-         $2,
-         app.alert_notification_body($1),
-         now(),
-         $1,
-         null) as outcome
-       from clients c where c.id = $3`,
-      [alertId, policy.event, m.client_id],
-    );
-    if (r?.outcome === "queued" || r?.outcome === "replaced") queued++;
+      `select app.queue_alert_notification($1, $2) as outcome`, [m.client_id, alertId]);
+    outcomes[r.outcome] = (outcomes[r.outcome] ?? 0) + 1;
+    if (r?.outcome === "queued") queued++;
   }
 
   log.info("alert.queued", {
-    alertId, alertLevel: policy.level, matched: matches.length, queued,
+    alertId, alertLevel: policy.level, matched: matches.length, queued, outcomes,
   });
   return queued;
 }
@@ -206,6 +201,42 @@ export async function ingestAlerts(ctx) {
         const id = await insertAlert(client, source, doc);
         if (!id) return;                       // raced with another run
         written++;
+
+        // FORWARD: this message supersedes/cancels the alerts it references.
+        if (doc.referencedIdentifiers?.length) {
+          const { rows: [lc] } = await client.query(
+            `select app.apply_cap_lifecycle($1, $2::text[]) as affected`,
+            [id, doc.referencedIdentifiers]);
+          if (lc.affected > 0) {
+            log.info("alert.lifecycle.forward", {
+              alertId: id, msgType: doc.msgType, affectedPriorAlerts: lc.affected,
+            });
+          } else {
+            // The referenced messages are not in our store (older than the fetch
+            // window, or not yet arrived). Recorded, not silently ignored.
+            log.info("alert.lifecycle.unresolved_refs", {
+              alertId: id, msgType: doc.msgType, references: doc.referencedIdentifiers,
+              note: "referenced alerts not stored; will apply if they arrive later",
+            });
+          }
+        }
+
+        // BACKWARD: an Update/Cancel we already hold may reference THIS alert
+        // (feeds are not ordered). Without this, a late-arriving superseded or
+        // cancelled alert would display as live forever.
+        const { rows: [pending] } = await client.query(
+          `select app.apply_pending_lifecycle($1) as applied`, [id]);
+        if (pending.applied > 0) {
+          log.info("alert.lifecycle.backward", {
+            alertId: id, note: "a stored Update/Cancel already superseded this alert",
+          });
+        }
+
+        // Ack/Error are ingested for the record but never reach a person.
+        if (!doc.surfaceable) {
+          log.info("alert.not_surfaceable", { alertId: id, msgType: doc.msgType });
+          return;
+        }
         if (!doc.polygonWkts.length && !doc.centerWkt) {
           // Without geometry we cannot do municipality matching, and we will
           // not fall back to name matching.

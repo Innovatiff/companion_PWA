@@ -63,6 +63,24 @@ export function capPolygonToWkt(polygonText) {
   return `POLYGON((${coords.join(", ")}))`;
 }
 
+/**
+ * CAP <references> is a space-separated list of "sender,identifier,sent"
+ * triples naming the messages this one updates or cancels. We match on the
+ * identifier -- never on area name.
+ */
+export function parseReferences(refs) {
+  if (!refs) return [];
+  return String(refs)
+    .trim()
+    .split(/\s+/)
+    .map((r) => {
+      const parts = r.split(",");
+      // "sender,identifier,sent"; some publishers omit the sent field.
+      return parts.length >= 2 ? parts[1]?.trim() : null;
+    })
+    .filter(Boolean);
+}
+
 /** Parse one CAP alert document into the shape weather_alerts expects. */
 export function parseCapDocument(xml, sourceUrl) {
   const doc = parser.parse(xml);
@@ -96,7 +114,11 @@ export function parseCapDocument(xml, sourceUrl) {
     capIdentifier: alert.identifier ?? null,
     capSender: alert.sender ?? null,
     capSent: alert.sent ?? null,
-    msgType: alert.msgType ?? null,
+    msgType: alert.msgType ?? "Alert",
+    capReferences: alert.references ?? null,
+    referencedIdentifiers: parseReferences(alert.references),
+    // Ack and Error are machine bookkeeping: stored for the record, never shown.
+    surfaceable: !["Ack", "Error"].includes(alert.msgType ?? "Alert"),
     // Verbatim agency wording. Not touched.
     event: info.event ?? "(sin evento)",
     headline: info.headline ?? null,

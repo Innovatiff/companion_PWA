@@ -212,21 +212,54 @@ Settled users: replace the countdown with a user-set next-trip date.
 **Sections:** fútbol, clima, tasa, feriados, calendario escolar, consulado,
 emergencias, transporte local.
 
-### Notifications — ONE per day maximum, at a fixed hour
+### Notifications — TWO separate queues
 
-Rotate the trigger: match day for his team, weather alert for his town,
-30-day rate high, lottery.
+The one-per-day cap is an ENGAGEMENT rule. It was never meant for civil
+protection alerts, and applying it to them drops the message that matters most.
 
-**Priority when several are eligible on the same day:**
+**ALERT queue — uncapped, immediate.**
 
-1. **Weather alert** — always wins.
-2. **Match day** for the user's team.
-3. Everything else (30-day rate high, lottery).
+- Every **distinct CAP identifier** sends. Same-identifier resends do not.
+- Never contends with engagement for a slot; an alert cannot consume the
+  daily engagement notification and vice versa.
+- The case this exists for:
 
-Lottery results are eligible for the daily push but **never** override a
-weather alert or a match-day notification.
+  ```
+  06:00  red hurricane warning      -> sends
+  16:00  red, track shifted         -> MUST ALSO SEND
+  ```
 
-**Over-sending kills this permanently.**
+  The second message is the one that changes what a person does. A severity
+  tiebreak is not enough — both are red.
+
+**ENGAGEMENT queue — one per client per local day, at a fixed hour.**
+
+Rotate the trigger: match day for his team, 30-day rate high, lottery.
+Priority when several are eligible: match day > 30-day rate high > lottery.
+Weather alerts are rejected from this queue outright.
+
+**Over-sending engagement kills this permanently. Under-sending alerts is worse.**
+
+### CAP message lifecycle
+
+| msgType | Behaviour |
+| --- | --- |
+| `Alert` | new; send |
+| `Update` | send; supersedes the messages it references |
+| `Cancel` | send a cancellation; referenced messages become inactive |
+| `Ack` / `Error` | ingest for the record; **never** surface to a person |
+
+`expires` is honoured: an alert stops being active when it expires, even if no
+Cancel ever arrives.
+
+Feeds are **not ordered**. Lifecycle is applied in both directions — forward
+(a new message to the alerts it references) and backward (a newly arrived alert
+to Update/Cancel messages already holding a reference to it). Without the
+backward pass, an Update ingested before the alert it supersedes leaves that
+alert live forever.
+
+> **A man believing a cancelled warning is still live is the mirror of a missed
+> alert.** Both are SILENCE IS NEVER EVIDENCE failures.
 
 ### PWA requirements
 

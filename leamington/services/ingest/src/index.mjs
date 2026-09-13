@@ -11,6 +11,7 @@ import { runFeed } from "./run-feed.mjs";
 import { checkStaleness } from "./monitor/staleness.mjs";
 import { closePool } from "./db.mjs";
 import { logger } from "./log.mjs";
+import { startHealthServer } from "./health.mjs";
 
 const log = logger("ingest");
 const args = process.argv.slice(2);
@@ -33,7 +34,13 @@ if (args.includes("--once")) {
 const { jobs } = await startScheduler({ dryRun: args.includes("--dry-run") });
 if (args.includes("--dry-run")) { log.info("dry_run.complete", { jobs: jobs.length }); await closePool(); process.exit(0); }
 
-log.info("started", { jobs: jobs.length });
+const health = startHealthServer();
+log.info("started", { jobs: jobs.length, health: health ? `:${process.env.PORT}/health` : "disabled" });
 for (const sig of ["SIGINT", "SIGTERM"]) {
-  process.on(sig, async () => { log.info("shutdown", { signal: sig }); await closePool(); process.exit(0); });
+  process.on(sig, async () => {
+    log.info("shutdown", { signal: sig });
+    health?.close();
+    await closePool();
+    process.exit(0);
+  });
 }

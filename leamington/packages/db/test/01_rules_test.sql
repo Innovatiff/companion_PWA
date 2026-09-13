@@ -105,19 +105,21 @@ end $$;
 -- --------------------------------------------------------------------------
 -- RULE: ONE notification per client per local day.
 -- --------------------------------------------------------------------------
-insert into notifications (client_id, local_date, trigger, title, body, scheduled_for)
-values ('aaaa1111-0000-0000-0000-00000000000a','2026-09-13','weather_alert',
-        'Aviso','texto', now());
+-- ENGAGEMENT channel only. Alerts are uncapped and live in their own queue
+-- (see 03_notification_queues_test.sql).
+insert into notifications (client_id, local_date, channel, trigger, title, body, scheduled_for)
+values ('aaaa1111-0000-0000-0000-00000000000a','2026-09-13','engagement','fx_30d_high',
+        'Tasa','texto', now());
 
 do $$
 begin
   begin
-    insert into notifications (client_id, local_date, trigger, title, body, scheduled_for)
-    values ('aaaa1111-0000-0000-0000-00000000000a','2026-09-13','lottery',
+    insert into notifications (client_id, local_date, channel, trigger, title, body, scheduled_for)
+    values ('aaaa1111-0000-0000-0000-00000000000a','2026-09-13','engagement','lottery',
             'Loto','texto', now());
-    raise exception 'FAIL: a second notification on the same local day was allowed';
+    raise exception 'FAIL: a second engagement notification on the same local day was allowed';
   exception when unique_violation then
-    raise notice 'PASS one-per-day: second same-day notification rejected by the schema';
+    raise notice 'PASS engagement one-per-day: second same-day engagement notification rejected by the schema';
   end;
 end $$;
 
