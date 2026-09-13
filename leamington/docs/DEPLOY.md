@@ -104,18 +104,78 @@ Previously a missing `DATABASE_URL` surfaced as
 connection to itself and the real cause (an unset variable) had to be inferred
 from a network error.
 
-## Before first run
+## Before first run — migrating a REAL database
+
+> **Never run `packages/db/test/run-migrations.sh` against Supabase.**
+> It is local-only. It `DROP DATABASE`s and recreates a throwaway database, and
+> it installs stub `auth.uid()` / `auth.role()` functions. Against Supabase
+> those stubs would **overwrite the real auth helpers that every RLS policy in
+> your project depends on**. An earlier version of this document told you to run
+> it against `$DATABASE_URL`. That was wrong.
+
+Use `packages/db/migrate.sh`, which applies migrations to the database the URL
+already points at. It never drops anything, never touches `auth`, records each
+file in a `schema_migrations` ledger, runs each migration in its own
+transaction, and stops on the first failure — so a failed run leaves that file
+fully rolled back rather than half applied.
+
+**1. Check the instance first (read-only, changes nothing):**
 
 ```bash
-cd packages/db
-./test/run-migrations.sh    # 0001..0011
-psql -f seeds/alert_sources.sql "$DATABASE_URL"
-psql -f seeds/municipalities_jm.sql "$DATABASE_URL"
-psql -f seeds/lottery_games.sql "$DATABASE_URL"
-psql -f seeds/feed_expectations.sql "$DATABASE_URL"
+psql "$DATABASE_URL" -f packages/db/preflight.sql
 ```
 
+It reports the connection role and whether it is a superuser, which required
+extensions are installed **and in which schema**, whether `postgis` is available
+to install, whether the `extensions` and `auth` schemas exist, and whether
+`auth.uid()` looks like Supabase's or like our local stub.
+
+The schema check matters: the migrations call `extensions.ST_SetSRID()`. If
+PostGIS is installed in `public` instead of `extensions`, then
+`CREATE EXTENSION IF NOT EXISTS postgis` is a silent no-op and every
+`extensions.*` call fails afterwards.
+
+**2. Enable PostGIS if the preflight says it is missing.** On Supabase:
+Dashboard → Database → Extensions → `postgis` → enable. Supabase installs it
+into `extensions`, which is what the migrations expect. Enabling from the
+dashboard avoids relying on the connection role's `CREATE EXTENSION` rights.
+
+**3. Dry run, then apply:**
+
+```bash
+./packages/db/migrate.sh "$DATABASE_URL" --dry-run   # lists pending files
+./packages/db/migrate.sh "$DATABASE_URL"             # applies them
+```
+
+Safe to re-run: already-applied migrations are skipped.
+
+**4. Load the seeds:**
+
+```bash
+for f in packages/db/seeds/*.sql; do psql "$DATABASE_URL" -f "$f"; done
+```
+
+`feed_expectations.sql` is not optional — without it nothing is monitored, and
+`/health` reports `unconfigured`.
+
 Only `alerts:JM` is `active`. Turning on another country is a deliberate act.
+
+## What /health returns at each stage
+
+| Stage | HTTP | `status` | Meaning |
+| --- | --- | --- | --- |
+| No `DATABASE_URL` | 503 | `misconfigured` | Fatal; retrying will not help |
+| DB unreachable | 503 | `unknown` | We cannot tell — never reported as healthy |
+| Migrated, **not seeded** | 503 | `unconfigured` | `feed_expectations` empty: nothing is monitored |
+| Seeded, no feed has run | 503 | `critical` | `alerts:JM` has never run |
+| After a successful alerts run | 200 | `degraded` | Alerts current; FX/forecast/lottery still pending |
+| All feeds current | 200 | `ok` | — |
+
+**503 is the expected response until the first `alerts:JM` run completes.** That
+is correct, not a failed deploy: alerts are the feed a person's safety depends
+on, so the check fails while our copy of it is not current. Expect it to flip to
+`degraded` within 15 minutes of a healthy start, and to stay `degraded` until FX,
+forecast and lottery are also running.
 
 ## The health endpoint is not a liveness check
 

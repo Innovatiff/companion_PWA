@@ -19,6 +19,23 @@ async function snapshot() {
             failures_24h, latest_error
        from feed_health_detail order by feed`);
 
+  // ZERO monitored feeds is not health -- it means feed_expectations has not
+  // been seeded, so nothing is being watched at all. Reporting "ok" here would
+  // be the exact failure this endpoint exists to catch: silence reading as fine.
+  if (rows.length === 0) {
+    return {
+      status: "unconfigured",
+      checkedAt: new Date().toISOString(),
+      feeds: [],
+      detail:
+        "No feeds are being monitored: feed_expectations is empty. Migrations are " +
+        "applied but the seeds have not been loaded, so nothing would be noticed " +
+        "if every feed went silent.",
+      remedy: "psql \"$DATABASE_URL\" -f packages/db/seeds/feed_expectations.sql",
+      note: "this is NOT healthy; an empty monitoring table is monitoring nothing",
+    };
+  }
+
   const degraded = rows.filter((r) => ["stale", "failing", "never_succeeded", "never_run"].includes(r.health));
   // Alerts are the feed a person's safety depends on; it alone can fail the check.
   const alertsDown = degraded.some((r) => r.feed.startsWith("alerts:"));
@@ -59,7 +76,8 @@ export function startHealthServer(port = Number(process.env.PORT || 0)) {
     try {
       const body = await snapshot();
       // 503 on critical so the platform restarts / pages rather than showing green.
-      res.writeHead(body.status === "critical" ? 503 : 200, { "content-type": "application/json" });
+      const failing = body.status === "critical" || body.status === "unconfigured";
+      res.writeHead(failing ? 503 : 200, { "content-type": "application/json" });
       res.end(JSON.stringify(body, null, 2));
     } catch (err) {
       // Cannot reach the database -> we do not know. Never report healthy.
