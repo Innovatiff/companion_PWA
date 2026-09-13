@@ -175,8 +175,8 @@ end $$;
 -- --------------------------------------------------------------------------
 -- RULE: staleness detection for alert sources.
 -- --------------------------------------------------------------------------
-insert into source_runs (feed, started_at, status) values
-  ('alerts:HN', now() - interval '20 hours', 'ok');
+insert into source_runs (feed, started_at, finished_at, status) values
+  ('alerts:HN', now() - interval '20 hours', now() - interval '20 hours' + interval '2 seconds', 'ok');
 
 do $$
 declare s record;

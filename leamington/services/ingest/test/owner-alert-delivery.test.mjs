@@ -32,11 +32,11 @@ beforeEach(async () => {
   }
 });
 
-/** Every active feed has a fresh successful run, except `staleFeed` (if any). */
+/** Every active feed has a fresh, finished, successful run, except `staleFeed` (if any). */
 async function allHealthyExcept(staleFeed) {
   await db.query(
-    `insert into source_runs (feed, status)
-     select feed, 'ok' from feed_expectations where active and feed is distinct from $1`, [staleFeed]);
+    `insert into source_runs (feed, status, finished_at)
+     select feed, 'ok', now() from feed_expectations where active and feed is distinct from $1`, [staleFeed]);
 }
 
 /** Run one staleness check with the webhook answering `route`; capture stderr. */
@@ -121,7 +121,7 @@ test("a failed delivery is retried on the next check and cleared once it gets th
 test("a recovery is not resolved until the owner has been told", { skip }, async () => {
   await allHealthyExcept("fx");
   await check({ status: 200 });                                   // fx stale: owner told
-  await db.query(`insert into source_runs (feed, status) values ('fx', 'ok')`);
+  await db.query(`insert into source_runs (feed, status, finished_at) values ('fx', 'ok', now())`);
 
   await check({ status: 500 });                                   // recovered, but not delivered
   assert.equal((await ownerAlert("fx")).resolved_at, null, "must stay open while the owner has not been told");
