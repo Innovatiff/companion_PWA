@@ -12,14 +12,14 @@ insert into affiliates (id, name, auth_user_id) values
 -- Two municipalities in Cortés, Honduras: one in the storm's path, one in a
 -- dry corner ~100km away.
 insert into municipalities (country, admin_region, name, lat, lng, timezone) values
-  ('HN','Cortés','San Pedro Sula', 15.5042, -88.0250,'America/Tegucigalpa'),
+  ('HN','Cortés','Test San Pedro Sula', 15.5042, -88.0250,'America/Tegucigalpa'),
   ('HN','Cortés','Dry Corner',     15.5042, -87.0000,'America/Tegucigalpa');
 
 insert into clients (id, affiliate_id, code, full_name, country, municipality_id,
                      admin_region, municipality, municipality_lat, municipality_lng)
 select 'aaaa1111-0000-0000-0000-00000000000a','11111111-1111-1111-1111-111111111111',
-       'ACDE2346','Cliente Uno','HN', m.id,'Cortés','San Pedro Sula',15.5042,-88.0250
-from municipalities m where m.country='HN' and m.name='San Pedro Sula';
+       'ACDE2346','Cliente Uno','HN', m.id,'Cortés','Test San Pedro Sula',15.5042,-88.0250
+from municipalities m where m.country='HN' and m.name='Test San Pedro Sula';
 
 insert into clients (id, affiliate_id, code, full_name, country, municipality_id,
                      admin_region, municipality, municipality_lat, municipality_lng)
@@ -44,7 +44,7 @@ from alert_sources s where s.agency='TEST-COPECO';
 create temp view t_alert as
   select id from weather_alerts where cap_identifier='HN-TEST-1';
 create temp view t_muni_sps as
-  select id from municipalities where country='HN' and name='San Pedro Sula';
+  select id from municipalities where country='HN' and name='Test San Pedro Sula';
 
 -- --------------------------------------------------------------------------
 -- RULE: match by polygon, not by department name.

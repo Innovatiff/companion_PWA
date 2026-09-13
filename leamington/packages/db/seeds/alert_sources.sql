@@ -9,14 +9,14 @@
 
 insert into alert_sources (country, agency, agency_full, kind, feed_url,
                            hub_feed_url, hub_source_id, push_levels, include_area_desc,
-                           poll_seconds, stale_after_seconds, active)
+                           poll_seconds, stale_after_seconds, active, website_url)
 values
   -- VERIFIED: national CAP, en-JM, 739-vertex polygons. Cleanest of the four.
   -- 739-vertex polygons: precise enough to push both red and orange.
   ('JM','Meteorological Service Jamaica','Meteorological Service of Jamaica','cap',
    'https://alert.metservice.gov.jm/capfeed.php',
    'https://cap-alerts.s3.amazonaws.com/country-jm-lang-en/rss.xml','jm-jms-en',
-   '{red,orange}', false, 900, 43200, true),
+   '{red,orange}', false, 900, 43200, true, 'https://metservice.gov.jm/'),
 
   -- VERIFIED: national CAP, es-MX, verbatim Spanish. Polygons are coarse
   -- (~6 vertices spanning multiple states) -- expect some over-alerting.
@@ -25,14 +25,16 @@ values
   ('MX','CONAGUA / SMN','Servicio Meteorologico Nacional de Mexico','cap',
    'https://smn.conagua.gob.mx/tools/PHP/feedsmn/cap.php',
    'https://cap-alerts.s3.amazonaws.com/country-mx-lang-en/rss.xml','mx-smn-es',
-   '{red}', true, 900, 43200, false),
+   '{red}', true, 900, 43200, false, 'https://smn.conagua.gob.mx/'),
 
   -- NO CAP FOUND (live 2026-09 and in the 2023 registry). Step-3 scrape.
   -- URL unconfirmed: the site was unreachable during verification.
   ('HN','COPECO','Comision Permanente de Contingencias (met: CENAOS)','scrape',
-   'https://cenaos.copeco.gob.hn/', null, null, '{red,orange}', true, 900, 43200, false),
+   'https://cenaos.copeco.gob.hn/', null, null, '{red,orange}', true, 900, 43200, false, 'https://copeco.gob.hn/'),
 
   -- NO CAP FOUND. Step-3 scrape. URL unconfirmed.
   ('GT','INSIVUMEH / CONRED','Instituto Nacional de Sismologia, Vulcanologia, Meteorologia e Hidrologia','scrape',
-   'https://www.insivumeh.gob.gt/', null, null, '{red,orange}', true, 900, 43200, false)
-on conflict (country, agency, kind) do nothing;
+   'https://www.insivumeh.gob.gt/', null, null, '{red,orange}', true, 900, 43200, false, 'https://insivumeh.gob.gt/')
+-- website_url is added by 0023; the rest of an existing row is left as it is.
+on conflict (country, agency, kind) do update
+  set website_url = coalesce(alert_sources.website_url, excluded.website_url);

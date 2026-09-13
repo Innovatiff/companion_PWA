@@ -14,7 +14,8 @@ for seed in "$HERE"/../seeds/*.sql; do
 done
 
 fail=0
-for f in "$HERE"/0[1-9]_*.sql; do
+# Every numbered test file, in order. (A 0[1-9] pattern silently skipped 10 and up.)
+for f in "$HERE"/[0-9][0-9]_*.sql; do
   echo "-- $(basename "$f")"
   if ! psql -v ON_ERROR_STOP=1 -q -f "$f" "$DB" 2>&1 \
        | sed 's/^psql:[^ ]* NOTICE:  //' | grep -vE '^-+$'; then
