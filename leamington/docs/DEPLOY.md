@@ -12,6 +12,29 @@ long-running. Vercel's cron and serverless execution limits fit that badly, and
 the scheduler is a long-lived process holding a Postgres pool. Railway, Fly, or
 a small VPS running the container is the right shape.
 
+## Railway: set the Root Directory first
+
+**This repo is a monorepo and the service is not at the repo root.** Railway
+must be told where the service lives, or its auto-detection (Railpack) inspects
+the repository root, finds no `package.json`, and fails with:
+
+```
+Script start.sh not found
+Railpack could not determine how to build the app.
+```
+
+That error means the Dockerfile was never read. `railway.json` is not read
+either, because Railway looks for it in the root directory.
+
+| Setting | Value |
+| --- | --- |
+| **Root Directory** | `leamington/services/ingest` |
+| Branch | the branch carrying the work (not `main` unless it has been merged) |
+| Builder | leave to `railway.json` — it selects `DOCKERFILE` |
+
+With Root Directory set, Railway finds `Dockerfile` and `railway.json` beside
+each other and builds the image. Nothing in the repo needs to change.
+
 ## Railway
 
 ```bash
@@ -31,6 +54,13 @@ Set these in the service (see `.env.example`):
 | `ALERT_FETCH_LIMIT` | no | Default 25 documents per run |
 
 `railway.json` already sets the healthcheck to `/health` and restart-on-failure.
+
+### Build reproducibility
+
+`services/ingest/package-lock.json` is committed and the image builds with
+`npm ci` against it. The `COPY` has **no glob** on the lockfile: if it goes
+missing the build fails loudly rather than silently falling back to an unpinned
+`npm install`, and `npm ci` fails if the lock and `package.json` have drifted.
 
 ## Any VPS
 

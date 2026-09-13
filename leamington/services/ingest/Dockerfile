@@ -5,8 +5,12 @@ FROM node:22-slim
 WORKDIR /app
 
 # Dependencies first, so a code change does not reinstall them.
-COPY package.json package-lock.json* ./
-RUN npm install --omit=dev --no-audit --no-fund
+# No glob on the lockfile: if it is missing, this COPY fails loudly rather than
+# silently falling back to an unpinned `npm install`. `npm ci` then fails if the
+# lock and package.json have drifted apart, instead of quietly resolving
+# something different from what was tested.
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --no-audit --no-fund
 
 COPY src ./src
 COPY verify ./verify
