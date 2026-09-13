@@ -1,5 +1,5 @@
 /**
- * The client PWA. Payload is the product: a cheap Android on 2 bars of
+ * Hoy, the client PWA. Payload is the product: a cheap Android on 2 bars of
  * bunkhouse wifi and metered prepaid data. So every page is server-rendered
  * HTML with client runtime JS disabled (`unstable_runtimeJS: false` per page),
  * inline CSS, and one small inline script of our own.
@@ -10,7 +10,11 @@ export default {
   reactStrictMode: true,
   poweredByHeader: false,
   compress: true,
+  output: "standalone",
   transpilePackages: ["@leamington/shared"],
+  async rewrites() {
+    return [{ source: "/health", destination: "/api/health" }];
+  },
   async headers() {
     return [
       {

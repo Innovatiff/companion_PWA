@@ -193,3 +193,109 @@ API-Football quota.
   Superliga and Scottish Premiership, and its `/leagues` endpoint lists only
   leagues on the caller's plan, so absence there is not absence from its
   catalogue.
+
+---
+
+## 3. Decisions made on the owner's behalf during the full build (2026-09-13)
+
+Each was the reasonable default for something the brief did not specify. Each
+says how to reverse it.
+
+### 3.1 Deploy without restarting the soak
+
+The brief says "push when each surface is working"; the soak says any push to
+`main` restarts it.
+
+- **Chosen:** push each surface to a feature branch, not `main`. Deploy the
+  three new Railway services from the local tree with `railway up`, so the
+  ingest service never redeploys. Merge to `main` after the 24-hour soak report,
+  then connect the services to GitHub deploys.
+- **Reverse:** merge now and accept a restarted soak window.
+
+### 3.2 All three surfaces are zero-JS server-rendered pages
+
+The Hoy decision extends to the portals ("no framework JS where avoidable").
+Pages Router with runtime JS disabled, inline CSS from `packages/shared/src/ui`,
+no Tailwind.
+
+### 3.3 Portal sign-in
+
+"Real credentials", separate from client codes.
+
+- **Chosen:** a login name and password stored in our own Postgres (scrypt
+  hash), with sign-in throttled like client codes.
+- **Account creation:** the owner creates each affiliate in admin and gets a
+  one-time setup link (valid 72 hours) to hand over. There is no email or SMS
+  infrastructure, and no Supabase Auth dependency.
+- **Enforcement:** each request runs in a transaction as the database role
+  `authenticated`, with the person's id as the JWT subject. The existing
+  row-level-security policies therefore decide what an affiliate can read; the
+  page code is not trusted to filter.
+- **The first owner account** is created by a script that prints a one-time
+  setup link. Nobody but the owner ever sees the password.
+- **Reverse:** move to Supabase Auth. The `auth_user_id` columns already fit it.
+
+### 3.4 Money: the ledger direction
+
+- **Chosen:** each paid sale or renewal accrues the affiliate's commission
+  (`amount × commission_rate` at the time: $8 of $20). Payouts are recorded by
+  the owner in admin. **Amount owed = earned − paid out.**
+- If affiliates in practice keep $8 of the cash they collect, the owner records
+  that as a payout at the same time and the ledger still balances.
+- **Reverse:** a single change in the earnings view if the owner collects
+  nothing and affiliates remit $12 instead.
+
+### 3.5 Registration is a paid sale
+
+- **Chosen:** the affiliate registers a client after collecting the $20.
+  Registration creates the first 6-month period, starting that day, as paid.
+- A renewal starts at the previous period's end if paid before or within 30
+  days after it; otherwise it starts on the day it is paid.
+- Attribution stays with the client's original affiliate permanently: the
+  database refuses to change `clients.affiliate_id` once set.
+
+### 3.6 Lapsed clients keep working — OPEN, owner to decide
+
+Whether a lapsed client loses access is a product and money tradeoff the brief
+does not settle.
+
+- **v1:** lapsed clients are flagged in both portals ("Vencido") and keep
+  full access to Hoy, including weather alerts. Cutting off a safety feature
+  over $20 should be a deliberate choice, not a default.
+- **To decide:** keep this; cut engagement but keep alerts; or cut everything
+  after a grace period.
+
+### 3.7 Reference data checked by Claude, labelled as such
+
+Holidays, school calendars, consulates, emergency numbers and transit are
+curated from official sources by an automated check, not by a person.
+
+- `verified_by` records `claude-code (checked against source_url)`.
+- The app still shows "Verificado: {date}" per CLAUDE.md.
+- **Recommended:** the owner spot-checks the consulate and emergency records
+  before real users rely on them.
+- **Reverse:** set `needs_verification: true` on any record, and the loader
+  refuses to publish it.
+
+### 3.8 Municipality catalog from GeoNames
+
+- Honduras, Guatemala and Mexico municipios, and Jamaican towns, come from
+  GeoNames (CC BY 4.0).
+- The attribution appears on the Más page.
+
+### 3.9 Web push keys
+
+Push notifications use VAPID keys generated for this project and stored as
+Railway variables. The ingest service sends them; no third-party push service
+account is needed.
+
+### 3.10 Test data is flagged
+
+- The seeded test client and its affiliate carry `is_test = true`.
+- Portals label them "Prueba", and they are excluded from sales, revenue,
+  payouts and the renewal pipeline.
+
+### 3.11 Portal language
+
+- Spanish by default; each portal login has a language setting (es/en).
+- Hoy follows the client's `language`, which is English for Jamaica.

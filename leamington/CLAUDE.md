@@ -47,11 +47,13 @@ leamington/
 Next.js for all three apps. Supabase (Postgres + RLS). TypeScript throughout.
 Each app deploys separately from the monorepo.
 
-- **`apps/app` (client PWA): Pages Router with client runtime JS disabled**
-  (`unstable_runtimeJS: false`), server-rendered HTML, inline CSS, no Tailwind.
-  Decided 2026-09-13: the App Router always ships the React and router runtime,
-  and on 2 bars of metered prepaid data the payload is the product.
-- **`apps/affiliate`, `apps/admin`: App Router, Tailwind.**
+- **All three apps: Pages Router with client runtime JS disabled**
+  (`unstable_runtimeJS: false`), server-rendered HTML, inline CSS from
+  `packages/shared/src/ui`, no Tailwind, no webfonts. Decided 2026-09-13: the
+  App Router always ships the React and router runtime, and on 2 bars of metered
+  prepaid data the payload is the product. The portals follow the same rule, as
+  "no framework JS where avoidable".
+- **Every screen follows `docs/DESIGN.md`.**
 
 ---
 

@@ -1,19 +1,8 @@
 import Document, { Html, Head, Main, NextScript, type DocumentContext, type DocumentInitialProps } from "next/document";
+import { APP_CSS } from "@leamington/shared/src/ui/css.ts";
 
-// Inline, so a cold load is one HTML response. Large type, one column, high contrast.
-const CSS = `*{box-sizing:border-box}
-body{margin:0;font:18px/1.45 system-ui,-apple-system,Roboto,"Segoe UI",sans-serif;color:#10231c;background:#f6f3ea}
-main{max-width:34rem;margin:0 auto;padding:1.25rem 1rem 2rem}
-#slot:empty{display:none}
-h1{font-size:1.55rem;line-height:1.25;margin:.5rem 0 1rem;font-weight:650}
-p{margin:.6rem 0;font-size:1.2rem}
-small{color:#566860;font-size:.78rem;white-space:nowrap}
-#stamp{color:#566860;font-size:.9rem;margin-top:1.5rem}
-label{display:block;font-size:1.1rem}
-form{display:grid;gap:.8rem;margin-top:1.25rem}
-input{font:inherit;font-size:1.5rem;letter-spacing:.12em;text-transform:uppercase;padding:.6rem .7rem;border:2px solid #10231c;border-radius:.5rem;width:100%;background:#fff}
-button{font:inherit;font-size:1.2rem;padding:.75rem;border:0;border-radius:.5rem;background:#10231c;color:#fff}
-.err{color:#9b1c1c}`;
+// Inline, so a cold load is one HTML response (docs/DESIGN.md).
+const CSS = APP_CSS + "input.codein{font-size:1.5rem;letter-spacing:.12em;text-transform:uppercase}";
 
 type Props = DocumentInitialProps & { lang: string };
 
