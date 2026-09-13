@@ -1,0 +1,217 @@
+/**
+ * Every word the portal shows, in Spanish (default) and English (a person whose
+ * portal language is "en"). Neutral imperatives, per docs/DESIGN.md section 5.
+ */
+export type Lang = "es" | "en";
+
+const es = {
+  portal: "Afiliados",
+  navClients: "Clientes",
+  navRegister: "Registrar",
+  navEarnings: "Ganancias",
+  signOut: "Salir",
+  test: "PRUEBA",
+
+  // Clients
+  clientsTitle: "Mis clientes",
+  registerClient: "Registrar cliente",
+  dueCaption: "Renovar pronto",
+  allCaption: "Todos mis clientes",
+  noClients: "Todavía no tienes clientes registrados.",
+  colName: "Nombre",
+  colCode: "Código",
+  colCountry: "País",
+  colRegion: "Departamento / parroquia",
+  colStatus: "Estado",
+  colPeriodEnd: "Fin del período",
+  colDaysLeft: "Quedan",
+  statusActive: "Activo",
+  statusDue: "Renovar pronto",
+  statusLapsed: "Vencido",
+  statusNone: "Sin pago",
+  inactive: "Desactivado",
+  daysLeft: (n: number) => (n === 0 ? "Vence hoy" : n === 1 ? "1 día" : `${n} días`),
+
+  // Register
+  registerTitle: "Registrar cliente",
+  chooseCountry: "¿De qué país es el cliente?",
+  changeCountry: "Cambiar país",
+  fullName: "Nombre completo",
+  team: "Equipo de fútbol",
+  choose: "Elige una opción",
+  noTeam: "Ninguno",
+  submitRegister: "Registrar y generar código",
+  saleNote: "Registrar es una venta: hazlo solo cuando el cliente te haya pagado $20.00 por 6 meses.",
+  errName: "Escribe el nombre completo del cliente.",
+  errRegion: "Elige de la lista.",
+  errTeam: "Elige un equipo o «Ninguno».",
+  errCountry: "Elige el país del cliente.",
+  errCode: "No se pudo generar un código. Inténtalo otra vez.",
+  errRejected: "La base de datos no aceptó el registro. Revisa los datos e inténtalo otra vez.",
+
+  // Code page
+  codeTitle: "Código del cliente",
+  codeFor: "Código de",
+  neverUsed: "Nunca usamos las letras O, I, L, S, U ni los números 0, 1, 5, 8.",
+  periodEnds: "Pagado hasta",
+  print: "Imprimir",
+  registerAnother: "Registrar otro",
+  backToClients: "Ver mis clientes",
+
+  // Earnings
+  earningsTitle: "Mis ganancias",
+  earned: "Ganado",
+  earnedThisMonth: "Ganado este mes",
+  paidOut: "Pagado a ti",
+  owed: "Por pagarte",
+  sinceStart: "desde tu primer registro",
+  asOfToday: "a hoy",
+  salesCount: (sales: number, renewals: number) =>
+    `${sales} ${sales === 1 ? "venta" : "ventas"} y ${renewals} ${renewals === 1 ? "renovación" : "renovaciones"}, desde tu primer registro`,
+  allCad: "Todas las cantidades en dólares canadienses (CAD).",
+  paymentsCaption: "Tus comisiones",
+  paymentsLatest: (n: number) => `Tus comisiones, las ${n} más recientes`,
+  noPayments: "Todavía no tienes comisiones registradas.",
+  colDate: "Fecha",
+  colClient: "Cliente",
+  colKind: "Tipo",
+  colAmount: "Comisión",
+  kindSale: "Venta",
+  kindRenewal: "Renovación",
+  payoutsCaption: "Pagos que has recibido",
+  noPayouts: "Todavía no hay pagos registrados a tu nombre.",
+  colMethod: "Forma de pago",
+  colNote: "Nota",
+
+  // Sign-in and setup
+  loginTitle: "Entrar",
+  login: "Usuario",
+  password: "Contraseña",
+  enter: "Entrar",
+  setupDone: "Contraseña guardada. Ya puedes entrar.",
+  errInvalid: "Usuario o contraseña incorrectos.",
+  errInactive: "Esta cuenta está desactivada. Habla con el propietario.",
+  errThrottled: "Demasiados intentos. Espera 15 minutos.",
+  errSetupRequired: "Esta cuenta aún no tiene contraseña. Usa el enlace que te dio el propietario.",
+  setupTitle: "Crea tu contraseña",
+  newPassword: "Contraseña nueva (al menos 10 caracteres)",
+  repeatPassword: "Repite la contraseña",
+  savePassword: "Guardar contraseña",
+  errWeak: "La contraseña debe tener al menos 10 caracteres.",
+  errMismatch: "Las dos contraseñas no coinciden.",
+  errInvalidToken: "Este enlace no es válido o ya se usó. Pide uno nuevo al propietario.",
+  errExpired: "Este enlace venció. Pide uno nuevo al propietario.",
+
+  notFound: "No encontramos esta página.",
+  serverError: "Algo falló. No mostramos datos que no pudimos confirmar. Inténtalo otra vez.",
+};
+
+export type Strings = typeof es;
+
+const en: Strings = {
+  portal: "Affiliates",
+  navClients: "Clients",
+  navRegister: "Register",
+  navEarnings: "Earnings",
+  signOut: "Sign out",
+  test: "TEST",
+
+  clientsTitle: "My clients",
+  registerClient: "Register client",
+  dueCaption: "Renew soon",
+  allCaption: "All my clients",
+  noClients: "You have no clients registered yet.",
+  colName: "Name",
+  colCode: "Code",
+  colCountry: "Country",
+  colRegion: "Department / parish",
+  colStatus: "Status",
+  colPeriodEnd: "Period ends",
+  colDaysLeft: "Left",
+  statusActive: "Active",
+  statusDue: "Renew soon",
+  statusLapsed: "Lapsed",
+  statusNone: "Not paid",
+  inactive: "Deactivated",
+  daysLeft: (n: number) => (n === 0 ? "Ends today" : n === 1 ? "1 day" : `${n} days`),
+
+  registerTitle: "Register client",
+  chooseCountry: "Which country is the client from?",
+  changeCountry: "Change country",
+  fullName: "Full name",
+  team: "Football team",
+  choose: "Choose one",
+  noTeam: "None",
+  submitRegister: "Register and issue code",
+  saleNote: "Registering is a sale: do it only once the client has paid you $20.00 for 6 months.",
+  errName: "Enter the client's full name.",
+  errRegion: "Choose from the list.",
+  errTeam: "Choose a team or “None”.",
+  errCountry: "Choose the client's country.",
+  errCode: "Could not issue a code. Try again.",
+  errRejected: "The database did not accept this registration. Check the details and try again.",
+
+  codeTitle: "Client code",
+  codeFor: "Code for",
+  neverUsed: "We never use the letters O, I, L, S, U or the digits 0, 1, 5, 8.",
+  periodEnds: "Paid until",
+  print: "Print",
+  registerAnother: "Register another",
+  backToClients: "See my clients",
+
+  earningsTitle: "My earnings",
+  earned: "Earned",
+  earnedThisMonth: "Earned this month",
+  paidOut: "Paid to you",
+  owed: "Owed to you",
+  sinceStart: "since your first registration",
+  asOfToday: "as of today",
+  salesCount: (sales: number, renewals: number) =>
+    `${sales} ${sales === 1 ? "sale" : "sales"} and ${renewals} ${renewals === 1 ? "renewal" : "renewals"}, since your first registration`,
+  allCad: "All amounts in Canadian dollars (CAD).",
+  paymentsCaption: "Your commissions",
+  paymentsLatest: (n: number) => `Your commissions, the ${n} most recent`,
+  noPayments: "You have no commissions recorded yet.",
+  colDate: "Date",
+  colClient: "Client",
+  colKind: "Type",
+  colAmount: "Commission",
+  kindSale: "Sale",
+  kindRenewal: "Renewal",
+  payoutsCaption: "Payments you have received",
+  noPayouts: "No payments to you have been recorded yet.",
+  colMethod: "Method",
+  colNote: "Note",
+
+  loginTitle: "Sign in",
+  login: "Username",
+  password: "Password",
+  enter: "Sign in",
+  setupDone: "Password saved. You can sign in now.",
+  errInvalid: "Wrong username or password.",
+  errInactive: "This account is deactivated. Talk to the owner.",
+  errThrottled: "Too many tries. Wait 15 minutes.",
+  errSetupRequired: "This account has no password yet. Use the link the owner gave you.",
+  setupTitle: "Create your password",
+  newPassword: "New password (at least 10 characters)",
+  repeatPassword: "Repeat the password",
+  savePassword: "Save password",
+  errWeak: "The password must be at least 10 characters.",
+  errMismatch: "The two passwords do not match.",
+  errInvalidToken: "This link is not valid or was already used. Ask the owner for a new one.",
+  errExpired: "This link has expired. Ask the owner for a new one.",
+
+  notFound: "We could not find this page.",
+  serverError: "Something failed. We do not show data we could not confirm. Try again.",
+};
+
+export const STRINGS: Record<Lang, Strings> = { es, en };
+
+export const strings = (lang: string | null | undefined): Strings => (lang === "en" ? en : es);
+
+/** "septiembre de 2026" / "September 2026", in Leamington time. */
+export function monthLabel(now: Date, lang: Lang): string {
+  return new Intl.DateTimeFormat(lang === "en" ? "en-CA" : "es-MX", {
+    month: "long", year: "numeric", timeZone: "America/Toronto",
+  }).format(now);
+}
