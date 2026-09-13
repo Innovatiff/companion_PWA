@@ -88,6 +88,16 @@ export async function completeSetup(token: string, password: string): Promise<{ 
 export const signOutCookie = (role: PortalRole): string => clearedCookieHeader(COOKIE[role]);
 
 /**
+ * Sign out on the server as well as in the browser: every session issued for
+ * this login until now stops working (0028). Returns the Set-Cookie value.
+ */
+export async function signOut(req: IncomingMessage, role: PortalRole): Promise<string> {
+  const person = await currentPerson(req, role);
+  if (person) await db().query("select app.portal_sign_out($1)", [person.authUserId]);
+  return signOutCookie(role);
+}
+
+/**
  * Forms post only from our own pages. SameSite=Lax already withholds the cookie
  * from a cross-site POST; this refuses one that names another origin anyway.
  */

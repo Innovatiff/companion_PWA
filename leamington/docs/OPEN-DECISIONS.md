@@ -293,6 +293,17 @@ Push notifications use VAPID keys generated for this project and stored as
 Railway variables. The ingest service sends them; no third-party push service
 account is needed.
 
+- **No dependency:** signing and encryption use node:crypto (RFC 8291/8292),
+  tested by decrypting exactly as a browser does.
+- **Without keys:** Hoy hides the "turn on" button and says notifications are
+  not available yet. Any notification that could be delivered stays queued with
+  the reason "VAPID keys are not set", and the push delivery feed shows as
+  degraded. Nothing is dropped silently.
+- **Rotating the keys** invalidates every phone's subscription; each person
+  would have to turn notifications on again.
+- **Sign-out** in either portal ends every session for that login on every
+  device (0028).
+
 ### 3.10 Test data is flagged
 
 - The seeded test client and its affiliate carry `is_test = true`.
