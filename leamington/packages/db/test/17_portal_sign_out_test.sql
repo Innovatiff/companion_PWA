@@ -19,3 +19,13 @@ begin
   assert app.portal_session(v_id, date_trunc('second', now()) + interval '1 second') is not null, 'a new session is valid';
   raise notice 'PASS portal: signing out ends the session on the server';
 end $$;
+
+-- A session issued in the same second as the sign-out is refused too (0032).
+do $$
+declare v_id uuid := (select auth_user_id from portal_logins where login = 'signout.owner');
+begin
+  perform app.portal_sign_out(v_id);
+  assert app.portal_session(v_id, date_trunc('second', now())) is null,
+    'a cookie issued in the second of the sign-out no longer works';
+  raise notice 'PASS portal: signing out ends a session issued in the same second';
+end $$;
