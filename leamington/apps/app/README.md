@@ -1,4 +1,4 @@
-# apps/app — the client PWA
+# Hoy — the client PWA (apps/app)
 
 Two routes: `/login` (the code) and `/` (the home screen). Nothing else yet.
 

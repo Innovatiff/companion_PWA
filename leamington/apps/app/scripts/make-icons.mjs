@@ -1,6 +1,7 @@
-// Generates public/icon-192.png and public/icon-512.png with no image library:
-// a light sun on a dark field, encoded as PNG by hand. Solid shapes compress to
-// a few hundred bytes, which matters when Chrome fetches them to install.
+// Generates public/icon-192.png and public/icon-512.png for "Hoy" with no image
+// library: a light H on a dark field, encoded as PNG by hand. Solid shapes
+// compress to a few hundred bytes, which matters when Chrome fetches them to
+// install.
 import { deflateSync } from "node:zlib";
 import { writeFileSync } from "node:fs";
 
@@ -28,12 +29,20 @@ function png(size) {
   const FG = [0xf6, 0xf3, 0xea];
   const row = size * 3 + 1;
   const raw = Buffer.alloc(row * size);
-  const centre = size / 2;
-  const radius = size * 0.26;          // inside the maskable safe zone
+  // An H, kept inside the maskable safe zone (the central 80% circle).
+  const inH = (x, y) => {
+    const u = (x + 0.5) / size;
+    const v = (y + 0.5) / size;
+    if (v < 0.29 || v > 0.71) return false;
+    const leftStem = u >= 0.31 && u <= 0.41;
+    const rightStem = u >= 0.59 && u <= 0.69;
+    const bar = u > 0.41 && u < 0.59 && v >= 0.46 && v <= 0.54;
+    return leftStem || rightStem || bar;
+  };
   for (let y = 0; y < size; y++) {
     raw[y * row] = 0;                  // filter: none
     for (let x = 0; x < size; x++) {
-      const colour = Math.hypot(x + 0.5 - centre, y + 0.5 - centre) <= radius ? FG : BG;
+      const colour = inH(x, y) ? FG : BG;
       raw.set(colour, y * row + 1 + x * 3);
     }
   }

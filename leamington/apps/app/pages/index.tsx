@@ -44,7 +44,7 @@ export default function Home({ renderId, renderedAt, language, lines }: Props) {
   return (
     <>
       <Head>
-        <title>{language === "en" ? "Today" : "Hoy"}</title>
+        <title>Hoy</title>
         <meta name="viewport" content="width=device-width,initial-scale=1" />
       </Head>
       <main data-render={renderId} data-rendered={renderedAt} data-lang={language}>
