@@ -98,15 +98,79 @@ and that is a business call.**
 
 ---
 
-## 2. Football coverage — unverified, blocking home screen design
+## 2. Football — ship on API-Football free, upgrade at 5–10 active clients
 
-**Status:** could not be run. See `SOURCE-VERIFICATION.md`.
+**Status: DECIDED 2026-09-13.**
 
-`verify/football.mjs` is built and reports the full matrix (fixtures, live
-scores, table, crests, historical, season depth) per league per provider. It
-needs a network that can reach the providers, plus optionally
-`API_FOOTBALL_KEY` / `SPORTMONKS_KEY`.
+> - Stay on **API-Football's free plan** until **5–10 active clients** exist.
+> - **Upgrade trigger:** `select count(*) from clients where active` reaches
+>   **5**. The upgrade is made by the time it reaches **10**.
+> - **Stay under 50 requests/day** on the free plan (cap: 100/day, 10/minute),
+>   leaving headroom for retries and `verify/football.mjs`.
 
-The decision it gates: **if Jamaica Premier League is uncovered, the Jamaican
-home screen needs a different anchor** — Jamaica is now the alerts launch
-country, so its home screen is the first one built.
+### v1 scope on the free plan
+
+| | Scope | Why |
+| --- | --- | --- |
+| **IN** | Fixtures and results **by date query**, all four leagues, current season | The free plan answers date queries for the current season |
+| **OUT** | Current league tables | League+season queries are locked to 2022–2024 on the free plan |
+| **OUT** | Live in-match scores | 5-minute polling is ~120 requests/day, over the 100 cap |
+| **OUT** | Fixtures more than one day ahead | Date queries only reach **yesterday to tomorrow**; the "next N fixtures" parameter is also locked |
+
+**Budget:** one date query per hour covers all four leagues: **24 requests/day**.
+
+### Hard rule
+
+**Never display 2022–2024 standings as current.** When the current-season table
+is unavailable, the section shows nothing but an honest label. Not stale data,
+and not an empty shell that implies it is loading. Same rule as everywhere else
+in this project.
+
+The table is built into the schema now and gated on **data availability**, not
+on a flag, so the upgrade is a configuration change rather than a rebuild.
+
+### Evidence (probed 2026-09-13 with the free key)
+
+- **League+season queries for 2025–2026:** `"Free plans do not have access to
+  this season, try from 2022 to 2024."`
+- **Date queries:** `"Free plans do not have access to this date, try from
+  2026-09-12 to 2026-09-14."`
+- **Data depth:** 2022 and 2024 returned fixtures with scores, tables, a crest
+  for every team, and match events for all four leagues. Live `live=all` showed
+  a Guatemala match in play.
+- **Provider self-reported coverage for 2026:**
+  - Guatemala: `standings: false`
+  - Jamaica: `events: false`, `lineups: false`
+
+### Jamaica — real league, schedule not yet published (probed 2026-09-13)
+
+API-Football lists Jamaica's 2026 season as Sep 13–15. That is not a placeholder
+league, but it is all that has been published.
+
+- **Round 1 is real, in three independent sources, with the same clubs:**
+  API-Football (5 fixtures, "Regular Season - 1"), TheSportsDB (5) and
+  Soccerway (6), on Sep 13–15.
+- **Nothing after round 1 is published in any of them:**
+  - a TheSportsDB date query for every day from Sep 13 to Nov 8 (57 of 57
+    answered) found matches only on Sep 13–15
+  - its full 2026-2027 season list holds the same 5 matches
+  - Soccerway lists only round 1
+  - API-Football's free plan cannot look past tomorrow
+- **Last season for comparison:** 2024-25 had 283 fixtures from September to
+  May, including 16 in September and 30 in October.
+
+**Verdict: INCONCLUSIVE beyond round 1.** "Not published" is not "no matches":
+the league may release fixtures a round at a time.
+
+Consequence for the home screen: on most days there will be no Jamaican fixture
+to show. The UI must say nothing, or say when the schedule was last checked. It
+must never say "no match" as a fact.
+
+Re-check weekly with the free TheSportsDB date sweep, which costs no
+API-Football quota.
+
+### Not resolved by this decision
+- **SportMonks** was not probed: no key. Its free plan covers only the Danish
+  Superliga and Scottish Premiership, and its `/leagues` endpoint lists only
+  leagues on the caller's plan, so absence there is not absence from its
+  catalogue.
