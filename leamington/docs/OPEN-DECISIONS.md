@@ -222,8 +222,12 @@ no Tailwind.
 
 "Real credentials", separate from client codes.
 
-- **Chosen:** a login name and password stored in our own Postgres (scrypt
-  hash), with sign-in throttled like client codes.
+- **Chosen:** a login name and password stored in our own Postgres (bcrypt,
+  cost 12, via pgcrypto), with sign-in throttled: 10 failures in 15 minutes per
+  source and per login name.
+- **Sessions:** a signed cookie bound to its portal, valid for 12 hours, and
+  re-checked against the account on every request, so a deactivation or
+  password reset ends it at once.
 - **Account creation:** the owner creates each affiliate in admin and gets a
   one-time setup link (valid 72 hours) to hand over. There is no email or SMS
   infrastructure, and no Supabase Auth dependency.
@@ -299,3 +303,68 @@ account is needed.
 
 - Spanish by default; each portal login has a language setting (es/en).
 - Hoy follows the client's `language`, which is English for Jamaica.
+
+### 3.12 Lottery sources
+
+All 11 v1 games parse from the operator's own published results; none from a
+third-party aggregator.
+
+- **Jamaica:** the JSON API behind supremeventures.com's results page. The
+  public bearer key it needs is read from the homepage on each run, the same way
+  a browser gets it. If Supreme Ventures changes that, the parser throws and
+  /health shows the lottery feed failing, rather than going quiet.
+- **Guatemala:** Lotería Santa Lucía results as published by Pro Ciegos y
+  Sordos, the lottery's operator. It publishes no draw time, so results are
+  unique per game and date (0024).
+- **Reverse:** a game is shown only while `parser_implemented` is true; set it
+  false to withdraw a game without a deploy.
+
+### 3.13 Offline: only the home screen is cached
+
+- **Chosen:** the service worker caches the home screen, whose every line
+  carries its own expiry. Section pages are never cached. Offline they show
+  "Sin conexión" and a link home, because an old warning list shown as the list
+  is exactly what CLAUDE.md forbids.
+- **Reverse:** add per-item expiry to a section, then cache it the way home is.
+
+### 3.14 Setup starts at sign-in
+
+- **Chosen:** after typing the code, a person with unanswered setup steps goes
+  straight to the first one; every step has "Saltar". Once each step is answered
+  or skipped, sign-in goes home, and a skipped municipality is offered at most
+  once a day on the home screen.
+- The school calendar is listed in Más for everyone; answering "yes" to the kids
+  question moves it to the top.
+
+### 3.15 A country whose warnings we do not ingest yet
+
+- **Chosen:** Clima says "Hoy todavía no recibe los avisos de COPECO" (or the
+  relevant agency) and links to the agency's own page. It never shows an empty
+  list. The notifications page says we do not send weather warnings for that
+  country yet.
+
+### 3.16 Direct registrations by the owner
+
+- **Chosen:** clients the owner registers in admin belong to a single house
+  affiliate that earns no commission, so every client still has exactly one
+  permanent affiliate and sales-per-affiliate stays honest.
+
+### 3.17 Transit
+
+- Listed: LTGO on-demand transit in Leamington, Transit Windsor, and its
+  Amherstburg 605 route.
+- There is no Leamington–Windsor bus to list: LTW Transit was discontinued
+  effective 30 April 2026, according to leamington.ca. The page says nothing in
+  its place rather than implying a route exists.
+
+### 3.18 Consulates with gaps
+
+- **Guatemala:** no record. Every minex.gob.gt page returned HTTP 403, and
+  search snippets were not accepted as a source. The Consulado page is empty
+  for Guatemalan clients until the record is curated from the official page.
+- **Mexico:** contact details only. The fee, requirements and booking pages
+  sit behind a bot challenge and could not be read.
+- **Honduras:** the record is the Embassy in Ottawa, which runs passport
+  services; which office covers southwestern Ontario is not stated.
+- **Owner action:** a person can fill these in from a normal browser; the
+  loader publishes any record that carries `verified_at` and `verified_by`.

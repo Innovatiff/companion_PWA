@@ -1,0 +1,8 @@
+**/node_modules
+**/.next
+**/.env
+**/.env.*
+.git
+**/*.log
+packages/db/test
+services/ingest/test/fixtures

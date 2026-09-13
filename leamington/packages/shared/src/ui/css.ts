@@ -37,7 +37,14 @@ export const APP_CSS = BASE +
   ".alert{border:2px solid var(--line);border-left:8px solid var(--muted);border-radius:.5rem;padding:.75rem;margin:.75rem 0;background:var(--card)}" +
   ".alert.red{border-left-color:var(--danger)}.alert.orange{border-left-color:var(--warn)}.alert.yellow{border-left-color:var(--caution)}" +
   ".level{font-weight:700;text-transform:uppercase;font-size:.8rem;letter-spacing:.04em}" +
-  ".step{color:var(--muted);font-size:.85rem;margin:0}.nums{font-variant-numeric:tabular-nums;letter-spacing:.05em}";
+  ".step{color:var(--muted);font-size:.85rem;margin:0}.nums{font-variant-numeric:tabular-nums;letter-spacing:.05em}" +
+  ".wrap{overflow-x:auto;margin:1rem 0}table{border-collapse:collapse;width:100%;font-size:1rem}caption{text-align:left;font-weight:650;padding:.4rem 0}" +
+  "th,td{text-align:left;padding:.45rem .4rem;border-bottom:1px solid var(--line)}th{font-size:.85rem;color:var(--muted)}" +
+  ".n{text-align:right;font-variant-numeric:tabular-nums}" +
+  "button.link{display:inline;width:auto;min-height:44px;margin:0 0 0 .5rem;padding:.5rem;background:transparent;color:var(--ink);text-decoration:underline;font-weight:400}" +
+  "button.link.skip{display:block;width:100%;margin:.5rem 0}" +
+  ".results button{text-align:left;background:var(--card);color:var(--ink);border:2px solid var(--line);font-weight:400;margin:.4rem 0}" +
+  "details{margin:1rem 0}summary{min-height:44px;padding:.5rem 0;cursor:pointer;font-weight:600}";
 
 export const PORTAL_CSS = BASE +
   "main{max-width:64rem;margin:0 auto;padding:1rem}" +

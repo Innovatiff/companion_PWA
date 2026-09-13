@@ -45,7 +45,7 @@ export default function Login({ error }: Props) {
         )}
         <form method="post" action="/api/login">
           <label htmlFor="code">Código · Code</label>
-          <input id="code" name="code" required autoComplete="off" autoCapitalize="characters"
+          <input id="code" name="code" className="codein" required autoComplete="off" autoCapitalize="characters"
                  spellCheck={false} inputMode="text" maxLength={12} />
           <button type="submit">Entrar · Enter</button>
         </form>

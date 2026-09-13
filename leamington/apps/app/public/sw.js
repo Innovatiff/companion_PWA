@@ -29,9 +29,58 @@ self.addEventListener("fetch", (event) => {
 
   if (req.mode === "navigate" && url.pathname === "/") {
     event.respondWith(home(req));
+  } else if (req.mode === "navigate") {
+    // Section pages are never cached: they have no per-line expiry, and an old
+    // warning list must not be shown as the list. Offline, say so plainly.
+    event.respondWith(fetch(req).catch(() => offline()));
   } else if (STATIC.includes(url.pathname)) {
     event.respondWith(staticAsset(req));
   }
+});
+
+function offline() {
+  const html = '<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<title>Hoy</title><body style="margin:0;font:18px/1.45 system-ui,sans-serif;color:#10231c;background:#f6f3ea">' +
+    '<main style="max-width:34rem;margin:0 auto;padding:1rem"><h1 style="font-size:1.55rem">Sin conexión</h1>' +
+    '<p>Esta página necesita internet. <a href="/">Inicio</a> muestra lo último que guardamos.</p>' +
+    '<p><small>No connection. This page needs the internet. <a href="/">Home</a> shows what we saved last.</small></p></main>';
+  return new Response(html, { status: 503, headers: { "Content-Type": "text/html; charset=utf-8" } });
+}
+
+// Push. The sender (services/ingest) sends {title, body, url, tag, queue}.
+// Every alert has its own tag, so a second warning never replaces the first.
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = { body: event.data ? event.data.text() : "" };
+  }
+  const alert = data.queue === "alert";
+  event.waitUntil(self.registration.showNotification(data.title || "Hoy", {
+    body: data.body || "",
+    tag: data.tag || undefined,
+    icon: "/icon-192.png",
+    badge: "/icon-192.png",
+    data: { url: typeof data.url === "string" && data.url.startsWith("/") ? data.url : "/" },
+    requireInteraction: alert,
+    renotify: Boolean(alert && data.tag),
+  }));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url || "/";
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((windows) => {
+      for (const w of windows) {
+        if (new URL(w.url).origin === self.location.origin && "focus" in w) {
+          return w.navigate(url).then((nav) => (nav || w).focus());
+        }
+      }
+      return self.clients.openWindow(url);
+    }),
+  );
 });
 
 async function home(req) {

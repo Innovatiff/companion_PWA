@@ -14,12 +14,17 @@ export function healthHandler(surface: string) {
     res.setHeader("Cache-Control", "no-store");
     const checkedAt = new Date().toISOString();
     try {
-      const { rows } = await db().query("select max(filename) as migration from schema_migrations");
+      // Reachability is the check; the migration name is reported when the
+      // migration log exists (a local test database has none).
+      const { rows } = await db().query("select to_regclass('public.schema_migrations') is not null as logged");
+      const migration = rows[0]?.logged
+        ? (await db().query("select max(filename) as migration from schema_migrations")).rows[0]?.migration ?? null
+        : null;
       res.status(200).json({
         status: "ok",
         surface,
         database: "reachable",
-        migration: rows[0]?.migration ?? null,
+        migration,
         checkedAt,
         note: "this surface can read our database; feed freshness is reported by the ingest service",
       });

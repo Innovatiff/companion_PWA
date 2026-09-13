@@ -6,11 +6,15 @@
  *
  * @type {import('next').NextConfig}
  */
+import path from "node:path";
+
 export default {
   reactStrictMode: true,
   poweredByHeader: false,
   compress: true,
   output: "standalone",
+  // The monorepo root, so the standalone server includes packages/shared.
+  outputFileTracingRoot: path.join(import.meta.dirname, "../.."),
   transpilePackages: ["@leamington/shared"],
   async rewrites() {
     return [{ source: "/health", destination: "/api/health" }];

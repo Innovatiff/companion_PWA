@@ -19,6 +19,9 @@ import pg from "pg";
 let pool: pg.Pool | null = null;
 
 function isLocal(url: string): boolean {
+  // A Unix socket URL ("postgresql://user@/db?host=/tmp") is not a valid WHATWG
+  // URL, so it must be recognised before parsing.
+  if (/[?&]host=(%2F|\/|localhost\b|127\.0\.0\.1\b)/i.test(url) || /^postgres(ql)?:\/\/([^@/]*@)?\//i.test(url)) return true;
   try {
     const host = decodeURIComponent(new URL(url).hostname);
     return ["localhost", "127.0.0.1", "::1", ""].includes(host) || host.startsWith("/");

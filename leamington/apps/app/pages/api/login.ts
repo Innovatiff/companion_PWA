@@ -27,5 +27,7 @@ export default async function login(req: NextApiRequest, res: NextApiResponse) {
   if (!result || result.status !== "ok" || !result.client_id) return back(result?.status ?? "invalid");
 
   res.setHeader("Set-Cookie", sessionCookie(makeSession(result.client_id), secureCookies()));
-  return res.redirect(303, "/");
+  // First time on this code: setup, resuming at the first unanswered step.
+  const next = await db().query("select app.setup_next_step($1) as step", [result.client_id]);
+  return res.redirect(303, next.rows[0]?.step ? `/setup/${next.rows[0].step}` : "/");
 }
