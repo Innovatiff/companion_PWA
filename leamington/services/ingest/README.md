@@ -15,7 +15,15 @@ top of them; see `docs/SOURCE-VERIFICATION.md` for what came back.
 node verify/run.mjs                      # probe every source
 node verify/run.mjs --category football   # the open go/no-go
 node verify/alert-publishers.mjs          # who really publishes each country feed
+node verify/football.mjs                  # per-league coverage MATRIX, not yes/no
 ```
+
+`football.mjs` reports, per league per provider: fixtures, live scores, league
+table, team crests, historical results, and season depth. Coverage is not
+binary — a provider with fixtures but no table changes what the home screen can
+say. It distinguishes **"no provider answered"** (inconclusive) from **"providers
+answered and none carry it"** (a real finding); only the second is grounds for a
+design decision.
 
 `run.mjs` exits non-zero if any probed source fails, so it can gate CI.
 

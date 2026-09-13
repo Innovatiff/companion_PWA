@@ -74,10 +74,20 @@ Alerts are deliberately **not** launched in all four. One reliable pipeline
 beats four half-working ones. See `docs/` for the source-verification findings
 that determine which country goes first and why.
 
-Intended order after the first country: Guatemala, Jamaica, Mexico —
-**subject to the verification findings**, because a country without a
-machine-readable feed is a fundamentally different (and more fragile) build
-than one with CAP.
+**Alert launch order (decided 2026-09-13, revised after verification):**
+
+> **Jamaica → Mexico → Honduras → Guatemala**
+
+CAP availability beats hazard exposure. Honduras-first would have meant
+scraper-first with no polygons, which cannot satisfy the municipality-precision
+rule. Prove the CAP path on Jamaica (`jm-jms-en`, 739-vertex polygons, English),
+then Mexico, then take on the Honduras and Guatemala scrapes once the
+architecture is proven and only the source is in question.
+
+**The Alert Hub's per-country feeds are geographic filters, not national
+sources.** 100/100 of the most recent alerts in the `country-hn` feed were
+issued by Belize. Ingest filters every item by issuing source, and
+`verify/alert-publishers.mjs` runs in CI so this cannot regress silently.
 
 ---
 

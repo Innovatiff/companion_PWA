@@ -154,8 +154,28 @@ decide whether fútbol ships for three of four countries.
 
 RESEARCHED only, low confidence: search results suggest API-Football carries the
 Honduran and Guatemalan Liga Nacional, and were silent on the Jamaica Premier
-League. Treat as a hypothesis. The harness checks all four names against each
-provider's league list and prints exactly which are missing.
+League. Treat as a hypothesis.
+
+**Re-run attempted 2026-09-13 — still blocked.** All four providers return HTTP
+403 at the egress proxy's CONNECT tunnel, and no API keys are present in the
+environment. Nothing about coverage was learned.
+
+`verify/football.mjs` now reports the full matrix rather than a yes/no, because
+coverage is not binary — a provider with fixtures but no table changes what the
+home screen can say:
+
+| | fixtures | live scores | table | crests | historical | season depth |
+| --- | --- | --- | --- | --- | --- | --- |
+| per league, per provider | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+
+For API-Football it reads the per-season `coverage` object the API itself
+returns, rather than inferring from a sample. For SportMonks it separates
+*present in catalogue* from *readable on your plan* (a 403 per endpoint), since
+only the latter is usable.
+
+It also distinguishes **"no provider answered"** (inconclusive) from **"providers
+answered and none carry it"** (a real finding). Only the second is grounds for a
+design decision — an unreachable provider has told us nothing.
 
 **Do not build the fútbol UI until this returns.** If Jamaica Premier League is
 missing, that section needs a different design for Jamaican users rather than an
