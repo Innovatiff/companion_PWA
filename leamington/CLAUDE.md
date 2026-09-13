@@ -259,6 +259,34 @@ Store municipality as **name AND lat/lng**. Alert polygons are geographic and
 
 ---
 
+## Standing rule: SILENCE IS NEVER EVIDENCE
+
+**Absence of a signal is not a negative finding.** Any component that reports
+absence MUST distinguish *confirmed absent* from *could not determine*.
+`INCONCLUSIVE` is a required state and is never collapsed into a negative.
+
+This applies to feeds, verification harnesses, and user-facing UI alike.
+
+Three instances of this failure mode have already surfaced in this project:
+
+| Where | The silence | What it was wrongly read as |
+| --- | --- | --- |
+| Verification harness | every provider unreachable | "NOT COVERED — redesign the home screen" |
+| Alert Hub | `country-hn` is a geographic filter | "Honduras's national alert feed" |
+| PWA (by design, prevented) | no alerts in our database | "you are safe" |
+
+Concretely:
+
+- A fetch that fails reports `INCONCLUSIVE`, never zero results.
+- A feed returning zero rows is distinguished from a feed that did not answer.
+  `source_runs.status` carries `error` for the second; a successful run with
+  `records_written = 0` is a different fact.
+- The UI never renders "no alerts", "no matches", or "all clear" on the basis of
+  an empty query. It says when the data was last confirmed fresh, or it says
+  nothing at all.
+- Staleness monitoring exists precisely because a silent source and a calm
+  source look identical from the database.
+
 ## Working agreements
 
 - **Verify data sources before building UI on top of them.** A feature is only

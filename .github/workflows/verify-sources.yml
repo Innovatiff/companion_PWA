@@ -1,0 +1,50 @@
+name: verify-sources
+
+# Guards the two findings that are easy to lose silently:
+#   1. the Alert Hub country feeds are geographic filters, not national sources
+#   2. the database rules (polygon matching, one-per-day, severity tiebreak, RLS)
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Daily: a national CAP source can disappear from the hub without notice.
+    - cron: "20 6 * * *"
+
+jobs:
+  alert-publishers:
+    name: Alert Hub country feeds still carry a national source
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - name: Who actually publishes each country feed
+        working-directory: leamington/services/ingest
+        # Fails if Jamaica's feed stops carrying jm-jms-en, which would mean we
+        # are ingesting another country's alerts as Jamaica's.
+        run: node verify/alert-publishers.mjs jm mx
+
+  db-rules:
+    name: Schema rules hold
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 10s
+          --health-timeout 5s --health-retries 5
+    env:
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply migrations, seeds and behavioural tests
+        working-directory: leamington/packages/db
+        run: ./test/run-tests.sh

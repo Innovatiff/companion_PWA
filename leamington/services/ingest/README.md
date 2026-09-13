@@ -6,9 +6,24 @@ Scheduled jobs that pull from external sources and write to our Postgres.
 here first. That is a performance requirement (bad wifi) and a cost requirement
 (API quota).
 
-## Status
+## Running it
 
-Only `verify/` is built. Per CLAUDE.md, feeds are verified before UI is built on
+```bash
+npm install
+DATABASE_URL=... node src/index.mjs            # scheduler, stays up
+node src/index.mjs --dry-run                    # print the schedule, run nothing
+node src/index.mjs --once alerts:JM             # one feed, immediately
+node src/index.mjs --once staleness             # owner health check
+node test/soak.mjs --cycles 5 --interval 10     # compressed soak
+```
+
+Jamaica CAP alerts are live and tested end-to-end against the real feed.
+FX, forecast and lottery are built but could not be exercised against their
+sources from this environment — see `docs/SOAK-FINDINGS.md`.
+
+## Status of verification
+
+Only `verify/` was built first. Per CLAUDE.md, feeds are verified before UI is built on
 top of them; see `docs/SOURCE-VERIFICATION.md` for what came back.
 
 ```bash

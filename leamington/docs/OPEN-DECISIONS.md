@@ -7,7 +7,22 @@ recommendation dressed as a finding.
 
 ## 1. Mexico CAP push policy — geometry is state-shaped
 
-**Status:** awaiting decision. Blocks Mexico alert match logic; does not block Jamaica.
+**Status: DECIDED 2026-09-13 — option (b) plus the areaDesc modifier.**
+
+> - Push Mexican CAP alerts on the **highest severity tier only**.
+> - Every Mexican alert notification includes SMN's own `areaDesc` **verbatim**
+>   (e.g. "CHIS, OAX"), so the coarse coverage area is visible to the user
+>   rather than implied to be their municipality.
+> - Lower tiers display in-app, no push.
+>
+> **(c) rejected:** intersecting a 6-vertex polygon with municipal boundaries
+> produces municipality-precise output from state-coarse input. That adds
+> confidence without adding information — the exact failure the
+> corner-of-Cortés rule exists to prevent. Revisit only if SMN tightens its
+> geometry, or if a geocoded municipal boundary set with real verification
+> value becomes available.
+
+The analysis behind the decision is kept below.
 
 ### The problem
 
