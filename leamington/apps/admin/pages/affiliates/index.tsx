@@ -1,0 +1,69 @@
+/** Afiliados: commission, active, sales and what each is owed. */
+import type { GetServerSideProps } from "next";
+import { asPerson } from "@leamington/shared/src/server/db.ts";
+import { formatMoney } from "@leamington/shared/src/format.ts";
+import { ownerPage, plain, type Viewer } from "../../lib/server.ts";
+import { percentLabel } from "../../lib/rules.ts";
+import { strings } from "../../lib/i18n.ts";
+import { Page, Chip } from "../../lib/ui.tsx";
+
+export const config = { unstable_runtimeJS: false };
+
+type Row = {
+  affiliate_id: string; name: string; business_name: string | null; active: boolean; is_test: boolean; is_house: boolean;
+  rate: string; sales: number; renewals: number; earned: string; paid_out: string; owed: string;
+};
+type Props = { viewer: Viewer; rows: Row[] };
+
+export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
+  const g = await ownerPage(ctx);
+  if ("redirect" in g) return g;
+  const rows = await asPerson(g.person.authUserId, async (q) => (await q.query(
+    `select e.affiliate_id, e.name, a.business_name, e.active, e.is_test, e.is_house, e.commission_rate::text as rate,
+            e.sales::int, e.renewals::int, e.earned::text, e.paid_out::text, e.owed::text
+       from affiliate_earnings e join affiliates a on a.id = e.affiliate_id
+      order by e.is_test, e.is_house, not e.active, e.name`)).rows as Row[]);
+  return { props: plain({ viewer: g.viewer, rows }) };
+};
+
+export default function Affiliates({ viewer, rows }: Props) {
+  const t = strings(viewer.lang);
+  const a = t.affiliates;
+  return (
+    <Page viewer={viewer} section="affiliates" title={a.title}>
+      <p><a className="button inline" href="/affiliates/new">{a.add}</a></p>
+      <div className="wrap">
+        <table>
+          <caption>{a.caption}</caption>
+          <thead>
+            <tr>
+              <th scope="col">{a.name}</th><th scope="col" className="num">{a.commission}</th><th scope="col">{a.active}</th>
+              <th scope="col" className="num">{a.sales}</th><th scope="col" className="num">{a.renewals}</th>
+              <th scope="col" className="num">{a.earned}</th><th scope="col" className="num">{a.paidOut}</th>
+              <th scope="col" className="num">{a.owed}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.affiliate_id}>
+                <th scope="row">
+                  <a href={`/affiliates/${r.affiliate_id}`}>{r.name}</a>{" "}
+                  {r.is_house && <Chip>{t.chip.house}</Chip>}{" "}
+                  {r.is_test && <Chip kind="test">{t.chip.test}</Chip>}
+                  {r.business_name && <><br /><small>{r.business_name}</small></>}
+                </th>
+                <td className="num">{percentLabel(r.rate)}</td>
+                <td>{r.active ? a.yes : <Chip kind="unk">{t.chip.inactive}</Chip>}</td>
+                <td className="num">{r.sales}</td>
+                <td className="num">{r.renewals}</td>
+                <td className="num">{formatMoney(r.earned)}</td>
+                <td className="num">{formatMoney(r.paid_out)}</td>
+                <td className="num"><b>{formatMoney(r.owed)}</b></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Page>
+  );
+}

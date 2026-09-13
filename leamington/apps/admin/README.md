@@ -1,10 +1,19 @@
 # apps/admin
 
-Intentionally empty.
+The owner portal. Next.js Pages Router, client runtime JS disabled on every
+page, inline CSS, plain HTML forms posting to `pages/api/*` (docs/DESIGN.md).
 
-CLAUDE.md gates UI work on source verification, and that is not complete:
-football coverage is still unverified, and the alert launch country is an open
-decision. See `docs/SOURCE-VERIFICATION.md`.
+```
+npm run build && npm start                 # port 3300
+node scripts/create-owner.mjs <login> [es|en]   # prints a one-time setup link (ADMIN_URL)
+npm test                                   # pure rules (node:test)
+BASE=... DATABASE_URL=... SESSION_SECRET=... node scripts/smoke.mjs    # end to end, local/staging only
+BASE=... LOGIN=... PASSWORD=... node scripts/measure.mjs               # bytes on the wire
+```
 
-Building screens now would mean designing around feeds we cannot yet confirm
-exist.
+Environment: `DATABASE_URL`, `SESSION_SECRET` (32+ characters, shared with the
+other apps), `COOKIE_SECURE` (unset in production), `ADMIN_URL`, `AFFILIATE_URL`
+(base of the affiliate setup links). See `.env.example`.
+
+`scripts/local-demo.sql` loads contrasting demo data into a throwaway local
+database; never run it anywhere else.
