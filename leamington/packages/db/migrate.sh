@@ -31,6 +31,10 @@ PSQL=(psql -v ON_ERROR_STOP=1 -X -q "$URL")
 # The stub guard protects REAL instances. A local database legitimately carries
 # the stubs (that is how the test suite runs), so the check is scoped to
 # non-local hosts.
+#
+# Supabase's own auth.uid() also reads request.jwt.claim.sub, so that string
+# alone cannot tell them apart. The real function is owned by
+# supabase_auth_admin and falls back to request.jwt.claims; the stub is neither.
 host=$(printf '%s' "$URL" | sed -E 's|^[a-z+]+://([^@]*@)?([^:/?]+).*|\2|')
 case "$host" in
   localhost|127.0.0.1|::1|"") LOCAL=1 ;;
@@ -39,7 +43,8 @@ esac
 
 stub=""
 [ -z "$LOCAL" ] && stub=$("${PSQL[@]}" -tAc "
-  select coalesce(bool_or(pg_get_functiondef(p.oid) like '%request.jwt.claim.sub%'), false)
+  select coalesce(bool_or(pg_get_userbyid(p.proowner) <> 'supabase_auth_admin'
+                          and pg_get_functiondef(p.oid) not like '%request.jwt.claims%'), false)
     from pg_proc p join pg_namespace n on n.oid=p.pronamespace
    where n.nspname='auth' and p.proname='uid';" 2>/dev/null || echo "unknown")
 if [ "$stub" = "t" ]; then

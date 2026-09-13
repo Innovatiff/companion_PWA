@@ -43,8 +43,12 @@ select exists(select 1 from pg_namespace where nspname='extensions') as extensio
 
 \echo ''
 \echo '--- Supabase auth helpers must be PRESENT and NOT ours ---'
+-- Supabase's real helpers also read request.jwt.claim.*, so match on what the
+-- stub lacks: supabase_auth_admin ownership and the request.jwt.claims fallback.
 select p.proname,
-       pg_get_functiondef(p.oid) like '%request.jwt.claim.sub%' as looks_like_local_stub
+       pg_get_userbyid(p.proowner) as owner,
+       (pg_get_userbyid(p.proowner) <> 'supabase_auth_admin'
+        and pg_get_functiondef(p.oid) not like '%request.jwt.claims%') as looks_like_local_stub
   from pg_proc p join pg_namespace n on n.oid = p.pronamespace
  where n.nspname = 'auth' and p.proname in ('uid','role');
 
