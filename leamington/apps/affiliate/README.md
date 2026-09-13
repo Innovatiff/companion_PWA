@@ -1,8 +1,10 @@
 # apps/affiliate — the affiliate portal
 
 Four screens for an affiliate at a counter with a line waiting: register a
-client (4 fields), the issued code, my clients, my earnings. Plus sign-in and
-the one-time password setup link.
+client (4 fields), the issued code, my clients, my earnings, and renewing any
+client in person by the code on their receipt (the commission always goes to
+the affiliate who registered them). Plus sign-in and the one-time password
+setup link.
 
 | Route | What |
 | --- | --- |
@@ -11,7 +13,10 @@ the one-time password setup link.
 | `/` | my clients: renewals due first, then everyone (`client_status`) |
 | `/register`, `/register?country=MX`, `POST /api/register` | step 1 country, step 2 the form; `app.register_client` |
 | `/clients/[id]/code` | the code, printable; 404 for anyone else's client |
-| `/earnings` | `affiliate_earnings`, commissions, payouts |
+| `/renew`, `POST /api/renew/lookup` | type the code from the client's receipt; `app.renewal_lookup` (any client, throttled) |
+| `/renew/[clientId]`, `POST /api/renew/record` | status, who earns, the period bought; `app.affiliate_record_renewal` with a per-render request key |
+| `/renew/done/[key]` | `app.renewal_receipt`, printable; 404 unless you collected or earn it |
+| `/earnings` | registrations and renewals apart (`affiliate_earnings`, `renewal_log`), renewals you collected (`app.my_renewal_collections`), payouts |
 | `POST /api/logout` | sign out |
 | `/health` | `healthHandler("affiliate")` |
 

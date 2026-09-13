@@ -4,8 +4,14 @@
 //   list -> earnings -> logout, and affiliate B cannot see A's clients or code
 //   pages (row-level security, through the running app).
 //
-// LOCAL ONLY: it sets passwords and records real $20 sales. It refuses a
-// non-local BASE.
+//   Renewals in person: B looks up A's client by code, renews early (A earns),
+//   a double tap records once, a second renewal within 10 minutes needs the
+//   confirmation box, both earnings pages show it, and a lapsed client restarts
+//   today. The lapse is made with psql, so psql must reach the same local
+//   database (PGHOST/PGPORT/PGUSER, and PSQL_DB, default leamington_affiliate).
+//
+// LOCAL ONLY: it sets passwords, records real $20 sales and renewals, and moves
+// subscription dates. It refuses a non-local BASE or PGHOST.
 //
 //   eval "$(psql -At -F ' ' -f scripts/local-accounts.sql leamington_affiliate |
 //           awk '{print "export SETUP_TOKEN_" toupper($1) "=" $2}')"
@@ -15,12 +21,21 @@
 // Without SETUP_TOKEN_A/B the accounts are assumed set up already, with
 // PASSWORD_A/PASSWORD_B.
 import http from "node:http";
+import { execFileSync } from "node:child_process";
 
 const BASE = new URL(process.env.BASE ?? "http://localhost:3200");
 if (!["localhost", "127.0.0.1", "[::1]"].includes(BASE.hostname)) {
   console.error(`REFUSING: ${BASE.origin} is not local. This script records sales.`);
   process.exit(2);
 }
+const PGHOST = process.env.PGHOST ?? "";
+if (PGHOST && !PGHOST.startsWith("/") && !["localhost", "127.0.0.1", "::1"].includes(PGHOST)) {
+  console.error(`REFUSING: PGHOST=${PGHOST} is not local. This script moves subscription dates.`);
+  process.exit(2);
+}
+const PSQL_DB = process.env.PSQL_DB ?? "leamington_affiliate";
+/** One value from the local database. Only uuids we matched and fixed text are interpolated. */
+const sql = (query) => execFileSync("psql", ["-v", "ON_ERROR_STOP=1", "-X", "-At", "-c", query, PSQL_DB], { encoding: "utf8" }).trim();
 const A = { login: process.env.LOGIN_A ?? "ana", token: process.env.SETUP_TOKEN_A, password: process.env.PASSWORD_A ?? "ana-local-password-1" };
 const B = { login: process.env.LOGIN_B ?? "beto", token: process.env.SETUP_TOKEN_B, password: process.env.PASSWORD_B ?? "beto-local-password-1" };
 const RUN = Date.now().toString(36);
@@ -71,6 +86,19 @@ function options(html, id) {
 }
 const decode = (s) => s.replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#x27;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
 const escapeHtml = (s) => s.replace(/&/g, "&amp;");
+/** HTML without React's text-node separators, so a sentence built from pieces reads as one string. */
+const plain = (html) => html.replace(/<!-- -->/g, "");
+const hidden = (html, name) => new RegExp(`<input[^>]*name="${name}"[^>]*value="([^"]*)"`).exec(html)?.[1] ?? "";
+const table = (html, id) => new RegExp(`<table id="${id}">([\\s\\S]*?)</table>`).exec(html)?.[1] ?? "";
+const rowWith = (html, needle) => [...html.matchAll(/<tr>([\s\S]*?)<\/tr>/g)].map((m) => plain(m[1])).find((t) => t.includes(needle)) ?? "";
+const MONTHS = {
+  es: ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"],
+  en: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+};
+const longDate = (iso, lang) => {
+  const [y, m, d] = iso.split("-").map(Number);
+  return lang === "en" ? `${d} ${MONTHS.en[m - 1]} ${y}` : `${d} de ${MONTHS.es[m - 1]} de ${y}`;
+};
 
 // ---------------------------------------------------------------------------
 let r = await send("/health");
@@ -223,6 +251,174 @@ r = await get("/", cookieA);
 check("RLS: A's list does not include B's client", !r.text.includes(bClient.name));
 r = await get("/clients/not-a-uuid/code", cookieA);
 check("a malformed client id is 404", r.status === 404, r.status);
+
+// ---------------------------------------------------------------------------
+// Renewals in person: B collects for A's client; A earns.
+const renewalsOf = (id) => Number(sql(`select count(*) from subscriptions where client_id = '${id}' and kind = 'renewal'`));
+const loginLiteral = (login) => `'${login.replace(/'/g, "''")}'`;
+const earnerName = sql(`select coalesce(a.business_name, a.name) from affiliates a join portal_logins p on p.affiliate_id = a.id where p.login = ${loginLiteral(A.login)}`);
+const periodEnd = (id) => sql(`select max(period_end) from subscriptions where client_id = '${id}' and paid_at is not null and voided_at is null`);
+const plus6 = (iso) => sql(`select (date '${iso}' + interval '6 months')::date`);
+
+r = await get("/renew", cookieB);
+check("renew 1: /renew is a plain form posting the code to /api/renew/lookup, Renew current in the nav",
+  r.status === 200 && /<form(?=[^>]*\baction="\/api\/renew\/lookup")(?=[^>]*\bmethod="post")[^>]*>/.test(r.text)
+  && /<input(?=[^>]*\bname="code")(?=[^>]*\bclass="codein")[^>]*>/.test(r.text) && /href="\/renew" aria-current="page"/.test(r.text));
+
+r = await post("/api/renew/lookup", { code: ` ${jmCode.toLowerCase().replace("-", " ")} ` }, cookieB);
+check("renew 2: B looks up A's client by code (lower case, a space) and is sent to its renewal page",
+  r.status === 303 && r.location === `/renew/${jm.id}`, `${r.status} ${r.location}`);
+check("renew 2: the code is not in the redirect", !r.location.toUpperCase().includes(jmCode.replace("-", "")));
+const statusUrl = r.location;
+const endBefore = periodEnd(jm.id);
+const endAfter = plus6(endBefore);
+r = await get(statusUrl, cookieB);
+let p = plain(r.text);
+check("renew 2: the status page shows name, country in words, formatted code, period end and an Active chip",
+  r.status === 200 && p.includes(jm.name) && p.includes("Jamaica") && p.includes(jmCode) && p.includes(`Paid until: <b>${longDate(endBefore, "en")}</b>`)
+  && p.includes(">Active<"), p.slice(0, 400));
+check(`renew 2: "Registered by: ${earnerName}" and the commission goes to ${earnerName}`,
+  p.includes(`Registered by: ${earnerName}`) && p.includes(`The commission on this renewal goes to ${earnerName}, who registered this client. You are collecting on their behalf.`));
+check("renew 2: an early renewal extends from the current end",
+  p.includes(`New period: ${longDate(endBefore, "en")} – ${longDate(endAfter, "en")}`) && p.includes("It adds on to the current period"));
+check("renew 2: one primary button 'I collected $20.00 — renew', no confirmation box yet",
+  /<form(?=[^>]*\baction="\/api\/renew\/record")(?=[^>]*\bmethod="post")[^>]*>/.test(r.text) && p.includes(">I collected $20.00 — renew</button>")
+  && !/name="confirm_repeat"/.test(r.text));
+const form1 = { client_id: hidden(r.text, "client_id"), request_key: hidden(r.text, "request_key") };
+check("renew 2: hidden client_id and a uuid request_key", form1.client_id === jm.id && new RegExp(`^${UUID}$`).test(form1.request_key), JSON.stringify(form1));
+
+const beforeRenew = renewalsOf(jm.id);
+r = await post("/api/renew/record", form1, cookieB);
+check("renew 3: collecting goes to the receipt for this request key", r.status === 303 && r.location === `/renew/done/${form1.request_key}`, `${r.status} ${r.location}`);
+const receiptUrl = r.location;
+check("renew 3: exactly one renewal recorded", renewalsOf(jm.id) === beforeRenew + 1, renewalsOf(jm.id));
+r = await get(receiptUrl, cookieB);
+p = plain(r.text);
+check("renew 3: the receipt says Renewed, with the period extended from the old end",
+  r.status === 200 && p.includes(">Renewed</h1>") && p.includes(`New period: ${longDate(endBefore, "en")} – ${longDate(endAfter, "en")}`), p.slice(0, 600));
+check(`renew 3: "Commission for ${earnerName}: $8.00", "Collected by: you", $20.00, a 24 h time, and the account is active`,
+  p.includes(`Commission for ${earnerName}: $8.00`) && p.includes("Collected by: you") && p.includes("Amount: $20.00")
+  && /Date: [^<]*\b([01]\d|2[0-3]):[0-5]\d\b/.test(p) && p.includes("The account is active now."));
+check("renew 3: the receipt is printable and offers Renew another", r.text.includes('onclick="print()"') && p.includes('href="/renew">Renew another<'));
+check("renew 3: the period in the database is the one the receipt shows",
+  sql(`select period_start || ' ' || period_end from subscriptions where request_key = '${form1.request_key}'`) === `${endBefore} ${endAfter}`);
+r = await get(receiptUrl, cookieA);
+p = plain(r.text);
+check("renew 3: A (the earner) can open the receipt: her commission, collected by someone else",
+  r.status === 200 && p.includes("Tu comisión: $8.00") && p.includes("Cobrado por: otra persona"), r.status);
+
+r = await post("/api/renew/record", form1, cookieB);
+check("renew 4: the exact same form again lands on the same receipt", r.status === 303 && r.location === receiptUrl, r.location);
+check("renew 4: and records nothing new", renewalsOf(jm.id) === beforeRenew + 1, renewalsOf(jm.id));
+
+r = await get(statusUrl, cookieB);
+p = plain(r.text);
+const form2 = { client_id: hidden(r.text, "client_id"), request_key: hidden(r.text, "request_key") };
+check("renew 5: a fresh status page warns of the renewal a moment ago, when and until what date, collected by you",
+  p.includes("This client was renewed a moment ago (") && p.includes("collected by you") && p.includes(`paid until ${longDate(endAfter, "en")}`), p.slice(0, 800));
+check("renew 5: it requires the 'Yes, collect another 6 months' box, and has a new request key",
+  /<input(?=[^>]*\bname="confirm_repeat")(?=[^>]*\brequired)[^>]*>/.test(r.text) && p.includes("Yes, collect another 6 months") && form2.request_key !== form1.request_key && form2.request_key !== "");
+r = await post("/api/renew/record", form2, cookieB);
+check("renew 5: submitting without the box goes back with ?recent=1", r.status === 303 && r.location === `${statusUrl}?recent=1`, r.location);
+check("renew 5: and records nothing", renewalsOf(jm.id) === beforeRenew + 1, renewalsOf(jm.id));
+r = await get(r.location, cookieB);
+check("renew 5: ?recent=1 shows the warning and the box", r.status === 200 && plain(r.text).includes("renewed a moment ago") && /name="confirm_repeat"/.test(r.text));
+
+// The confirmation, on B's own client (so A's numbers stay one renewal).
+r = await get(`/renew/${bClient.id}`, cookieB);
+p = plain(r.text);
+check("renew 5b: B's own client says 'Registered by: you' and 'Your commission: $8.00'",
+  r.status === 200 && p.includes("Registered by: you") && p.includes("Your commission: $8.00"));
+r = await post("/api/renew/record", { client_id: hidden(r.text, "client_id"), request_key: hidden(r.text, "request_key") }, cookieB);
+r = await get(r.location, cookieB);
+check("renew 5b: B's own receipt: 'Your commission: $8.00'", r.status === 200 && plain(r.text).includes("Your commission: $8.00") && plain(r.text).includes("Collected by: you"));
+r = await get(`/renew/${bClient.id}`, cookieB);
+const confirmForm = { client_id: hidden(r.text, "client_id"), request_key: hidden(r.text, "request_key"), confirm_repeat: "1" };
+const bBefore = renewalsOf(bClient.id);
+r = await post("/api/renew/record", confirmForm, cookieB);
+check("renew 5b: with the box ticked, a second renewal within 10 minutes is recorded",
+  r.status === 303 && r.location === `/renew/done/${confirmForm.request_key}` && renewalsOf(bClient.id) === bBefore + 1, `${r.location} ${renewalsOf(bClient.id)}`);
+const bOwnReceipt = r.location;
+r = await get(bOwnReceipt, cookieA);
+check("renew 5b: A gets 404 for a receipt she neither collected nor earns", r.status === 404, r.status);
+
+r = await get("/earnings", cookieA);
+p = plain(r.text);
+const aRenewal = rowWith(table(r.text, "renewals"), jm.name);
+check("renew 6: A's earnings list the renewal under renewals: $8.00, collected by another affiliate, with its period",
+  r.status === 200 && aRenewal.includes("$8.00") && aRenewal.includes("otro afiliado") && aRenewal.includes(`${longDate(endBefore, "es")} – ${longDate(endAfter, "es")}`), aRenewal);
+check("renew 6: the registration is listed separately", rowWith(table(r.text, "registrations"), jm.name).includes("$8.00") && !table(r.text, "registrations").includes("otro afiliado"));
+check("renew 6: the prominent line: renewals of her clients collected by someone else, and she still earned",
+  /\d+ renovaci(ón|ones) de tus clientes las? cobró otro afiliado u Hoy — igual ganaste \$\d+\.\d{2}\./.test(p));
+check("renew 6: the standing sentence and separate stat blocks for registrations and renewals",
+  p.includes("Cada cliente que registras te paga $8.00 cada vez que renueva") && /<b>\$[\d.]+<\/b>ganado en \d+ registros?<br\/?><small>desde tu primer registro/.test(p)
+  && /<b>\$[\d.]+<\/b>ganado en \d+ renovaci(ón|ones)<br\/?><small>desde tu primer registro/.test(p));
+const aCollected = Number(sql(`select count(*) from subscriptions s join portal_logins p on p.affiliate_id = s.collected_by_affiliate_id
+                                where p.login = ${loginLiteral(A.login)} and s.kind = 'renewal' and s.voided_at is null`));
+check("renew 6: A's 'Renovaciones que cobraste' appears only if she has collected one", p.includes("Renovaciones que cobraste") === aCollected > 0, aCollected);
+
+r = await get("/earnings", cookieB);
+p = plain(r.text);
+const bCollected = rowWith(table(r.text, "collections"), jm.name);
+check(`renew 7: B's earnings show it under "Renewals you collected": $20.00 for ${earnerName}`,
+  r.status === 200 && p.includes(">Renewals you collected<") && bCollected.includes("$20.00") && bCollected.includes(`for ${earnerName}`), bCollected);
+check("renew 7: B's own client's renewals say 'for you'", rowWith(table(r.text, "collections"), bClient.name).includes("for you"));
+check("renew 7: A's client earns B nothing", !table(r.text, "renewals").includes(jm.name) && !table(r.text, "registrations").includes(jm.name));
+r = await get("/", cookieB);
+check("renew 7: A's client still does not appear in B's client list", r.status === 200 && !r.text.includes(jm.name) && !r.text.includes(jmCode));
+r = await get(jm.location, cookieB);
+check("renew 7: and B still gets 404 for A's code page", r.status === 404, r.status);
+
+// 900 days pass for A's JM client: the periods and the payments that bought them move back together.
+sql(`update subscriptions set period_start = period_start - 900, period_end = period_end - 900, paid_at = paid_at - interval '900 days'
+      where client_id = '${jm.id}'`);
+const today = sql("select app.business_today()");
+r = await get("/", cookieA);
+check("renew 8: A's list shows the lapsed client with a Renovar link", r.text.includes(`href="/renew/${jm.id}"`) && rowWith(r.text, jm.name).includes("Vencido"));
+r = await get(`/renew/${jm.id}`, cookieA);
+p = plain(r.text);
+check("renew 8: lapsed: Vencido, 'Registrado por: ti', your commission, and the new period starts today",
+  r.status === 200 && p.includes(">Vencido<") && p.includes("Registrado por: ti") && p.includes("Tu comisión: $8.00")
+  && p.includes(`Nuevo periodo: ${longDate(today, "es")} – ${longDate(plus6(today), "es")}`) && p.includes("Empieza hoy, porque el periodo anterior ya terminó")
+  && !/name="confirm_repeat"/.test(r.text), p.slice(0, 800));
+const lapsedForm = { client_id: hidden(r.text, "client_id"), request_key: hidden(r.text, "request_key") };
+r = await post("/api/renew/record", lapsedForm, cookieA);
+check("renew 8: renewing the lapsed client goes to its receipt", r.status === 303 && r.location === `/renew/done/${lapsedForm.request_key}`, r.location);
+r = await get(r.location, cookieA);
+p = plain(r.text);
+check("renew 8: the receipt starts today, says the account is active and was reactivated",
+  p.includes(">Renovado</h1>") && p.includes(`Nuevo periodo: ${longDate(today, "es")} – ${longDate(plus6(today), "es")}`)
+  && p.includes("La cuenta ya está activa.") && p.includes("La cuenta estaba vencida y se reactivó") && p.includes("Tu comisión: $8.00") && p.includes("Cobrado por: ti"));
+check("renew 8: the database agrees: starts today, a reactivation, the client active again",
+  sql(`select s.period_start || ' ' || s.reactivation || ' ' || cs.status from subscriptions s join client_status cs on cs.client_id = s.client_id
+        where s.request_key = '${lapsedForm.request_key}'`) === `${today} true active`);
+
+let absent = "QQQQQQQQ";
+for (const c of ["QQQQQQQQ", "QQQQQQQR", "QQQQQQQT"]) if (sql(`select count(*) from clients where code = '${c}'`) === "0") { absent = c; break; }
+r = await post("/api/renew/lookup", { code: `${absent.slice(0, 4)}-${absent.slice(4)}` }, cookieB);
+check("renew 9: an unknown code is not_found", r.status === 303 && r.location === "/renew?e=not_found", r.location);
+r = await get(r.location, cookieB);
+check("renew 9: and says so under the field", /id="code-err"[^>]*>No client has that code/.test(r.text) && /aria-invalid="true"/.test(r.text));
+r = await post("/api/renew/lookup", { code: "ACD-12" }, cookieB);
+check("renew 9: a malformed code is invalid", r.status === 303 && r.location === "/renew?e=invalid", r.location);
+r = await get(r.location, cookieB);
+check("renew 9: and says what a code looks like", /id="code-err"[^>]*>That code is not valid/.test(r.text));
+r = await post("/api/renew/lookup", { code: jmCode }, cookieB, "http://evil.example");
+check("renew 9: a cross-origin lookup is 403", r.status === 403, r.status);
+const jmNow = renewalsOf(jm.id);
+r = await get(`/renew/${jm.id}`, cookieB);
+r = await post("/api/renew/record", { client_id: jm.id, request_key: hidden(r.text, "request_key"), confirm_repeat: "1" }, cookieB, "http://evil.example");
+check("renew 9: a cross-origin record is 403 and records nothing", r.status === 403 && renewalsOf(jm.id) === jmNow, `${r.status} ${renewalsOf(jm.id)}`);
+r = await send("/api/renew/record");
+check("renew 9: GET /api/renew/record is 405", r.status === 405, r.status);
+r = await post("/api/renew/record", { client_id: jm.id, request_key: "00000000-0000-4000-8000-000000000000" });
+check("renew 9: record without a session goes to /login", r.status === 303 && r.location === "/login", r.location);
+r = await post("/api/renew/record", { client_id: "nope", request_key: "also-nope" }, cookieB);
+check("renew 9: record with malformed ids is 400", r.status === 400, r.status);
+for (const path of ["/renew/not-a-uuid", "/renew/00000000-0000-4000-8000-000000000000", "/renew/done/00000000-0000-4000-8000-000000000000", "/renew/done/x"]) {
+  r = await get(path, cookieB);
+  check(`renew 9: ${path} is 404`, r.status === 404, r.status);
+}
 
 // ---------------------------------------------------------------------------
 // No framework JS anywhere

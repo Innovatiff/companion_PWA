@@ -1,5 +1,6 @@
 /**
  * My clients. Renewals due soon first (with days left), then every client.
+ * Due, lapsed and never-paid clients carry a "Renovar" link to /renew/<id>.
  *
  * Read from the client_status view (0019) inside asPerson, so row-level security
  * returns only this affiliate's clients. The ledger is ours: an empty result is
@@ -50,6 +51,9 @@ export default function Clients({ viewer, clients }: Props) {
       <a href={`/clients/${c.id}/code`}>{c.fullName}</a>
       {c.isTest && <> <span className="chip">{t.test}</span></>}
       {!c.active && <> <span className="chip">{t.inactive}</span></>}
+      {c.active && c.status !== "active" && (
+        <> <a className="renew" href={`/renew/${c.id}`} aria-label={t.renewLinkFor(c.fullName)}>{t.renewLink}</a></>
+      )}
     </>
   );
 

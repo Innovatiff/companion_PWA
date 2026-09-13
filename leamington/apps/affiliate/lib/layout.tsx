@@ -1,6 +1,6 @@
 /**
  * The page shell: title, viewport, and for a signed-in affiliate the header nav
- * (Clientes · Registrar · Ganancias · Salir) with a PRUEBA chip on test accounts.
+ * (Clientes · Registrar · Renovar · Ganancias · Salir) with a PRUEBA chip on test accounts.
  * Salir is a POST form, so no link prefetch or crawler can sign anyone out.
  */
 import Head from "next/head";
@@ -10,7 +10,7 @@ import type { PortalPerson } from "@leamington/shared/src/server/portal.ts";
 import { strings, type Lang } from "./strings.ts";
 
 export type Viewer = { lang: Lang; name: string; isTest: boolean };
-export type Nav = "clients" | "register" | "earnings" | null;
+export type Nav = "clients" | "register" | "renew" | "earnings" | null;
 
 export const viewerOf = (p: PortalPerson): Viewer => ({ lang: p.language, name: p.affiliateName ?? p.login, isTest: p.isTest });
 
@@ -38,6 +38,7 @@ export function Page({ title, viewer, nav = null, children }: { title: string; v
           <nav>
             <a href="/" aria-current={current(nav, "clients")}>{t.navClients}</a>
             <a href="/register" aria-current={current(nav, "register")}>{t.navRegister}</a>
+            <a href="/renew" aria-current={current(nav, "renew")}>{t.navRenew}</a>
             <a href="/earnings" aria-current={current(nav, "earnings")}>{t.navEarnings}</a>
             <form method="post" action="/api/logout">
               <button type="submit">{t.signOut}</button>
