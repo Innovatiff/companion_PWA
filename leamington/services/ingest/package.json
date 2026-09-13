@@ -1,0 +1,10 @@
+{
+  "name": "@leamington/ingest",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "verify": "node verify/run.mjs",
+    "verify:publishers": "node verify/alert-publishers.mjs"
+  }
+}
