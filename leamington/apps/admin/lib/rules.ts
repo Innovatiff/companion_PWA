@@ -109,6 +109,39 @@ export function sortSales<T extends SalesRow>(rows: T[]): T[] {
 }
 
 // ---------------------------------------------------------------------------
+// Renewals: who collected, who earns, who lapses
+// ---------------------------------------------------------------------------
+
+type Grouped = { active: boolean; is_test: boolean; is_house: boolean; name: string };
+
+/** Real active affiliates first, then the owner's direct registrations, then inactive, then test ones last. */
+export function sortAffiliateGroups<T extends Grouped>(rows: T[], busier: (a: T, b: T) => number = () => 0): T[] {
+  const group = (r: Grouped) => (r.is_test ? 3 : !r.active ? 2 : r.is_house ? 1 : 0);
+  return [...rows].sort((a, b) => group(a) - group(b) || busier(a, b) || a.name.localeCompare(b.name));
+}
+
+/**
+ * Who physically took the money for a renewal: the collecting affiliate, or
+ * `ownerLabel` when the owner marked it paid in admin (collected_by is null).
+ */
+export const collectorLabel = (r: { collected_by_owner: boolean; collecting_affiliate: string | null }, ownerLabel: string): string =>
+  r.collected_by_owner ? ownerLabel : r.collecting_affiliate ?? ownerLabel;
+
+/**
+ * renewal_log.collected_by_other is also true when the owner collected (null is
+ * distinct from the earner). The "another affiliate" mark is only for an affiliate.
+ */
+export const collectedByOtherAffiliate = (r: { collected_by_owner: boolean; collected_by_other: boolean }): boolean =>
+  r.collected_by_other && !r.collected_by_owner;
+
+/**
+ * affiliate_lapse_rate.lapse_rate (0..1, 4 decimals) as "12.5%". Null when no
+ * client has come due yet: that is "nobody yet", never 0%.
+ */
+export const lapseRateLabel = (rate: string | number | null | undefined): string | null =>
+  rate === null || rate === undefined || rate === "" ? null : percentLabel(rate);
+
+// ---------------------------------------------------------------------------
 // Feed health. SILENCE IS NEVER EVIDENCE: ok, stale and error are distinct,
 // and anything we cannot place is "unknown", never ok.
 // ---------------------------------------------------------------------------

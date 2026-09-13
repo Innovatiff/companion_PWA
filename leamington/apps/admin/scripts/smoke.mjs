@@ -39,6 +39,18 @@ async function http(p, { method = "GET", cookie, form, origin = BASE } = {}) {
 }
 const cookieFrom = (r, name) => r.setCookie.map((c) => c.split(";")[0]).find((c) => c.startsWith(`${name}=`));
 const noFrameworkJs = (html) => !/<script[^>]*\bsrc=/i.test(html) && !html.includes("/_next/");
+// HTML reading for tables: the part of a page inside <section id=...>, its rows, and a row's cells as text.
+const section = (html, id) => {
+  const i = html.indexOf(`id="${id}"`);
+  if (i < 0) return "";
+  const j = html.indexOf("</section>", i);
+  return html.slice(i, j < 0 ? undefined : j);
+};
+const rowWith = (html, text) => (html.match(/<tr[\s>][\s\S]*?<\/tr>/g) ?? []).find((x) => x.includes(text));
+const cells = (tr) => [...(tr ?? "").matchAll(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/g)].map((m) => m[1]
+  .replace(/<!-- -->/g, "").replace(/<br\/?>/g, " ").replace(/<[^>]+>/g, "")
+  .replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#x27;/g, "'").replace(/\s+/g, " ").trim());
+const randomCode = "(select string_agg(substr('ACDEFGHJKMNPQRTVWXYZ2346', 1 + floor(random() * 24)::int, 1), '') from generate_series(1, 8))";
 
 const client = new pg.Client({ connectionString: process.env.DATABASE_URL });
 await client.connect();
@@ -179,10 +191,104 @@ try {
   const rate = (await client.query("select commission_rate::text from affiliates where id = $1", [affId])).rows[0].commission_rate;
   check(r.location.endsWith("ok=commission") && rate === "0.3500", "the commission changes to 35%", `${r.location} ${rate}`);
 
+  // 6b. renewals collected in person (0029). A second affiliate collects a renewal on
+  // the first affiliate's client (the affiliate portal's job, so through the database);
+  // one of the first affiliate's clients is backdated until it lapses, and the owner
+  // marks it paid here: a reactivation collected by the owner.
+  const COL = `smoke.col.${stamp}`, COL_PW = "collector-smoke-password-1";
+  const AFF_NAME = `Afiliado Smoke ${stamp}`, COL_NAME = `Cobrador Smoke ${stamp}`;
+  const LAPSED_NAME = `Cliente Vencido ${stamp}`, AFF_CLIENT_NAME = `Cliente de Afiliado ${stamp}`;
+  r = await http("/api/affiliates/create", { method: "POST", cookie: lo, form: { name: COL_NAME, commission: "40", login: COL, language: "es" } });
+  const colId = /^\/affiliates\/([0-9a-f-]{36})\?ok=created$/.exec(r.location)?.[1];
+  const colPage = await http(`/affiliates/${colId}?ok=created`, { cookie: `${lo}; ${cookieFrom(r, "lo_setup")}` });
+  const colToken = /\/setup\?token=([0-9a-f]{48})/.exec(colPage.text)?.[1];
+  check(colId && (await client.query("select app.portal_complete_setup($1, $2) as r", [colToken, COL_PW])).rows[0].r.status === "ok",
+    "a second affiliate is created to collect renewals");
+  const colAuth = (await client.query("select auth_user_id from portal_logins where login = $1", [COL])).rows[0].auth_user_id;
+
+  const affCode = (await client.query("select code from clients where id = $1", [affClient])).rows[0].code;
+  await client.query("begin");
+  await client.query("select set_config('request.jwt.claim.sub', $1, true)", [colAuth]);
+  const lookup = (await client.query("select app.renewal_lookup($1) as r", [affCode])).rows[0].r;
+  const collected = (await client.query("select app.affiliate_record_renewal($1, gen_random_uuid(), $2) as r", [affClient, colAuth])).rows[0].r;
+  await client.query("commit");
+  check(lookup.status === "found" && collected.status === "renewed", "the second affiliate collects a renewal on the first affiliate's client", JSON.stringify(collected));
+
+  await client.query("begin");
+  await client.query("select set_config('request.jwt.claim.sub', $1, true)", [affAuth]);
+  const lapsedClient = (await client.query(`select app.register_client($1, ${randomCode}, $2, 'JM', 'St. James', null, $3) as r`,
+    [affId, LAPSED_NAME, affAuth])).rows[0].r.client_id;
+  await client.query("commit");
+  await client.query(
+    `update subscriptions set period_start = period_start - 400, period_end = period_end - 400, paid_at = paid_at - interval '400 days'
+      where client_id = $1`, [lapsedClient]);
+
+  r = await http("/renewals", { cookie: lo });
+  const [iDue, iLapsed, iReact] = ['id="due"', 'id="lapsed"', 'id="reactivated"'].map((s) => r.text.indexOf(s));
+  check(r.status === 200 && iDue > 0 && iDue < iLapsed && iLapsed < iReact, "/renewals shows Due soon, Lapsed and Reactivated, in that order", `${iDue} ${iLapsed} ${iReact}`);
+  let lapse = section(r.text, "lapse");
+  check(cells(rowWith(lapse, AFF_NAME)).at(-1) === "100%", "the lapse rate is a percentage for an affiliate with a client who came due (1 of 1 lapsed)",
+    cells(rowWith(lapse, AFF_NAME)).join(" | "));
+  check(cells(rowWith(lapse, COL_NAME)).at(-1) === "Nadie ha llegado a su renovación todavía", "the lapse rate says nobody yet, never 0%, for an affiliate with no one come due",
+    cells(rowWith(lapse, COL_NAME)).join(" | "));
+  check(lapse.includes("Tasa = vencidos hoy ÷ llegaron a su renovación"), "the lapse rate explains its definition");
+
+  const lapsedRow = rowWith(section(r.text, "lapsed"), LAPSED_NAME);
+  const lapsedEnd = /name="expect_end" value="([^"]+)"/.exec(lapsedRow ?? "")?.[1];
+  check(lapsedEnd, "the lapsed client is under Lapsed with Marcar pagado");
+  r = await http("/api/clients/renew", { method: "POST", cookie: lo, form: { client_id: lapsedClient, expect_end: lapsedEnd, back: "/renewals" } });
+  check(r.status === 303 && r.location.startsWith(`/renewals?ok=renewed&c=${lapsedClient}`) && r.location.endsWith("&re=1"), "owner Marcar pagado on a lapsed client records a reactivation", r.location);
+  r = await http(r.location, { cookie: lo });
+  check(r.text.includes(`Reactivación de ${LAPSED_NAME} registrada`), "the pipeline confirms a reactivation");
+  const react = cells(rowWith(section(r.text, "reactivated"), LAPSED_NAME));
+  check(/^Vencido \d+ días$/.test(react[1]) && react[3] === "Dueño" && react[4] === AFF_NAME,
+    "the reactivation appears under Reactivated: lapsed N days, Cobrado por Dueño, the original affiliate earns", react.join(" | "));
+  check(!rowWith(section(r.text, "lapsed"), LAPSED_NAME), "the reactivated client is no longer under Lapsed");
+  lapse = section(r.text, "lapse");
+  const affLapse = cells(rowWith(lapse, AFF_NAME));
+  check(affLapse.slice(1).join(" ") === "1 1 0 1 0%", "after renewal the lapse rate is a real 0% (came due 1, renewed 1, lapsed 0, reactivated 1)", affLapse.join(" | "));
+
+  r = await http("/renewals/log", { cookie: lo });
+  const coll = section(r.text, "collection");
+  const colColl = cells(rowWith(coll, COL_NAME)), affColl = cells(rowWith(coll, AFF_NAME));
+  const view = (await client.query(
+    `select affiliate_id, collected_for_others::int, earned_collected_by_others::int from renewal_collection_by_affiliate where affiliate_id in ($1, $2)`,
+    [colId, affId])).rows;
+  const vCol = view.find((v) => v.affiliate_id === colId), vAff = view.find((v) => v.affiliate_id === affId);
+  check(r.status === 200 && Number(colColl[2]) > 0 && Number(colColl[2]) === vCol.collected_for_others && colColl[3] === "$20.00",
+    "Cobro vs comisión: the collector has collected_for_others > 0 and $20.00 cash", colColl.join(" | "));
+  check(Number(affColl[5]) > 0 && Number(affColl[5]) === vAff.earned_collected_by_others && Number(affColl[4]) === 2,
+    "Cobro vs comisión: the original affiliate has earned_collected_by_others > 0", affColl.join(" | "));
+  const tests = [...coll.matchAll(/<tr[\s>][\s\S]*?<\/tr>/g)].map((m) => m[0].includes("PRUEBA"));
+  check(tests.indexOf(true) === -1 || tests.slice(tests.indexOf(true)).every(Boolean), "test affiliates are listed last");
+  const log = section(r.text, "log");
+  const byOther = cells(rowWith(log, AFF_CLIENT_NAME));
+  check(/\d{1,2}:\d{2}$/.test(byOther[0]) && byOther[2] === COL_NAME && byOther[3] === AFF_NAME && byOther[2] !== byOther[3]
+    && byOther[6].includes("Cobrado por otro afiliado") && byOther[1].includes(`${affCode.slice(0, 4)}-${affCode.slice(4)}`),
+    "the renewal log shows a 24 h time, the code, Cobrado por and Gana as different names, and the other-affiliate mark", byOther.join(" | "));
+  const byOwner = cells(rowWith(log, LAPSED_NAME));
+  check(byOwner[2] === "Dueño" && byOwner[3] === AFF_NAME && /Reactivación, vencido \d+ días/.test(byOwner[6]) && !byOwner[6].includes("otro afiliado"),
+    "the renewal log shows the owner's reactivation as Dueño, with its lapsed days and no other-affiliate mark", byOwner.join(" | "));
+  const houseVoided = (await client.query("select voided_at is not null as v from subscriptions where client_id = $1 and kind = 'renewal'", [clientId])).rows[0].v;
+  check(cells(rowWith(log, name))[6]?.includes("Anulado") === houseVoided, "the renewal log marks a voided renewal Anulado exactly when it is voided", String(houseVoided));
+
+  r = await http(`/clients/${affClient}`, { cookie: lo });
+  check(r.text.includes("Cobrado por") && cells(rowWith(r.text, COL_NAME)).includes(COL_NAME), "client detail shows Cobrado por: the collecting affiliate");
+  r = await http(`/clients/${lapsedClient}`, { cookie: lo });
+  const ownerSub = cells((r.text.match(/<tr[\s>][\s\S]*?<\/tr>/g) ?? []).find((x) => x.includes("Reactivación")));
+  check(ownerSub.includes("Dueño"), "client detail shows Cobrado por Dueño and the Reactivación mark", ownerSub.join(" | "));
+  r = await http(`/affiliates/${colId}`, { cookie: lo });
+  check(r.text.includes("renovaciones cobradas para otros afiliados") && r.text.includes("efectivo cobrado en persona"), "affiliate detail shows renewals collected for others and cash collected");
+  r = await http(`/affiliates/${affId}`, { cookie: lo });
+  check(r.text.includes("ganado en registros") && r.text.includes("ganado en renovaciones"), "affiliate detail shows registrations earned vs renewals earned");
+  r = await http("/affiliates", { cookie: lo });
+  check(r.text.includes("Tasa de vencimiento") && cells(rowWith(r.text, COL_NAME)).at(-1) === "Nadie ha llegado a su renovación todavía"
+    && cells(rowWith(r.text, AFF_NAME)).at(-1) === "0%", "/affiliates has a lapse rate column", cells(rowWith(r.text, AFF_NAME)).join(" | "));
+
   // 7. every page returns 200, with no framework JS
   const pages = [
     "/", "/clients", "/clients?status=active", `/clients?aff=${affId}&q=smoke`, "/clients/new", "/clients/new?country=MX",
-    `/clients/${clientId}`, `/clients/${clientId}/code`, "/renewals", "/affiliates", "/affiliates/new", `/affiliates/${affId}`,
+    `/clients/${clientId}`, `/clients/${clientId}/code`, `/clients/${affClient}`, "/renewals", "/renewals/log", "/affiliates", "/affiliates/new", `/affiliates/${affId}`,
     `/affiliates/${affId}?confirm=deactivate`, `/affiliates/${affId}?confirm=reset`, "/revenue", "/feeds", "/alerts",
   ];
   for (const p of pages) {

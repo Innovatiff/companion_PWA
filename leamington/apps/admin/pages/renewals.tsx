@@ -1,13 +1,21 @@
 /**
- * Renovaciones: the renewal pipeline. Due (ending within 30 days, soonest
- * first) and lapsed (most recently lapsed first). "Marcar pagado" records the
- * renewal; the owner comes back here with the new period end named.
+ * Renovaciones: the renewal pipeline, in this order:
+ *   Por vencer  ending within 30 days, soonest first
+ *   Vencidos    no paid period covering today, most recently lapsed first
+ *   Reactivados paid after lapsing, last 90 days, newest first (renewal_log)
+ * then the lapse rate per affiliate (affiliate_lapse_rate) and a link to the
+ * collection vs commission table and the renewal log (/renewals/log).
+ *
+ * "Marcar pagado" records a renewal collected by the owner (app.record_renewal,
+ * 0029): early, it starts where the current period ends; lapsed, it starts
+ * today. The owner comes back here with the new period end named.
  */
 import type { GetServerSideProps } from "next";
 import { asPerson } from "@leamington/shared/src/server/db.ts";
-import { formatDate } from "@leamington/shared/src/format.ts";
+import { formatCode } from "@leamington/shared/src/code.ts";
+import { formatDate, formatDateTime } from "@leamington/shared/src/format.ts";
 import { ownerPage, plain, type Viewer } from "../lib/server.ts";
-import { isUuid, q1 } from "../lib/rules.ts";
+import { collectorLabel, isUuid, lapseRateLabel, q1, sortAffiliateGroups } from "../lib/rules.ts";
 import { strings } from "../lib/i18n.ts";
 import { Page, Chip, Note } from "../lib/ui.tsx";
 
@@ -19,7 +27,19 @@ type Row = {
   client_id: string; full_name: string; code: string; period_end: string; days_left: number; is_test: boolean;
   active: boolean; affiliate_id: string; affiliate_name: string; is_house: boolean;
 };
-type Props = { viewer: Viewer; due: Row[]; lapsed: Row[]; confirmation: { name: string; end: string } | null; error: string | null };
+type Reactivated = {
+  subscription_id: string; paid_at: string; client_id: string; full_name: string; code: string; is_test: boolean;
+  lapsed_days: number | null; collected_by_owner: boolean; collecting_affiliate: string | null;
+  earning_affiliate: string | null; earner_is_house: boolean;
+};
+type Lapse = {
+  affiliate_id: string; name: string; active: boolean; is_test: boolean; is_house: boolean;
+  came_due: number; lapsed: number; renewed: number; reactivated: number; lapse_rate: string | null;
+};
+type Props = {
+  viewer: Viewer; due: Row[]; lapsed: Row[]; reactivated: Reactivated[]; lapse: Lapse[];
+  confirmation: { name: string; end: string; reactivation: boolean } | null; error: string | null;
+};
 
 const SELECT = `select cs.client_id, cs.full_name, cs.code, cs.period_end::text as period_end, cs.days_left, cs.is_test, cs.active,
                        a.id as affiliate_id, a.name as affiliate_name, a.is_house
@@ -33,12 +53,26 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
   const data = await asPerson(g.person.authUserId, async (q) => {
     const due = await q.query(`${SELECT} where cs.status = 'due' order by cs.period_end asc, cs.full_name limit ${LIMIT + 1}`);
     const lapsed = await q.query(`${SELECT} where cs.status = 'lapsed' order by cs.period_end desc, cs.full_name limit ${LIMIT + 1}`);
+    // A voided reactivation did not reactivate anyone: that client is back under Vencidos.
+    const reactivated = await q.query(
+      `select l.subscription_id, l.paid_at, l.client_id, l.full_name, l.code, l.is_test, l.lapsed_days,
+              l.collected_by_owner, l.collecting_affiliate, l.earning_affiliate, coalesce(ea.is_house, false) as earner_is_house
+         from renewal_log l left join affiliates ea on ea.id = l.earning_affiliate_id
+        where l.reactivation and l.voided_at is null and l.paid_at > now() - interval '90 days'
+        order by l.paid_at desc, l.subscription_id limit ${LIMIT + 1}`);
+    const lapse = await q.query(
+      `select affiliate_id, name, active, is_test, is_house, came_due::int, lapsed::int, renewed::int, reactivated::int,
+              lapse_rate::text as lapse_rate
+         from affiliate_lapse_rate`);
     let confirmation: Props["confirmation"] = null;
     if (q1(ctx.query.ok) === "renewed" && isUuid(clientId) && /^\d{4}-\d{2}-\d{2}$/.test(end)) {
       const c = await q.query("select full_name from clients where id = $1", [clientId]);
-      if (c.rows[0]) confirmation = { name: c.rows[0].full_name, end };
+      if (c.rows[0]) confirmation = { name: c.rows[0].full_name, end, reactivation: q1(ctx.query.re) === "1" };
     }
-    return { due: due.rows as Row[], lapsed: lapsed.rows as Row[], confirmation };
+    return {
+      due: due.rows as Row[], lapsed: lapsed.rows as Row[], reactivated: reactivated.rows as Reactivated[],
+      lapse: sortAffiliateGroups(lapse.rows as Lapse[], (a, b) => b.came_due - a.came_due), confirmation,
+    };
   });
   return { props: plain({ viewer: g.viewer, ...data, error: q1(ctx.query.e) || null }) };
 };
@@ -67,7 +101,7 @@ function Pipeline({ viewer, rows, caption, empty, id }: { viewer: Viewer; rows: 
                     {row.is_test && <Chip kind="test">{t.chip.test}</Chip>}{" "}
                     {!row.active && <Chip kind="unk">{t.chip.inactive}</Chip>}
                   </th>
-                  <td>{row.affiliate_name}{row.is_house ? ` (${t.chip.house})` : ""}</td>
+                  <td>{row.is_house ? t.chip.house : row.affiliate_name}</td>
                   <td>
                     {row.days_left >= 0
                       ? <Chip kind="warn">{t.dueIn(row.days_left)}</Chip>
@@ -92,15 +126,104 @@ function Pipeline({ viewer, rows, caption, empty, id }: { viewer: Viewer; rows: 
   );
 }
 
-export default function Renewals({ viewer, due, lapsed, confirmation, error }: Props) {
+function ReactivatedList({ viewer, rows }: { viewer: Viewer; rows: Reactivated[] }) {
+  const t = strings(viewer.lang);
+  const r = t.renewals;
+  const shown = rows.slice(0, LIMIT);
+  return (
+    <section id="reactivated">
+      {rows.length === 0 ? <><h2>{r.reactivatedCaption}</h2><p>{r.noneReactivated}</p></> : (
+        <div className="wrap">
+          <table>
+            <caption>{r.reactivatedCaption}{rows.length > LIMIT ? ` — ${r.truncated(LIMIT)}` : ""}</caption>
+            <thead>
+              <tr>
+                <th scope="col">{r.client}</th><th scope="col">{r.when}</th><th scope="col">{r.renewedOn}</th>
+                <th scope="col">{r.collector}</th><th scope="col">{r.earner}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {shown.map((row) => (
+                <tr key={row.subscription_id}>
+                  <th scope="row">
+                    <a href={`/clients/${row.client_id}`}>{row.full_name}</a>{" "}
+                    {row.is_test && <Chip kind="test">{t.chip.test}</Chip>}
+                    <br /><small className="nums">{formatCode(row.code)}</small>
+                  </th>
+                  <td>{row.lapsed_days ? <Chip kind="good">{r.lapsedFor(row.lapsed_days)}</Chip> : <Chip kind="good">{t.reactivation(null)}</Chip>}</td>
+                  <td>{formatDateTime(row.paid_at, viewer.lang)}</td>
+                  <td>{collectorLabel(row, t.owner)}</td>
+                  <td>{row.earner_is_house ? t.chip.house : row.earning_affiliate ?? t.dash}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function LapseRate({ viewer, rows }: { viewer: Viewer; rows: Lapse[] }) {
   const t = strings(viewer.lang);
   const r = t.renewals;
   return (
+    <section id="lapse">
+      <div className="wrap">
+        <table>
+          <caption>{r.lapseTitle}<br /><small>{r.lapseDef}</small></caption>
+          <thead>
+            <tr>
+              <th scope="col">{r.affiliate}</th><th scope="col" className="num">{r.cameDue}</th>
+              <th scope="col" className="num">{r.renewedCol}</th><th scope="col" className="num">{r.lapsedNow}</th>
+              <th scope="col" className="num">{r.reactivatedCol}</th><th scope="col" className="num">{r.rate}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => {
+              const rate = lapseRateLabel(row.lapse_rate);
+              return (
+                <tr key={row.affiliate_id}>
+                  <th scope="row">
+                    <a href={`/affiliates/${row.affiliate_id}`}>{row.is_house ? t.chip.house : row.name}</a>{" "}
+                    {!row.active && <Chip kind="unk">{t.chip.inactive}</Chip>}{" "}
+                    {row.is_test && <Chip kind="test">{t.chip.test}</Chip>}
+                  </th>
+                  <td className="num">{row.came_due}</td>
+                  <td className="num">{row.renewed}</td>
+                  <td className="num">{row.lapsed}</td>
+                  <td className="num">{row.reactivated}</td>
+                  {rate ? <td className="num"><b>{rate}</b></td> : <td><small>{r.nobodyYet}</small></td>}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+export default function Renewals({ viewer, due, lapsed, reactivated, lapse, confirmation, error }: Props) {
+  const t = strings(viewer.lang);
+  const r = t.renewals;
+  const lang = viewer.lang;
+  return (
     <Page viewer={viewer} section="renewals" title={r.title}>
-      {confirmation && <Note>{r.renewed(confirmation.name, formatDate(confirmation.end, viewer.lang, true))}</Note>}
+      {confirmation && (
+        <Note>
+          {confirmation.reactivation
+            ? r.reactivatedOk(confirmation.name, formatDate(confirmation.end, lang, true))
+            : r.renewed(confirmation.name, formatDate(confirmation.end, lang, true))}
+        </Note>
+      )}
       {error && <Note kind="bad">{t.client.errors[error] ?? t.client.errors.invalid}</Note>}
+      <p><small>{r.markPaidNote}</small></p>
       <Pipeline viewer={viewer} rows={due} caption={r.dueCaption} empty={r.noneDue} id="due" />
       <Pipeline viewer={viewer} rows={lapsed} caption={r.lapsedCaption} empty={r.noneLapsed} id="lapsed" />
+      <ReactivatedList viewer={viewer} rows={reactivated} />
+      <LapseRate viewer={viewer} rows={lapse} />
+      <p><a href="/renewals/log">{r.logLink}</a></p>
     </Page>
   );
 }

@@ -2,12 +2,24 @@
 -- packages/db/test/run-migrations.sh. It backdates payments and writes feed
 -- runs directly, which production must never do.
 --
---   psql -v busy=ana.demo -v quiet=beto.demo -f scripts/local-demo.sql leamington_admin
+--   psql [-v busy=ana.demo -v quiet=beto.demo] -f scripts/local-demo.sql leamington_admin
 --
--- `busy` and `quiet` are affiliate logins created through the admin UI (with
--- their passwords set). Clients are registered AS each affiliate, the way the
--- affiliate portal does it (packages/db/test/10_sales_ledger_test.sql).
+-- `busy` and `quiet` are affiliate logins (default ana.demo and beto.demo). On a
+-- freshly rebuilt database, missing ones are created here, and so is an owner
+-- if there is none, with known LOCAL passwords:
+--   demo.owner / demo-owner-password-1, ana.demo / ana.demo-password-1, beto.demo / beto.demo-password-1
+-- Clients are registered AS each affiliate, the way the affiliate portal does it
+-- (packages/db/test/10_sales_ledger_test.sql), and renewals are collected as the
+-- affiliate portal records them (packages/db/test/18_affiliate_renewals_test.sql).
 \set ON_ERROR_STOP on
+\if :{?busy}
+\else
+\set busy ana.demo
+\endif
+\if :{?quiet}
+\else
+\set quiet beto.demo
+\endif
 
 -- A local database has no `authenticated` grants unless the RLS tests ran;
 -- Supabase grants these by default.
@@ -16,6 +28,23 @@ grant select on all tables in schema public to authenticated;
 grant execute on all functions in schema app to authenticated;
 
 select set_config('demo.busy', :'busy', false), set_config('demo.quiet', :'quiet', false);
+
+do $$
+declare r jsonb; l text;
+begin
+  if not exists (select 1 from owners) then
+    r := app.portal_create_owner('demo.owner');
+    perform app.portal_complete_setup(r->>'setup_token', 'demo-owner-password-1');
+  end if;
+  perform set_config('request.jwt.claim.sub', (select auth_user_id from owners limit 1)::text, false);
+  foreach l in array array[current_setting('demo.busy'), current_setting('demo.quiet')] loop
+    if not exists (select 1 from portal_logins where login = l) then
+      r := app.create_affiliate(initcap(split_part(l, '.', 1)) || ' Demo', 'Tienda ' || initcap(split_part(l, '.', 1)), null, 0.40, l);
+      perform app.portal_complete_setup(r->>'setup_token', l || '-password-1');
+    end if;
+  end loop;
+  perform set_config('request.jwt.claim.sub', '', false);
+end $$;
 
 insert into teams (league_id, country, name, short_name, source)
 select l.id, l.country, v.name, v.short, 'demo'
@@ -67,6 +96,58 @@ begin
      where client_id = (r->>'client_id')::uuid;
     update clients set created_at = now() - make_interval(days => quiet_paid[i]) where id = (r->>'client_id')::uuid;
   end loop;
+  perform set_config('request.jwt.claim.sub', '', false);
+end $$;
+
+-- Renewals (0029), so every renewal table has contrast:
+--   * two of busy's clients lapsed 48 and 63 days ago; quiet collects the first
+--     back (a reactivation that busy earns), the second stays lapsed
+--     -> lapse rate: busy 50%, quiet 100%, the house and test affiliates nobody yet
+--   * busy collects an early renewal on one of quiet's clients, then a second by
+--     mistake (confirmed repeat), which the owner voids
+--   * the owner marks an early renewal paid on one of busy's clients (Dueño)
+do $$
+declare
+  v_busy  uuid := (select affiliate_id from portal_logins where login = current_setting('demo.busy'));
+  v_quiet uuid := (select affiliate_id from portal_logins where login = current_setting('demo.quiet'));
+  v_busy_auth  uuid := (select auth_user_id from portal_logins where login = current_setting('demo.busy'));
+  v_quiet_auth uuid := (select auth_user_id from portal_logins where login = current_setting('demo.quiet'));
+  v_owner uuid := (select auth_user_id from owners limit 1);
+  v_client uuid;
+  v_key uuid;
+  r jsonb;
+  i int;
+begin
+  perform set_config('request.jwt.claim.sub', v_busy_auth::text, false);
+  for i in 1 .. 2 loop
+    r := app.register_client(v_busy, (select string_agg(substr('ACDEFGHJKMNPQRTVWXYZ2346', 1 + floor(random() * 24)::int, 1), '') from generate_series(1, 8)),
+                             format('Cliente Vencido %s', i), 'JM', 'St. James', null, v_busy_auth);
+    v_client := (r->>'client_id')::uuid;
+    update subscriptions set paid_at = now() - make_interval(days => 230 + 15 * (i - 1)),
+                             period_start = app.business_today() - 230 - 15 * (i - 1), period_end = app.business_today() - 48 - 15 * (i - 1)
+     where client_id = v_client;
+    update clients set created_at = now() - make_interval(days => 230 + 15 * (i - 1)) where id = v_client;
+  end loop;
+
+  -- quiet looks up busy's lapsed client by code and collects: a reactivation, busy earns.
+  perform set_config('request.jwt.claim.sub', v_quiet_auth::text, false);
+  v_client := (app.renewal_lookup((select code from clients where full_name = 'Cliente Vencido 1'))->>'client_id')::uuid;
+  r := app.affiliate_record_renewal(v_client, gen_random_uuid(), v_quiet_auth);
+  assert r->>'status' = 'renewed', format('%s', r);
+
+  -- busy collects early on quiet's client, then again by mistake; the owner voids the second.
+  perform set_config('request.jwt.claim.sub', v_busy_auth::text, false);
+  v_client := (select id from clients where full_name = 'Cliente Tranquilo 1');
+  r := app.affiliate_record_renewal(v_client, gen_random_uuid(), v_busy_auth);
+  assert r->>'status' = 'renewed', format('%s', r);
+  v_key := gen_random_uuid();
+  r := app.affiliate_record_renewal(v_client, v_key, v_busy_auth, true);
+  assert r->>'status' = 'renewed', format('%s', r);
+  perform set_config('request.jwt.claim.sub', v_owner::text, false);
+  perform app.void_subscription((select id from subscriptions where request_key = v_key), 'cobrado dos veces (demo)');
+
+  -- The owner marks an early renewal paid on busy's client.
+  perform app.record_renewal((select id from clients where full_name = 'Cliente Demo 6'), v_owner);
   perform set_config('request.jwt.claim.sub', '', false);
 end $$;
 

@@ -22,8 +22,11 @@ type Client = {
 type Sub = {
   id: string; kind: string; amount: string; commission: string; rate: string | null; period_start: string; period_end: string;
   paid_at: string | null; voided_at: string | null; void_reason: string | null; affiliate_name: string | null;
+  collected_by_affiliate_id: string | null; collector_name: string | null; reactivation: boolean; lapsed_days: number | null;
 };
-type Props = { viewer: Viewer; client: Client; subs: Sub[]; voidId: string | null; ok: string | null; end: string | null; error: string | null };
+type Props = {
+  viewer: Viewer; client: Client; subs: Sub[]; voidId: string | null; ok: string | null; end: string | null; re: boolean; error: string | null;
+};
 
 export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
   const g = await ownerPage(ctx);
@@ -45,8 +48,10 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
     const s = await q.query(
       `select s.id, s.kind, s.amount::text as amount, s.affiliate_payout::text as commission, s.commission_rate::text as rate,
               s.period_start::text as period_start, s.period_end::text as period_end, s.paid_at, s.voided_at, s.void_reason,
-              a.name as affiliate_name
-         from subscriptions s left join affiliates a on a.id = s.affiliate_id
+              a.name as affiliate_name, s.collected_by_affiliate_id, ca.name as collector_name, s.reactivation, s.lapsed_days
+         from subscriptions s
+         left join affiliates a on a.id = s.affiliate_id
+         left join affiliates ca on ca.id = s.collected_by_affiliate_id
         where s.client_id = $1
         order by s.period_start desc, s.created_at desc`, [id]);
     return { client: c.rows[0] as Client, subs: s.rows as Sub[] };
@@ -58,19 +63,19 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
       viewer: g.viewer, ...data,
       voidId: data.subs.some((s) => s.id === voidId && !s.voided_at) ? voidId : null,
       ok: q1(ctx.query.ok) || null, end: /^\d{4}-\d{2}-\d{2}$/.test(q1(ctx.query.end)) ? q1(ctx.query.end) : null,
-      error: q1(ctx.query.e) || null,
+      re: q1(ctx.query.re) === "1", error: q1(ctx.query.e) || null,
     }),
   };
 };
 
-export default function ClientPage({ viewer, client: c, subs, voidId, ok, end, error }: Props) {
+export default function ClientPage({ viewer, client: c, subs, voidId, ok, end, re, error }: Props) {
   const t = strings(viewer.lang);
   const k = t.client;
   const lang = viewer.lang;
   const voiding = subs.find((s) => s.id === voidId);
   return (
     <Page viewer={viewer} section="clients" title={c.full_name}>
-      {ok === "renewed" && end && <Note>{k.renewed(formatDate(end, lang, true))}</Note>}
+      {ok === "renewed" && end && <Note>{(re ? k.reactivated : k.renewed)(formatDate(end, lang, true))}</Note>}
       {ok === "voided" && <Note>{k.voidedOk}</Note>}
       {error && error !== "reason" && <Note kind="bad">{k.errors[error] ?? k.errors.invalid}</Note>}
 
@@ -135,17 +140,22 @@ export default function ClientPage({ viewer, client: c, subs, voidId, ok, end, e
             <tr>
               <th scope="col">{k.kind}</th><th scope="col" className="num">{k.amount}</th>
               <th scope="col" className="num">{k.commission}</th><th scope="col">{k.period}</th>
-              <th scope="col">{k.paid}</th><th scope="col">{k.voided}</th>
+              <th scope="col">{k.paid}</th><th scope="col">{k.collector}</th><th scope="col">{k.voided}</th>
             </tr>
           </thead>
           <tbody>
             {subs.map((s) => (
               <tr key={s.id}>
-                <th scope="row">{t.kind[s.kind] ?? s.kind}<br /><small>{s.affiliate_name ?? t.dash}</small></th>
+                <th scope="row">
+                  {t.kind[s.kind] ?? s.kind}
+                  {s.reactivation && <> <Chip kind="good">{t.reactivation(s.lapsed_days)}</Chip></>}
+                  <br /><small>{s.affiliate_name ?? t.dash}</small>
+                </th>
                 <td className="num">{formatMoney(s.amount)}</td>
                 <td className="num">{formatMoney(s.commission)}{s.rate !== null && <><br /><small>{percentLabel(s.rate)}</small></>}</td>
                 <td>{formatDate(s.period_start, lang, true)} – {formatDate(s.period_end, lang, true)}</td>
                 <td>{s.paid_at ? formatDateTime(s.paid_at, lang) : t.dash}</td>
+                <td>{!s.paid_at ? t.dash : s.collected_by_affiliate_id ? s.collector_name ?? t.dash : t.owner}</td>
                 <td>
                   {s.voided_at ? (
                     <><Chip kind="bad">{t.chip.voided}</Chip> {formatDateTime(s.voided_at, lang)}<br /><small>{s.void_reason}</small></>

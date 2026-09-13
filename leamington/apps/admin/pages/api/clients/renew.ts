@@ -1,6 +1,7 @@
 /**
  * POST /api/clients/renew: the owner marks a renewal paid (app.record_renewal).
- * There is no payment processing; this records $20 received.
+ * There is no payment processing; this records $20 received, collected by the
+ * owner. Early, the new period starts where the current one ends; lapsed, today.
  *
  * The form carries the period end the owner was looking at. Under a per-client
  * lock, if the client's current period end is no longer that, a renewal was
@@ -27,10 +28,11 @@ export default async function renew(req: NextApiRequest, res: NextApiResponse) {
     if (!cur.rows[0]) return { e: "invalid" };
     if ((cur.rows[0].period_end ?? "none") !== expect) return { e: "stale" };
     const { rows } = await q.query("select app.record_renewal($1::uuid, $2::uuid) as r", [clientId, person.authUserId]);
-    return { end: String(rows[0].r.period_end) };
+    return { end: String(rows[0].r.period_end), re: rows[0].r.reactivation === true ? 1 : null };
   });
 
+  // re=1: the client had lapsed, so this renewal is a reactivation starting today (0029).
   if ("e" in r) return go(res, back, { e: r.e });
-  if (back === "/renewals") return go(res, back, { ok: "renewed", c: clientId, end: r.end });
-  return go(res, back, { ok: "renewed", end: r.end });
+  if (back === "/renewals") return go(res, back, { ok: "renewed", c: clientId, end: r.end, re: r.re });
+  return go(res, back, { ok: "renewed", end: r.end, re: r.re });
 }

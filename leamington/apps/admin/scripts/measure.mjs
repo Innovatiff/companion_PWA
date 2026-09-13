@@ -61,7 +61,10 @@ const cookie = login.cookie;
 cold.push(await send("/", { cookie }));
 
 // Warm: the same browser later. The portals have no offline cache; HTML is always fetched.
-const warm = [await send("/", { cookie }), await send("/clients", { cookie })];
+const warm = [
+  await send("/", { cookie }), await send("/clients", { cookie }),
+  await send("/renewals", { cookie }), await send("/renewals/log", { cookie }),
+];
 
 let ok = true;
 console.log("Cold load, first visit and sign-in");
