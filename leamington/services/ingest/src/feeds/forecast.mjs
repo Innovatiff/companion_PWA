@@ -63,7 +63,14 @@ async function targetMunicipalities() {
 export async function ingestForecast(ctx) {
   const { log } = ctx;
   const targets = await targetMunicipalities();
-  if (!targets.length) { log.warn("no_targets", { note: "no client municipalities yet" }); return { recordsWritten: 0 }; }
+  if (!targets.length) {
+    // Nothing to forecast is not a forecast that worked: no provider was
+    // contacted. Partial keeps that visible, and it clears by itself once an
+    // active client has a municipality to forecast.
+    ctx.warnings.push("no client municipalities to forecast; no provider was contacted");
+    log.warn("no_targets", { note: "no client municipalities yet" });
+    return { recordsWritten: 0 };
+  }
 
   const active = PROVIDERS.filter((p) => !p.needsKey || process.env[p.needsKey]);
   const skipped = PROVIDERS.filter((p) => p.needsKey && !process.env[p.needsKey]).map((p) => p.name);
