@@ -8,6 +8,12 @@
  *   status 'ok'      — the source answered. records_written may legitimately be 0.
  *   status 'partial' — the source answered, but some items failed to process.
  *   status 'error'   — we did not get an answer. This is NOT "zero results".
+ *
+ * source_result records what the source itself said, for feeds that report it:
+ *
+ *   'items'           — it listed items (new, or already stored)
+ *   'confirmed_empty' — it answered that nothing is active
+ *   'no_answer'       — we could not get an answer
  */
 
 import { query } from "./db.mjs";
@@ -30,14 +36,16 @@ export async function runFeed(feed, fn) {
     const result = (await fn(ctx)) ?? {};
     const written = result.recordsWritten ?? 0;
     const status = ctx.warnings.length > 0 ? "partial" : "ok";
+    const sourceResult = result.sourceResult ?? null;
 
     await query(
       `update source_runs
           set finished_at = now(), status = $2, records_written = $3,
-              http_status = $4, notes = $5
+              http_status = $4, notes = $5, source_result = $6::source_result
         where id = $1`,
       [runId, status, written, result.httpStatus ?? null,
-       ctx.warnings.length ? JSON.stringify({ warnings: ctx.warnings }) : null],
+       ctx.warnings.length ? JSON.stringify({ warnings: ctx.warnings }) : null,
+       sourceResult],
     );
 
     log.info("run.finish", {
@@ -45,14 +53,16 @@ export async function runFeed(feed, fn) {
       ms: Date.now() - startedAt.getTime(),
       // Stated explicitly so "0 records" is never ambiguous in the log stream.
       sourceAnswered: true,
+      sourceResult: sourceResult ?? undefined,
       warnings: ctx.warnings.length || undefined,
     });
-    return { status, recordsWritten: written };
+    return { status, recordsWritten: written, sourceResult };
   } catch (err) {
     const message = describeError(err);
     await query(
       `update source_runs
-          set finished_at = now(), status = 'error', error = $2, http_status = $3
+          set finished_at = now(), status = 'error', error = $2, http_status = $3,
+              source_result = 'no_answer'
         where id = $1`,
       [runId, message, err?.httpStatus ?? null],
     );
@@ -63,7 +73,7 @@ export async function runFeed(feed, fn) {
       sourceAnswered: false,
       inconclusive: true,
     });
-    return { status: "error", error: message };
+    return { status: "error", error: message, sourceResult: "no_answer" };
   }
 }
 

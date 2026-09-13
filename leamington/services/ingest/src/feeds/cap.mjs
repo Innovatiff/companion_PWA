@@ -139,16 +139,53 @@ export function parseCapDocument(xml, sourceUrl) {
   };
 }
 
-/** Pull the item links out of an Alert Hub RSS feed. */
-export function extractFeedLinks(rssXml) {
-  const doc = parser.parse(rssXml);
-  const items = asArray(doc?.rss?.channel?.item ?? doc?.feed?.entry);
-  return items
-    .map((it) => {
-      const link = typeof it.link === "string" ? it.link : it.link?.["@_href"];
-      return { link, pubDate: it.pubDate ?? it.updated ?? null, title: it.title ?? null };
-    })
+/**
+ * RSS gives <link>url</link>; Atom gives <link href="..."/>, possibly several
+ * (self, alternate), in which case the alternate is the document.
+ */
+function hrefOf(link) {
+  const links = asArray(link);
+  const pick = links.find((l) => typeof l === "string")
+    ?? links.find((l) => !l?.["@_rel"] || l["@_rel"] === "alternate")
+    ?? links[0];
+  return typeof pick === "string" ? pick : pick?.["@_href"];
+}
+
+function itemsOf(doc) {
+  return asArray(doc?.rss?.channel?.item ?? doc?.feed?.entry)
+    .map((it) => ({ link: hrefOf(it.link), pubDate: it.pubDate ?? it.updated ?? null, title: it.title ?? null }))
     .filter((x) => x.link);
+}
+
+/** Pull the item links out of an RSS or Atom feed. */
+export function extractFeedLinks(rssXml) {
+  return itemsOf(parser.parse(rssXml));
+}
+
+/** http/https and a trailing slash do not make a different resource. */
+const sameUrl = (u) => String(u).trim().replace(/^https?:\/\//i, "").replace(/\/+$/, "").toLowerCase();
+
+/**
+ * Split a feed index into CAP document links and placeholder entries.
+ *
+ * An index with nothing active is not always an empty list. Jamaica's feed
+ * publishes one entry, "There are no active watches, warnings or advisories",
+ * whose link is the feed's own URL. An entry that links back to the feed is the
+ * feed describing itself, never a CAP document; fetching it as one fails, and
+ * that turned a confirmed-quiet feed into a partial run every 15 minutes.
+ */
+export function parseFeedIndex(xml, feedUrl) {
+  const doc = parser.parse(xml);
+  const self = new Set(
+    [feedUrl, doc?.feed?.id, ...asArray(doc?.feed?.link), ...asArray(doc?.rss?.channel?.link)]
+      .map((l) => (typeof l === "string" ? l : l?.["@_href"]))
+      .filter(Boolean)
+      .map(sameUrl));
+  const entries = itemsOf(doc);
+  return {
+    documents: entries.filter((e) => !self.has(sameUrl(e.link))),
+    placeholders: entries.filter((e) => self.has(sameUrl(e.link))),
+  };
 }
 
 /**

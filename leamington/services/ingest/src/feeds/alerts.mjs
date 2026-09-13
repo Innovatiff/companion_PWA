@@ -8,11 +8,14 @@
  * Route 2 is a fallback, never a shortcut: the hub's country feeds are
  * geographic filters. Without the hub_source_id filter, Honduras's feed is
  * 100% Belize-issued.
+ *
+ * Every run reports what the sources said -- listed alerts, confirmed nothing
+ * is active, or did not answer -- as source_result.
  */
 
 import { query, withTransaction } from "../db.mjs";
 import { fetchText } from "../run-feed.mjs";
-import { extractFeedLinks, sourceIdFromUrl, parseCapDocument } from "./cap.mjs";
+import { extractFeedLinks, sourceIdFromUrl, parseCapDocument, parseFeedIndex } from "./cap.mjs";
 
 export async function loadActiveSources() {
   const { rows } = await query(
@@ -30,15 +33,20 @@ async function collectLinks(source, log) {
   if (source.feed_url) {
     try {
       const { body } = await fetchText(source.feed_url);
-      const links = extractFeedLinks(body);
-      if (links.length) {
-        log.info("route.agency", { url: source.feed_url, items: links.length });
-        return { links, route: "agency", errors };
+      const { documents, placeholders } = parseFeedIndex(body, source.feed_url);
+      if (documents.length) {
+        log.info("route.agency", { url: source.feed_url, items: documents.length });
+        return { links: documents, route: "agency", result: "items", errors };
       }
-      // Answered but empty: a real fact, not an error. Fall through to the hub
-      // only because an agency feed with zero items may simply be quiet.
-      log.info("route.agency.empty", { url: source.feed_url });
-      return { links: [], route: "agency", errors };
+      // Answered, with nothing active: a confirmed fact from the authority, not
+      // an error and not a partial run. A placeholder entry linking back to the
+      // feed is not fetched as a document, and the hub is not consulted -- the
+      // agency has already answered.
+      log.info("route.agency.confirmed_empty", {
+        url: source.feed_url, placeholders: placeholders.length,
+        agencyText: placeholders[0]?.title ?? null,
+      });
+      return { links: [], route: "agency", result: "confirmed_empty", errors };
     } catch (err) {
       errors.push(`agency: ${err.message}`);
       log.warn("route.agency.failed", { url: source.feed_url, error: err.message });
@@ -62,7 +70,10 @@ async function collectLinks(source, log) {
         note: "country feed carried only foreign-issued alerts; nothing ingested",
       });
     }
-    return { links, route: "hub", errors };
+    // The hub is only reached when the agency did not answer or has no feed. A
+    // hub with nothing national is not the authority confirming quiet, so it is
+    // never recorded as confirmed_empty.
+    return { links, route: "hub", result: links.length ? "items" : "no_answer", errors };
   }
 
   // No route answered. This is INCONCLUSIVE, not "no alerts".
@@ -167,9 +178,15 @@ export async function ingestAlerts(ctx) {
   }
 
   let written = 0;
+  const results = [];
 
   for (const source of sources) {
-    const { links, route } = await collectLinks(source, log);
+    const { links, route, result, errors } = await collectLinks(source, log);
+    results.push(result);
+    if (result === "no_answer") {
+      ctx.warnings.push(
+        `${source.country}: no national alerts via hub (${errors.join("; ") || "no agency feed configured"})`);
+    }
 
     // Newest first, and cap the per-run fetch so a backfill cannot stall a
     // 15-minute cadence.
@@ -249,5 +266,10 @@ export async function ingestAlerts(ctx) {
     }
   }
 
-  return { recordsWritten: written };
+  // items if any source listed alerts; confirmed_empty only when every source
+  // said so itself; anything else is no answer.
+  const sourceResult = results.includes("items") ? "items"
+    : results.every((r) => r === "confirmed_empty") ? "confirmed_empty"
+    : "no_answer";
+  return { recordsWritten: written, sourceResult };
 }
