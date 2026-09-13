@@ -142,31 +142,38 @@ on a flag, so the upgrade is a configuration change rather than a rebuild.
   - Guatemala: `standings: false`
   - Jamaica: `events: false`, `lineups: false`
 
-### Jamaica — real league, schedule not yet published (probed 2026-09-13)
+### Jamaica — real season, calendar NOT PUBLISHED beyond round 1 (probed 2026-09-13)
 
-API-Football lists Jamaica's 2026 season as Sep 13–15. That is not a placeholder
-league, but it is all that has been published.
+This gates `apps/app`. API-Football lists Jamaica's 2026 season as Sep 13–15.
+That is round 1 of a real season, and it is all that has been published.
 
-- **Round 1 is real, in three independent sources, with the same clubs:**
-  API-Football (5 fixtures, "Regular Season - 1"), TheSportsDB (5) and
-  Soccerway (6), on Sep 13–15.
+- **The season is not Sep 13–15.** The 2026–27 format is 14 clubs, 39 matches
+  each and 247 matches, running September 2026 to May 2027 (Wikipedia).
+- **Round 1 is real, in four independent sources, with the same clubs:**
+  - API-Football: "Regular Season - 1"
+  - TheSportsDB
+  - Soccerway
+  - TNT Sports: matchday 1 on Sep 13 and matchday 2 on Sep 14, including
+    Portmore United v Waterhouse with no kickoff time yet. That is all 14 clubs.
 - **Nothing after round 1 is published in any of them:**
-  - a TheSportsDB date query for every day from Sep 13 to Nov 8 (57 of 57
-    answered) found matches only on Sep 13–15
-  - its full 2026-2027 season list holds the same 5 matches
-  - Soccerway lists only round 1
-  - API-Football's free plan cannot look past tomorrow
+  - `verify/jpl-calendar.mjs` swept TheSportsDB one day at a time for 56 days,
+    and all 56 answered: 5 matches, all on Sep 13–15. Verdict
+    **NOT_PUBLISHED**.
+  - Soccerway and TNT Sports list round 1 only.
+  - API-Football's free plan cannot look past tomorrow.
 - **Last season for comparison:** 2024-25 had 283 fixtures from September to
   May, including 16 in September and 30 in October.
 
-**Verdict: INCONCLUSIVE beyond round 1.** "Not published" is not "no matches":
-the league may release fixtures a round at a time.
+**So Jamaica has a season but no published calendar.** Until one is published,
+the Jamaican home screen has no football anchor on most days. The UI must say
+nothing, or when the schedule was last checked, and never "no match" as a fact.
 
-Consequence for the home screen: on most days there will be no Jamaican fixture
-to show. The UI must say nothing, or say when the schedule was last checked. It
-must never say "no match" as a fact.
+**Open: design the Jamaican segment without a football anchor, or wait for
+the calendar.** No PWA scaffold until this is decided.
 
-Re-check weekly with the free TheSportsDB date sweep, which costs no
+**Re-check, independent of any session:** `.github/workflows/jpl-calendar.yml`
+runs the sweep daily at 11:40 UTC. It fails until a match more than 3 days
+ahead is listed, and the run summary gives the verdict. It costs no
 API-Football quota.
 
 ### Not resolved by this decision
