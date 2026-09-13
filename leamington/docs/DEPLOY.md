@@ -12,35 +12,46 @@ long-running. Vercel's cron and serverless execution limits fit that badly, and
 the scheduler is a long-lived process holding a Postgres pool. Railway, Fly, or
 a small VPS running the container is the right shape.
 
-## Railway: set the Root Directory first
+## Railway: no configuration needed
 
-**This repo is a monorepo and the service is not at the repo root.** Railway
-must be told where the service lives, or its auto-detection (Railpack) inspects
-the repository root, finds no `package.json`, and fails with:
+The `Dockerfile`, `.dockerignore` and `railway.json` live at the **repository
+root**, not beside the service. That is deliberate.
+
+Railway's build detection runs in the repository root unless a Root Directory is
+configured, and depending on that setting cost five failed deploys. Every one
+reported only:
 
 ```
 Script start.sh not found
 Railpack could not determine how to build the app.
+
+The app contents that Railpack analyzed contains:
+  ./
+  ├── .github/
+  ├── leamington/
+  ├── .gitignore
+  └── README.md
 ```
 
-That error means the Dockerfile was never read. `railway.json` is not read
-either, because Railway looks for it in the root directory.
+That message means detection never found anything to build — it is not a build
+failure, and the Dockerfile was never read. The file listing in it is the giveaway:
+it shows the repository root, so Root Directory was not in effect.
 
-| Setting | Value |
-| --- | --- |
-| **Root Directory** | `leamington/services/ingest` |
-| Branch | the branch carrying the work (not `main` unless it has been merged) |
-| Builder | leave to `railway.json` — it selects `DOCKERFILE` |
+With the Dockerfile at the root, Railway finds it with **no settings at all**.
+The build context is the repo root and every `COPY` is repo-root relative, so
+`railway.json` is read too and selects the Dockerfile builder plus the `/health`
+check.
 
-With Root Directory set, Railway finds `Dockerfile` and `railway.json` beside
-each other and builds the image. Nothing in the repo needs to change.
+If you would rather scope the service (Fly, plain Docker, a second Railway
+service), set Root Directory to `leamington/services/ingest` and add a Dockerfile
+there — but keep only one, or the two will drift.
 
 ## Railway
 
 ```bash
 railway login
 railway init
-railway up            # builds services/ingest/Dockerfile
+railway up            # builds the root Dockerfile
 ```
 
 Set these in the service (see `.env.example`):
@@ -53,11 +64,16 @@ Set these in the service (see `.env.example`):
 | `OPENWEATHER_KEY`, `WEATHERAPI_KEY` | no | Forecast falls to fewer providers without them |
 | `ALERT_FETCH_LIMIT` | no | Default 25 documents per run |
 
-`railway.json` already sets the healthcheck to `/health` and restart-on-failure.
+`railway.json` (at the repo root) already sets the healthcheck to `/health` and
+restart-on-failure.
+
+**Remember to apply staged changes.** Railway holds dashboard edits behind an
+"Apply N changes" banner; until you press Deploy, builds run with the *old*
+configuration. One failed deploy here was a build against stale settings.
 
 ### Build reproducibility
 
-`services/ingest/package-lock.json` is committed and the image builds with
+`leamington/services/ingest/package-lock.json` is committed and the image builds with
 `npm ci` against it. The `COPY` has **no glob** on the lockfile: if it goes
 missing the build fails loudly rather than silently falling back to an unpinned
 `npm install`, and `npm ci` fails if the lock and `package.json` have drifted.
@@ -65,7 +81,7 @@ missing the build fails loudly rather than silently falling back to an unpinned
 ## Any VPS
 
 ```bash
-docker build -t leamington-ingest services/ingest
+docker build -t leamington-ingest .   # from the repo root
 docker run -d --restart=always \
   -e DATABASE_URL=... -e OWNER_ALERT_WEBHOOK=... -p 3000:3000 \
   leamington-ingest

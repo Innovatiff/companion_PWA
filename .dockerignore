@@ -1,0 +1,11 @@
+# Docker reads .dockerignore from the build context root, which is the repo root.
+**/node_modules
+**/npm-debug.log
+**/.env
+**/.env.local
+**/*.log
+.git
+.github
+leamington/apps
+leamington/packages/db/test
+leamington/services/ingest/test
