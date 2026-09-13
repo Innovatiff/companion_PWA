@@ -49,6 +49,18 @@ test("a Telegram URL is sent chat_id and text, and ok:true is delivery", async (
   assert.match(calls[0].body.text, /NOT a statement that no events occurred/);
 });
 
+test("every query parameter is dropped, so Telegram reads the JSON body", async () => {
+  // The production URL carried "?chat_id=...&text=". Telegram reads a query
+  // string in preference to the body and answered "message text is empty".
+  const calls = telegramAnswers(200, { ok: true });
+  const outcome = await sendOwnerAlert(`${BASE}?chat_id=987654&text=`, ALERT);
+
+  assert.equal(outcome.delivered, true);
+  assert.equal(calls[0].url, BASE, "no query string may reach Telegram");
+  assert.equal(calls[0].body.chat_id, "987654");
+  assert.match(calls[0].body.text, /FX reference rates: has never run/);
+});
+
 test("the chat id can come from OWNER_ALERT_TELEGRAM_CHAT_ID", async () => {
   const calls = telegramAnswers(200, { ok: true });
   const outcome = await sendOwnerAlert(BASE, ALERT, { OWNER_ALERT_TELEGRAM_CHAT_ID: "-1001234" });

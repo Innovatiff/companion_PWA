@@ -64,7 +64,10 @@ export async function sendOwnerAlert(url, alert, env = process.env) {
       error: "Telegram webhook has no chat_id: add ?chat_id=<id> to OWNER_ALERT_WEBHOOK or set OWNER_ALERT_TELEGRAM_CHAT_ID",
     };
   }
-  target.searchParams.delete("chat_id");
+  // Send to the bare method URL. When a query string is present Telegram reads
+  // parameters from it and ignores the JSON body, so a leftover "?text=" in the
+  // configured URL produced "Bad Request: message text is empty" in production.
+  target.search = "";
 
   const res = await post(target, { chat_id: chatId, text: telegramText(alert), disable_web_page_preview: true });
   let answer = null;
