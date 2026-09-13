@@ -253,21 +253,55 @@ no Tailwind.
 
 - **Chosen:** the affiliate registers a client after collecting the $20.
   Registration creates the first 6-month period, starting that day, as paid.
-- A renewal starts at the previous period's end if paid before or within 30
-  days after it; otherwise it starts on the day it is paid.
+- **Renewal dates (owner's rule, 2026-09-13):** a renewal paid early starts
+  where the current period ends, so it extends and never overwrites. A renewal
+  paid after the period ended starts on the day it is paid. The earlier 30-day
+  back-dating is gone (0029).
 - Attribution stays with the client's original affiliate permanently: the
   database refuses to change `clients.affiliate_id` once set.
 
-### 3.6 Lapsed clients keep working — OPEN, owner to decide
+### 3.6 What a lapsed client keeps
 
-Whether a lapsed client loses access is a product and money tradeoff the brief
-does not settle.
+The owner's renewal brief settles the screen: when a paid period ends, Hoy shows
+an expiry screen with the code, the affiliate who registered them, and that any
+Hoy affiliate can reactivate it. It does not say what happens to the safety
+features, so:
 
-- **v1:** lapsed clients are flagged in both portals ("Vencido") and keep
-  full access to Hoy, including weather alerts. Cutting off a safety feature
-  over $20 should be a deliberate choice, not a default.
-- **To decide:** keep this; cut engagement but keep alerts; or cut everything
-  after a grace period.
+- **Chosen:** the expiry screen replaces home, Fútbol, Más and setup at the
+  moment the period ends, with no grace period.
+  - The official weather warnings page stays open, one tap from the expiry
+    screen.
+  - Alert notifications continue, and so do the notification settings.
+  - The daily engagement notification stops.
+- **Why:** cutting off a civil-protection warning over $20 should be a
+  deliberate choice, not a default.
+- **Reverse:** drop `allowUnpaid` on `/clima`, and filter
+  `app.queue_alert_notification` by `app.client_has_paid_access`.
+- A client the owner deactivated is different: they cannot sign in at all.
+
+### 3.6a Renewals collected by any affiliate (0029)
+
+- **Who can collect:** any active affiliate, by the code on the client's
+  receipt. The commission always goes to the registering affiliate, at that
+  affiliate's current rate, even if their shop has closed.
+  - The collector is recorded separately (`collected_by_affiliate_id`); owner
+    renewals record no collector.
+  - The collector does not gain the client: it stays out of their client list.
+  - The collector sees the renewal on a receipt and in "Cobros de renovación",
+    so they know the cash they hold.
+- **Cash:** a collector keeps nothing from someone else's client's renewal and
+  owes the owner the full $20. Admin shows cash collected against commission
+  earned per affiliate, so the owner can reconcile.
+- **Double taps:** each renewal form carries a request key, so a resubmitted
+  form returns the same renewal. A different form for the same client within
+  10 minutes must be confirmed ("ya se renovó hace un momento"), so paying for a
+  further 6 months is always deliberate.
+- **Code guessing:** 20 codes not found in 15 minutes stops that affiliate's
+  lookups.
+- **Deactivated clients** are not renewed from the affiliate portal; the owner
+  decides in admin.
+- **Lapse rate:** clients currently lapsed ÷ clients whose first paid period has
+  reached its end date. Real clients only.
 
 ### 3.7 Reference data checked by Claude, labelled as such
 

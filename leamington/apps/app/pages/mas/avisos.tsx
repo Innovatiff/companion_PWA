@@ -17,7 +17,8 @@ export const config = { unstable_runtimeJS: false };
 type Props = { lang: "es" | "en"; vapid: string | null; pushLevels: string[] | null; agency: string | null };
 
 export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
-  const loaded = await loadClient(ctx);
+  // Alert notifications continue after a paid period ends, so this stays open.
+  const loaded = await loadClient(ctx, { allowUnpaid: true });
   if ("redirect" in loaded) return loaded;
   const { client } = loaded;
   const { rows } = await db().query(

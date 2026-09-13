@@ -52,3 +52,19 @@ select '99999999-0000-4000-8000-000000000001', '99999999-9999-4999-8999-99999999
   from municipalities m join teams t on t.name = 'Motagua' and t.source = 'local-demo'
  where m.name = 'La Ceiba'
 on conflict (id) do update set code = excluded.code, departure_date = excluded.departure_date, active = true;
+
+-- A paid period covering today, and a second demo client whose period has ended
+-- (sign in with DEMXEX42 to see the expiry screen).
+insert into subscriptions (client_id, period_start, period_end, paid_at, kind, affiliate_id)
+select id, (now() at time zone 'America/Toronto')::date, ((now() at time zone 'America/Toronto')::date + interval '6 months')::date,
+       now(), 'sale', affiliate_id
+  from clients where code = 'DEMXHN42'
+on conflict (client_id, period_start) do nothing;
+
+insert into clients (affiliate_id, code, full_name, country, language)
+values ('99999999-9999-4999-8999-999999999999', 'DEMXEX42', 'Rosa Vencida', 'HN', 'es')
+on conflict (code) do nothing;
+insert into subscriptions (client_id, period_start, period_end, paid_at, kind, affiliate_id)
+select id, date '2026-01-01', date '2026-07-01', now() - interval '8 months', 'sale', affiliate_id
+  from clients where code = 'DEMXEX42'
+on conflict (client_id, period_start) do nothing;

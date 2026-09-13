@@ -38,7 +38,8 @@ type Weather = {
 type Props = { w: Weather; country: string; today: string };
 
 export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
-  const loaded = await loadClient(ctx);
+  // Official warnings stay available after a paid period ends (OPEN-DECISIONS 3.6).
+  const loaded = await loadClient(ctx, { allowUnpaid: true });
   if ("redirect" in loaded) return loaded;
   const { client } = loaded;
   const { rows } = await db().query("select app.weather_page($1) as w", [client.id]);

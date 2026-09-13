@@ -117,5 +117,24 @@ if (process.env.SETUP_CODE) {
   check(mas.text.indexOf("/mas/escuela") < mas.text.indexOf("/mas/tasa"), "a parent sees the school calendar first in Más");
 }
 
+// A client whose paid period has ended: the expiry screen, and only the
+// official weather warnings stay open.
+if (process.env.EXPIRED_CODE) {
+  const x = await send("/api/login", { method: "POST", form: { code: process.env.EXPIRED_CODE } });
+  check(x.status === 303 && Boolean(x.cookie), "a lapsed client can still sign in", `${x.status} ${x.location}`);
+  const home = await page("/", x.cookie, "/ (expired)");
+  const pretty = `${process.env.EXPIRED_CODE.slice(0, 4)}-${process.env.EXPIRED_CODE.slice(4)}`;
+  check(home.includes(`class="code">${pretty}<`), "the expiry screen shows the code prominently");
+  check(/Cualquier afiliado de Hoy puede reactivarla|Any Hoy affiliate can reactivate it/.test(home), "the expiry screen says any affiliate can reactivate");
+  check(/Te registró|Registered by|registered by Hoy directly|Te registró Hoy directamente/.test(home), "the expiry screen names who registered them");
+  check(!home.includes('data-line="greeting"') && !home.includes('<nav class="tabs"'), "no morning message and no tab bar while expired");
+  for (const path of ["/futbol", "/mas", "/mas/tasa", "/setup/municipality"]) {
+    const r = await send(path, { cookie: x.cookie });
+    check(r.status === 307 && r.location.endsWith("/"), `${path} sends a lapsed client to the expiry screen`, `${r.status} ${r.location}`);
+  }
+  await page("/clima", x.cookie, "/clima (expired)");
+  await page("/mas/avisos", x.cookie, "/mas/avisos (expired)");
+}
+
 console.log(failures ? `\n${failures} FAILED` : "\nALL PASSED");
 process.exit(failures ? 1 : 0);

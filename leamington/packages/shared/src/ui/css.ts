@@ -44,7 +44,9 @@ export const APP_CSS = BASE +
   "button.link{display:inline;width:auto;min-height:44px;margin:0 0 0 .5rem;padding:.5rem;background:transparent;color:var(--ink);text-decoration:underline;font-weight:400}" +
   "button.link.skip{display:block;width:100%;margin:.5rem 0}" +
   ".results button{text-align:left;background:var(--card);color:var(--ink);border:2px solid var(--line);font-weight:400;margin:.4rem 0}" +
-  "details{margin:1rem 0}summary{min-height:44px;padding:.5rem 0;cursor:pointer;font-weight:600}";
+  "details{margin:1rem 0}summary{min-height:44px;padding:.5rem 0;cursor:pointer;font-weight:600}" +
+  ".code{font:700 2.2rem/1.1 ui-monospace,\"Roboto Mono\",monospace;letter-spacing:.12em;border:3px solid var(--ink);" +
+  "border-radius:.5rem;padding:.8rem;text-align:center;background:var(--card);margin:.5rem 0 1rem}";
 
 export const PORTAL_CSS = BASE +
   "main{max-width:64rem;margin:0 auto;padding:1rem}" +

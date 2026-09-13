@@ -18,26 +18,45 @@ export type Client = {
   firstName: string;
 };
 
+/** Whether a paid period covers today, and what the expiry screen shows (0029). */
+export type Access = {
+  paid: boolean;
+  status: "active" | "due" | "lapsed" | "none";
+  period_end: string | null;
+  code: string;
+  affiliate_name: string;
+  affiliate_is_house: boolean;
+};
+
 type Redirect = { redirect: { destination: string; permanent: false } };
 
-export async function loadClient(ctx: GetServerSidePropsContext): Promise<{ client: Client } | Redirect> {
+/**
+ * A client whose paid period has ended is sent to the home page, which shows
+ * the expiry screen. Pages that stay open to them (the official weather
+ * warnings, notification settings) pass `allowUnpaid`.
+ */
+export async function loadClient(ctx: GetServerSidePropsContext, { allowUnpaid = false } = {}):
+  Promise<{ client: Client; access: Access } | Redirect> {
   ctx.res.setHeader("Cache-Control", "private, no-cache");
   const id = readSession(cookieValue(ctx.req.headers.cookie));
   if (!id) return { redirect: { destination: "/login", permanent: false } };
   const { rows } = await db().query(
-    `select id, language, country, timezone, has_kids, municipality, split_part(full_name, ' ', 1) as first_name
+    `select id, language, country, timezone, has_kids, municipality, split_part(full_name, ' ', 1) as first_name,
+            app.client_access(id) as access
        from clients where id = $1 and active`, [id]);
   const r = rows[0];
-  if (!r) {
+  if (!r || !r.access) {
     ctx.res.setHeader("Set-Cookie", clearedCookie);
     return { redirect: { destination: "/login?e=inactive", permanent: false } };
   }
+  if (!r.access.paid && !allowUnpaid) return { redirect: { destination: "/", permanent: false } };
   (ctx.req as { appLang?: string }).appLang = r.language;
   return {
     client: {
       id: r.id, language: r.language, country: r.country, timezone: r.timezone, hasKids: r.has_kids,
       municipality: r.municipality, firstName: r.first_name,
     },
+    access: r.access,
   };
 }
 
