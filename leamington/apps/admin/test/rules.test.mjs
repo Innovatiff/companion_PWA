@@ -60,12 +60,9 @@ test("sales sort puts busy affiliates first and quiet ones at the bottom of the 
   assert.equal(r.isQuiet(rows[5]), false, "an inactive affiliate is marked inactive, not quiet");
 });
 
-test("renewals: collector in words, the other-affiliate mark, and a lapse rate that is never a false 0%", () => {
-  assert.equal(r.collectorLabel({ collected_by_owner: true, collecting_affiliate: null }, "Dueño"), "Dueño");
-  assert.equal(r.collectorLabel({ collected_by_owner: false, collecting_affiliate: "Beto" }, "Dueño"), "Beto");
-  assert.equal(r.collectedByOtherAffiliate({ collected_by_owner: false, collected_by_other: true }), true);
-  assert.equal(r.collectedByOtherAffiliate({ collected_by_owner: true, collected_by_other: true }), false, "the owner is not another affiliate");
-  assert.equal(r.collectedByOtherAffiliate({ collected_by_owner: false, collected_by_other: false }), false);
+test("renewals: who collected and earns, in words, and a lapse rate that is never a false 0%", () => {
+  assert.equal(r.collectorLabel({ collected_by_owner: true, collecting_affiliate: null }, "Dueño — sin comisión"), "Dueño — sin comisión");
+  assert.equal(r.collectorLabel({ collected_by_owner: false, collecting_affiliate: "Beto" }, "Dueño — sin comisión"), "Beto");
   assert.equal(r.lapseRateLabel(null), null, "nobody has come due: no percentage at all");
   assert.equal(r.lapseRateLabel(undefined), null);
   assert.equal(r.lapseRateLabel("0.0000"), "0%", "someone came due and nobody lapsed: a real 0%");

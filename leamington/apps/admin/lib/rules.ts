@@ -121,18 +121,13 @@ export function sortAffiliateGroups<T extends Grouped>(rows: T[], busier: (a: T,
 }
 
 /**
- * Who physically took the money for a renewal: the collecting affiliate, or
- * `ownerLabel` when the owner marked it paid in admin (collected_by is null).
+ * Who took the money for a renewal and earns its commission (0031: the same
+ * business): the collecting business, or `ownerLabel` ("Dueño — sin comisión")
+ * when the owner marked it paid in admin (collected_by is null, credited to the
+ * house affiliate at no commission).
  */
 export const collectorLabel = (r: { collected_by_owner: boolean; collecting_affiliate: string | null }, ownerLabel: string): string =>
   r.collected_by_owner ? ownerLabel : r.collecting_affiliate ?? ownerLabel;
-
-/**
- * renewal_log.collected_by_other is also true when the owner collected (null is
- * distinct from the earner). The "another affiliate" mark is only for an affiliate.
- */
-export const collectedByOtherAffiliate = (r: { collected_by_owner: boolean; collected_by_other: boolean }): boolean =>
-  r.collected_by_other && !r.collected_by_owner;
 
 /**
  * affiliate_lapse_rate.lapse_rate (0..1, 4 decimals) as "12.5%". Null when no

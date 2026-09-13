@@ -99,13 +99,14 @@ begin
   perform set_config('request.jwt.claim.sub', '', false);
 end $$;
 
--- Renewals (0029), so every renewal table has contrast:
+-- Renewals (0029, 0031: the collecting business earns), so every renewal table has contrast:
 --   * two of busy's clients lapsed 48 and 63 days ago; quiet collects the first
---     back (a reactivation that busy earns), the second stays lapsed
+--     back (a reactivation quiet earns; busy's client renewed elsewhere), the second stays lapsed
 --     -> lapse rate: busy 50%, quiet 100%, the house and test affiliates nobody yet
 --   * busy collects an early renewal on one of quiet's clients, then a second by
 --     mistake (confirmed repeat), which the owner voids
---   * the owner marks an early renewal paid on one of busy's clients (Dueño)
+--   * busy renews one of its own clients early
+--   * the owner marks an early renewal paid on one of busy's clients (Dueño, no commission)
 do $$
 declare
   v_busy  uuid := (select affiliate_id from portal_logins where login = current_setting('demo.busy'));
@@ -142,6 +143,8 @@ begin
   assert r->>'status' = 'renewed', format('%s', r);
   v_key := gen_random_uuid();
   r := app.affiliate_record_renewal(v_client, v_key, v_busy_auth, true);
+  assert r->>'status' = 'renewed', format('%s', r);
+  r := app.affiliate_record_renewal((select id from clients where full_name = 'Cliente Demo 5'), gen_random_uuid(), v_busy_auth);
   assert r->>'status' = 'renewed', format('%s', r);
   perform set_config('request.jwt.claim.sub', v_owner::text, false);
   perform app.void_subscription((select id from subscriptions where request_key = v_key), 'cobrado dos veces (demo)');

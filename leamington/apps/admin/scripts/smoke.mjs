@@ -191,8 +191,8 @@ try {
   const rate = (await client.query("select commission_rate::text from affiliates where id = $1", [affId])).rows[0].commission_rate;
   check(r.location.endsWith("ok=commission") && rate === "0.3500", "the commission changes to 35%", `${r.location} ${rate}`);
 
-  // 6b. renewals collected in person (0029). A second affiliate collects a renewal on
-  // the first affiliate's client (the affiliate portal's job, so through the database);
+  // 6b. renewals collected in person (0029, 0031). A second business collects, and earns, a
+  // renewal on the first business's client (the affiliate portal's job, so through the database);
   // one of the first affiliate's clients is backdated until it lapses, and the owner
   // marks it paid here: a reactivation collected by the owner.
   const COL = `smoke.col.${stamp}`, COL_PW = "collector-smoke-password-1";
@@ -241,46 +241,62 @@ try {
   r = await http(r.location, { cookie: lo });
   check(r.text.includes(`Reactivación de ${LAPSED_NAME} registrada`), "the pipeline confirms a reactivation");
   const react = cells(rowWith(section(r.text, "reactivated"), LAPSED_NAME));
-  check(/^Vencido \d+ días$/.test(react[1]) && react[3] === "Dueño" && react[4] === AFF_NAME,
-    "the reactivation appears under Reactivated: lapsed N days, Cobrado por Dueño, the original affiliate earns", react.join(" | "));
+  check(/^Vencido \d+ días$/.test(react[1]) && react[3] === AFF_NAME && react[4] === "Dueño — sin comisión",
+    "the reactivation appears under Reactivated: lapsed N days, Registrado por the affiliate, Cobró y gana Dueño — sin comisión", react.join(" | "));
   check(!rowWith(section(r.text, "lapsed"), LAPSED_NAME), "the reactivated client is no longer under Lapsed");
   lapse = section(r.text, "lapse");
   const affLapse = cells(rowWith(lapse, AFF_NAME));
   check(affLapse.slice(1).join(" ") === "1 1 0 1 0%", "after renewal the lapse rate is a real 0% (came due 1, renewed 1, lapsed 0, reactivated 1)", affLapse.join(" | "));
 
+  // 0031: the collecting business earns the renewal; the client stays registered to the first.
   r = await http("/renewals/log", { cookie: lo });
   const coll = section(r.text, "collection");
   const colColl = cells(rowWith(coll, COL_NAME)), affColl = cells(rowWith(coll, AFF_NAME));
   const view = (await client.query(
-    `select affiliate_id, collected_for_others::int, earned_collected_by_others::int from renewal_collection_by_affiliate where affiliate_id in ($1, $2)`,
-    [colId, affId])).rows;
+    `select affiliate_id, renewals_other_clients::int, own_clients_renewed_elsewhere::int, own_clients_renewed_by_owner::int
+       from renewal_collection_by_affiliate where affiliate_id in ($1, $2)`, [colId, affId])).rows;
   const vCol = view.find((v) => v.affiliate_id === colId), vAff = view.find((v) => v.affiliate_id === affId);
-  check(r.status === 200 && Number(colColl[2]) > 0 && Number(colColl[2]) === vCol.collected_for_others && colColl[3] === "$20.00",
-    "Cobro vs comisión: the collector has collected_for_others > 0 and $20.00 cash", colColl.join(" | "));
-  check(Number(affColl[5]) > 0 && Number(affColl[5]) === vAff.earned_collected_by_others && Number(affColl[4]) === 2,
-    "Cobro vs comisión: the original affiliate has earned_collected_by_others > 0", affColl.join(" | "));
+  // cells: business, collected, own clients, other businesses' clients, own renewed elsewhere, by owner, cash, commission
+  check(r.status === 200 && colColl[1] === "1" && colColl[2] === "0" && colColl[3] === "1" && vCol.renewals_other_clients === 1
+    && colColl[6] === "$20.00" && colColl[7] === "$8.00",
+    "Cobro vs comisión: the collector counts the renewal under other businesses' clients and earns its $8.00", colColl.join(" | "));
+  check(affColl[4] === "1" && vAff.own_clients_renewed_elsewhere === 1 && affColl[5] === "1" && vAff.own_clients_renewed_by_owner === 1 && affColl[1] === "0",
+    "Cobro vs comisión: the registering business counts it under own clients renewed elsewhere, and the owner's renewal under renewed by the owner", affColl.join(" | "));
   const tests = [...coll.matchAll(/<tr[\s>][\s\S]*?<\/tr>/g)].map((m) => m[0].includes("PRUEBA"));
   check(tests.indexOf(true) === -1 || tests.slice(tests.indexOf(true)).every(Boolean), "test affiliates are listed last");
   const log = section(r.text, "log");
-  const byOther = cells(rowWith(log, AFF_CLIENT_NAME));
-  check(/\d{1,2}:\d{2}$/.test(byOther[0]) && byOther[2] === COL_NAME && byOther[3] === AFF_NAME && byOther[2] !== byOther[3]
-    && byOther[6].includes("Cobrado por otro afiliado") && byOther[1].includes(`${affCode.slice(0, 4)}-${affCode.slice(4)}`),
-    "the renewal log shows a 24 h time, the code, Cobrado por and Gana as different names, and the other-affiliate mark", byOther.join(" | "));
+  // cells: date, client, code, registered by, collected and earns, amount, commission, marks
+  const elsewhere = cells(rowWith(log, AFF_CLIENT_NAME));
+  check(/\d{1,2}:\d{2}$/.test(elsewhere[0]) && elsewhere[2] === `${affCode.slice(0, 4)}-${affCode.slice(4)}`
+    && elsewhere[3] === AFF_NAME && elsewhere[4] === COL_NAME && elsewhere[6] === "$8.00" && elsewhere[7].includes("Renovó en otro negocio"),
+    "the renewal log: 24 h time, code, Registrado por = A, Cobró y gana = B with B's commission, Renovó en otro negocio", elsewhere.join(" | "));
   const byOwner = cells(rowWith(log, LAPSED_NAME));
-  check(byOwner[2] === "Dueño" && byOwner[3] === AFF_NAME && /Reactivación, vencido \d+ días/.test(byOwner[6]) && !byOwner[6].includes("otro afiliado"),
-    "the renewal log shows the owner's reactivation as Dueño, with its lapsed days and no other-affiliate mark", byOwner.join(" | "));
+  check(byOwner[3] === AFF_NAME && byOwner[4] === "Dueño — sin comisión" && byOwner[5] === "$20.00" && byOwner[6] === "$0.00"
+    && /Reactivación, vencido \d+ días/.test(byOwner[7]) && !byOwner[7].includes("otro negocio"),
+    "the renewal log shows the owner's renewal as Dueño — sin comisión, $0.00, a reactivation, not renewed elsewhere", byOwner.join(" | "));
+  const ownerSubDb = (await client.query(
+    `select s.affiliate_payout::text as payout, a.is_house from subscriptions s join affiliates a on a.id = s.affiliate_id
+      where s.client_id = $1 and s.kind = 'renewal'`, [lapsedClient])).rows[0];
+  check(ownerSubDb.payout === "0.00" && ownerSubDb.is_house, "the owner's renewal is credited to the house affiliate at $0.00", JSON.stringify(ownerSubDb));
   const houseVoided = (await client.query("select voided_at is not null as v from subscriptions where client_id = $1 and kind = 'renewal'", [clientId])).rows[0].v;
-  check(cells(rowWith(log, name))[6]?.includes("Anulado") === houseVoided, "the renewal log marks a voided renewal Anulado exactly when it is voided", String(houseVoided));
+  check(cells(rowWith(log, name))[7]?.includes("Anulado") === houseVoided, "the renewal log marks a voided renewal Anulado exactly when it is voided", String(houseVoided));
 
   r = await http(`/clients/${affClient}`, { cookie: lo });
-  check(r.text.includes("Cobrado por") && cells(rowWith(r.text, COL_NAME)).includes(COL_NAME), "client detail shows Cobrado por: the collecting affiliate");
+  const renewalRow = cells((r.text.match(/<tr[\s>][\s\S]*?<\/tr>/g) ?? []).find((x) => x.includes("Renovación") && x.includes(COL_NAME)));
+  const saleRow = cells((r.text.match(/<tr[\s>][\s\S]*?<\/tr>/g) ?? []).find((x) => x.includes(">Venta<")));
+  check(r.text.includes("Cobró y gana") && renewalRow.includes(COL_NAME) && saleRow.includes(AFF_NAME),
+    "client detail shows Cobró y gana per payment: the registering business for the sale, the collector for the renewal", `${saleRow.join(" | ")} // ${renewalRow.join(" | ")}`);
   r = await http(`/clients/${lapsedClient}`, { cookie: lo });
   const ownerSub = cells((r.text.match(/<tr[\s>][\s\S]*?<\/tr>/g) ?? []).find((x) => x.includes("Reactivación")));
-  check(ownerSub.includes("Dueño"), "client detail shows Cobrado por Dueño and the Reactivación mark", ownerSub.join(" | "));
+  // cells: kind, amount, commission (with its rate), period, paid, collected and earns, void
+  check(ownerSub[5] === "Dueño — sin comisión" && ownerSub[2]?.startsWith("$0.00") && ownerSub[0].includes("Reactivación"), "client detail shows the owner's renewal as Dueño — sin comisión, $0.00, with the Reactivación mark", ownerSub.join(" | "));
   r = await http(`/affiliates/${colId}`, { cookie: lo });
-  check(r.text.includes("renovaciones cobradas para otros afiliados") && r.text.includes("efectivo cobrado en persona"), "affiliate detail shows renewals collected for others and cash collected");
+  check(r.text.includes("ganado en renovaciones de clientes de otros negocios (1)") && r.text.includes("efectivo cobrado en persona"),
+    "affiliate detail shows renewals earned on other businesses' clients and cash collected");
   r = await http(`/affiliates/${affId}`, { cookie: lo });
-  check(r.text.includes("ganado en registros") && r.text.includes("ganado en renovaciones"), "affiliate detail shows registrations earned vs renewals earned");
+  check(r.text.includes("ganado en registros") && r.text.includes("ganado en renovaciones de clientes propios (0)")
+    && r.text.includes("renovaciones de clientes propios cobradas en otro negocio"),
+    "affiliate detail shows registrations earned, renewals earned split own vs other, and own clients renewed elsewhere");
   r = await http("/affiliates", { cookie: lo });
   check(r.text.includes("Tasa de vencimiento") && cells(rowWith(r.text, COL_NAME)).at(-1) === "Nadie ha llegado a su renovación todavía"
     && cells(rowWith(r.text, AFF_NAME)).at(-1) === "0%", "/affiliates has a lapse rate column", cells(rowWith(r.text, AFF_NAME)).join(" | "));

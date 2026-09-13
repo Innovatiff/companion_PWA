@@ -13,7 +13,7 @@ import { asPerson, db } from "@leamington/shared/src/server/db.ts";
 import { cookieValue } from "@leamington/shared/src/server/session.ts";
 import { formatDateTime, formatMoney } from "@leamington/shared/src/format.ts";
 import { ownerPage, plain, type Viewer } from "../../lib/server.ts";
-import { isUuid, percentLabel, percentInput, readFlash, setupLink, q1 } from "../../lib/rules.ts";
+import { centsToString, isUuid, percentLabel, percentInput, readFlash, setupLink, toCents, q1 } from "../../lib/rules.ts";
 import { FLASH_COOKIE, clearedFlash } from "../../lib/flash.ts";
 import { strings } from "../../lib/i18n.ts";
 import { Page, Chip, Note, Stat } from "../../lib/ui.tsx";
@@ -24,8 +24,8 @@ type Affiliate = {
   id: string; name: string; business_name: string | null; contact: string | null; rate: string; active: boolean;
   is_test: boolean; is_house: boolean; created_at: string; sales: number; renewals: number;
   earned: string; earned_this_month: string; paid_out: string; owed: string;
-  sales_earned: string; renewals_earned: string; renewals_by_others: number; renewals_by_others_earned: string;
-  collected_for_others: number; cash_collected: string;
+  sales_earned: string; renewals_earned: string; renewals_own_clients: number; renewals_other_clients: number;
+  renewals_other_clients_earned: string; own_clients_renewed_elsewhere: number; cash_collected: string;
 };
 type Payout = { id: string; amount: string; paid_at: string; method: string | null; note: string | null; voided_at: string | null; void_reason: string | null };
 type Sale = { id: string; kind: string; amount: string; commission: string; paid_at: string; voided_at: string | null; client_id: string; full_name: string; is_test: boolean };
@@ -44,8 +44,8 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
     const a = await q.query(
       `select a.id, a.name, a.business_name, a.contact, a.commission_rate::text as rate, a.active, a.is_test, a.is_house, a.created_at,
               e.sales::int, e.renewals::int, e.earned::text, e.earned_this_month::text, e.paid_out::text, e.owed::text,
-              e.sales_earned::text, e.renewals_earned::text, e.renewals_by_others::int, e.renewals_by_others_earned::text,
-              rc.collected_for_others::int, rc.cash_collected::text
+              e.sales_earned::text, e.renewals_earned::text, e.renewals_own_clients::int, e.renewals_other_clients::int,
+              e.renewals_other_clients_earned::text, e.own_clients_renewed_elsewhere::int, rc.cash_collected::text
          from affiliates a
          join affiliate_earnings e on e.affiliate_id = a.id
          join renewal_collection_by_affiliate rc on rc.affiliate_id = a.id
@@ -134,8 +134,10 @@ export default function AffiliatePage({ viewer, a, payouts, sales, lastPayout, l
       <div className="stats">
         <Stat value={formatMoney(a.sales_earned)} label={k.salesEarned} period={t.home.allTime} />
         <Stat value={formatMoney(a.renewals_earned)} label={k.renewalsEarned} period={t.home.allTime} />
-        <Stat value={formatMoney(a.renewals_by_others_earned)} label={k.byOthers(a.renewals_by_others)} period={t.home.allTime} />
-        <Stat value={a.collected_for_others} label={k.forOthers} period={t.home.allTime} />
+        <Stat value={formatMoney(centsToString(toCents(a.renewals_earned) - toCents(a.renewals_other_clients_earned)))}
+              label={k.renewalsOwn(a.renewals_own_clients)} period={t.home.allTime} />
+        <Stat value={formatMoney(a.renewals_other_clients_earned)} label={k.renewalsOther(a.renewals_other_clients)} period={t.home.allTime} />
+        <Stat value={a.own_clients_renewed_elsewhere} label={k.elsewhere} period={t.home.allTime} />
         <Stat value={formatMoney(a.cash_collected)} label={k.cash} period={t.home.allTime} />
       </div>
       <p><a href="/renewals/log">{k.collectionLink}</a></p>

@@ -23,6 +23,7 @@ type Sub = {
   id: string; kind: string; amount: string; commission: string; rate: string | null; period_start: string; period_end: string;
   paid_at: string | null; voided_at: string | null; void_reason: string | null; affiliate_name: string | null;
   collected_by_affiliate_id: string | null; collector_name: string | null; reactivation: boolean; lapsed_days: number | null;
+  affiliate_is_house: boolean | null;
 };
 type Props = {
   viewer: Viewer; client: Client; subs: Sub[]; voidId: string | null; ok: string | null; end: string | null; re: boolean; error: string | null;
@@ -48,7 +49,8 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
     const s = await q.query(
       `select s.id, s.kind, s.amount::text as amount, s.affiliate_payout::text as commission, s.commission_rate::text as rate,
               s.period_start::text as period_start, s.period_end::text as period_end, s.paid_at, s.voided_at, s.void_reason,
-              a.name as affiliate_name, s.collected_by_affiliate_id, ca.name as collector_name, s.reactivation, s.lapsed_days
+              a.name as affiliate_name, a.is_house as affiliate_is_house,
+              s.collected_by_affiliate_id, ca.name as collector_name, s.reactivation, s.lapsed_days
          from subscriptions s
          left join affiliates a on a.id = s.affiliate_id
          left join affiliates ca on ca.id = s.collected_by_affiliate_id
@@ -149,13 +151,16 @@ export default function ClientPage({ viewer, client: c, subs, voidId, ok, end, r
                 <th scope="row">
                   {t.kind[s.kind] ?? s.kind}
                   {s.reactivation && <> <Chip kind="good">{t.reactivation(s.lapsed_days)}</Chip></>}
-                  <br /><small>{s.affiliate_name ?? t.dash}</small>
                 </th>
                 <td className="num">{formatMoney(s.amount)}</td>
                 <td className="num">{formatMoney(s.commission)}{s.rate !== null && <><br /><small>{percentLabel(s.rate)}</small></>}</td>
                 <td>{formatDate(s.period_start, lang, true)} – {formatDate(s.period_end, lang, true)}</td>
                 <td>{s.paid_at ? formatDateTime(s.paid_at, lang) : t.dash}</td>
-                <td>{!s.paid_at ? t.dash : s.collected_by_affiliate_id ? s.collector_name ?? t.dash : t.owner}</td>
+                <td>
+                  {!s.paid_at ? t.dash
+                    : s.collected_by_affiliate_id ? s.collector_name ?? t.dash
+                    : s.affiliate_is_house || s.affiliate_name === null ? t.ownerNoCommission : s.affiliate_name}
+                </td>
                 <td>
                   {s.voided_at ? (
                     <><Chip kind="bad">{t.chip.voided}</Chip> {formatDateTime(s.voided_at, lang)}<br /><small>{s.void_reason}</small></>

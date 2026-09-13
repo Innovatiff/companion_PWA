@@ -6,9 +6,10 @@
  * then the lapse rate per affiliate (affiliate_lapse_rate) and a link to the
  * collection vs commission table and the renewal log (/renewals/log).
  *
- * "Marcar pagado" records a renewal collected by the owner (app.record_renewal,
- * 0029): early, it starts where the current period ends; lapsed, it starts
- * today. The owner comes back here with the new period end named.
+ * "Marcar pagado" records a renewal collected by the owner (app.record_renewal):
+ * credited to the house affiliate at no commission (0031); early, it starts
+ * where the current period ends; lapsed, it starts today (0029). The owner comes
+ * back here with the new period end named.
  */
 import type { GetServerSideProps } from "next";
 import { asPerson } from "@leamington/shared/src/server/db.ts";
@@ -30,7 +31,7 @@ type Row = {
 type Reactivated = {
   subscription_id: string; paid_at: string; client_id: string; full_name: string; code: string; is_test: boolean;
   lapsed_days: number | null; collected_by_owner: boolean; collecting_affiliate: string | null;
-  earning_affiliate: string | null; earner_is_house: boolean;
+  registered_by_affiliate: string | null; registrant_is_house: boolean;
 };
 type Lapse = {
   affiliate_id: string; name: string; active: boolean; is_test: boolean; is_house: boolean;
@@ -56,8 +57,8 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
     // A voided reactivation did not reactivate anyone: that client is back under Vencidos.
     const reactivated = await q.query(
       `select l.subscription_id, l.paid_at, l.client_id, l.full_name, l.code, l.is_test, l.lapsed_days,
-              l.collected_by_owner, l.collecting_affiliate, l.earning_affiliate, coalesce(ea.is_house, false) as earner_is_house
-         from renewal_log l left join affiliates ea on ea.id = l.earning_affiliate_id
+              l.collected_by_owner, l.collecting_affiliate, l.registered_by_affiliate, coalesce(ra.is_house, false) as registrant_is_house
+         from renewal_log l left join affiliates ra on ra.id = l.registered_by_affiliate_id
         where l.reactivation and l.voided_at is null and l.paid_at > now() - interval '90 days'
         order by l.paid_at desc, l.subscription_id limit ${LIMIT + 1}`);
     const lapse = await q.query(
@@ -139,7 +140,7 @@ function ReactivatedList({ viewer, rows }: { viewer: Viewer; rows: Reactivated[]
             <thead>
               <tr>
                 <th scope="col">{r.client}</th><th scope="col">{r.when}</th><th scope="col">{r.renewedOn}</th>
-                <th scope="col">{r.collector}</th><th scope="col">{r.earner}</th>
+                <th scope="col">{r.registeredBy}</th><th scope="col">{r.earner}</th>
               </tr>
             </thead>
             <tbody>
@@ -152,8 +153,8 @@ function ReactivatedList({ viewer, rows }: { viewer: Viewer; rows: Reactivated[]
                   </th>
                   <td>{row.lapsed_days ? <Chip kind="good">{r.lapsedFor(row.lapsed_days)}</Chip> : <Chip kind="good">{t.reactivation(null)}</Chip>}</td>
                   <td>{formatDateTime(row.paid_at, viewer.lang)}</td>
-                  <td>{collectorLabel(row, t.owner)}</td>
-                  <td>{row.earner_is_house ? t.chip.house : row.earning_affiliate ?? t.dash}</td>
+                  <td>{row.registrant_is_house ? t.chip.house : row.registered_by_affiliate ?? t.dash}</td>
+                  <td>{collectorLabel(row, t.ownerNoCommission)}</td>
                 </tr>
               ))}
             </tbody>
