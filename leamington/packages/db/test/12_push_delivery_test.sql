@@ -26,6 +26,11 @@ insert into push_subscriptions (client_id, endpoint, p256dh, auth)
 select id, 'https://push.example.invalid/' || code, 'key', 'auth' from clients
  where code in ('PVZHAAA2', 'PVZHAAA3', 'PVZHAAA4');
 
+-- Engagement goes only to clients with a paid period covering today (0029).
+insert into subscriptions (client_id, period_start, period_end, paid_at, kind, affiliate_id)
+select id, date '2026-01-01', date '2099-01-01', now(), 'sale', affiliate_id from clients
+ where code in ('PVZHAAA2', 'PVZHAAA3', 'PVZHAAA4', 'PVZHAAA6');
+
 -- Push FC plays at 23:00 UTC (7pm Toronto), confirmed an hour ago.
 insert into fixtures (league_id, home_team_id, away_team_id, kickoff_utc, status, source, source_fixture_id, fetched_at)
 select l.id, h.id, a.id, '2026-09-13 23:00:00+00', 'scheduled', 'test', 'push-fixture-1', '2026-09-13 10:00:00+00'

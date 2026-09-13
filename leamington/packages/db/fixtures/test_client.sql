@@ -38,3 +38,11 @@ begin
     raise exception 'test client not created: Montego Bay (St. James) is missing from municipalities';
   end if;
 end $$;
+
+-- A paid (test) period, so the test client uses Hoy like any paying client
+-- rather than seeing the expiry screen. is_test keeps it out of every number.
+insert into subscriptions (client_id, period_start, period_end, amount, affiliate_payout, paid_at,
+                           kind, affiliate_id, commission_rate)
+values ('7e57c000-0000-4000-8000-000000000001', date '2026-09-13', date '2027-03-13', 20.00, 8.00, now(),
+        'sale', '7e57a000-0000-4000-8000-000000000001', 0.40)
+on conflict (client_id, period_start) do nothing;
