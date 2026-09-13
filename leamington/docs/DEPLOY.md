@@ -96,7 +96,7 @@ The container distinguishes three failures that used to look identical:
 | `misconfigured` | no `DATABASE_URL` | one legible message, **exit 1** — retrying cannot help |
 | `unreachable` | configured, database did not answer | health endpoint stays up reporting 503 with the reason, retries every 15s |
 | `unmigrated` | connected, schema absent | prints the exact migration command, retries |
-| `ready` | connected and migrated | registers 17 jobs and serves `/health` |
+| `ready` | connected and migrated | registers 20 jobs (19 feed jobs plus the staleness monitor) and serves `/health` |
 
 Previously a missing `DATABASE_URL` surfaced as
 `AggregateError [ECONNREFUSED] ... 127.0.0.1:5432` repeated in a crash loop —

@@ -9,7 +9,7 @@ insert into feed_expectations (feed, label, expected_interval, grace, active) va
   ('forecast',    'Forecast (3 providers)',       interval '6 hours',    interval '1 hour',     true),
   ('lottery',     'Lottery draw results',         interval '1 hour',     interval '30 minutes', true),
   ('static',      'Static records',               interval '7 days',     interval '1 day',      true),
-  ('fixtures',    'Football fixtures',            interval '1 day',      interval '6 hours',    false)
+  ('fixtures',    'Football fixtures',            interval '1 hour',     interval '20 minutes', true)
 on conflict (feed) do update
   set label = excluded.label, expected_interval = excluded.expected_interval,
       grace = excluded.grace, active = excluded.active;

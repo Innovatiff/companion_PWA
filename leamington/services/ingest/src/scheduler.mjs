@@ -17,6 +17,7 @@ import { ingestFx } from "./feeds/fx.mjs";
 import { ingestForecast } from "./feeds/forecast.mjs";
 import { ingestLottery } from "./feeds/lottery.mjs";
 import { ingestStatic } from "./feeds/static.mjs";
+import { ingestFixtures } from "./feeds/fixtures.mjs";
 
 const log = logger("scheduler");
 
@@ -25,6 +26,10 @@ export const FIXED_JOBS = [
   { feed: "fx",        cron: "15 6 * * *",   tz: "America/Toronto",  fn: ingestFx,       label: "FX daily" },
   { feed: "forecast",  cron: "0 */6 * * *",  tz: "UTC",              fn: ingestForecast, label: "Forecast (3 providers)" },
   { feed: "static",    cron: "30 5 * * 1",   tz: "America/Toronto",  fn: ingestStatic,   label: "Static records (weekly)" },
+  // Football by date query: 24 + 1 + 1 = 26 API-Football requests/day.
+  { feed: "fixtures",  cron: "5 * * * *",    tz: "UTC", fn: (ctx) => ingestFixtures(ctx, { offsetDays: 0 }),  label: "Football fixtures today (hourly)" },
+  { feed: "fixtures",  cron: "35 4 * * *",   tz: "UTC", fn: (ctx) => ingestFixtures(ctx, { offsetDays: -1 }), label: "Football results yesterday (late kickoffs)" },
+  { feed: "fixtures",  cron: "35 12 * * *",  tz: "UTC", fn: (ctx) => ingestFixtures(ctx, { offsetDays: 1 }),  label: "Football fixtures tomorrow" },
 ];
 
 /**
