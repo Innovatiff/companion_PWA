@@ -1,7 +1,7 @@
--- Renewals collected in person by any affiliate: look up by code, the original
--- affiliate always earns, the collector is recorded separately, early renewals
--- extend and lapsed ones restart today, double taps record once, and the admin
--- views see collection vs earning and lapse rate.
+-- Renewals collected in person at any business: look up by code, whoever
+-- collects earns that renewal's commission (0031), the registering business is
+-- recorded, early renewals extend and lapsed ones restart today, double taps
+-- record once, and the admin views see own clients vs other businesses'.
 \set ON_ERROR_STOP on
 
 do $$
@@ -10,11 +10,11 @@ begin
   r := app.portal_create_owner('renew.owner');
   perform app.portal_complete_setup(r->>'setup_token', 'owner-password-1');
   perform set_config('request.jwt.claim.sub', r->>'auth_user_id', false);
-  r := app.create_affiliate('Ana Renueva', 'Tienda Ana', null, 0.40, 'ana.renueva');
+  r := app.create_affiliate('Ana Renueva', 'Domcub', null, 0.40, 'ana.renueva');
   perform app.portal_complete_setup(r->>'setup_token', 'ana-password-1');
   r := app.create_affiliate('Beto Cobra', 'Finca Beto', null, 0.40, 'beto.cobra');
   perform app.portal_complete_setup(r->>'setup_token', 'beto-password-1');
-  r := app.create_affiliate('Cata Cerrada', null, null, 0.40, 'cata.cerrada');
+  r := app.create_affiliate('Cata Cerrada', null, null, 0.50, 'cata.cerrada');
   perform app.portal_complete_setup(r->>'setup_token', 'cata-password-1');
   perform set_config('request.jwt.claim.sub', '', false);
 end $$;
@@ -29,16 +29,19 @@ create or replace function pg_temp.client() returns uuid language sql as
   $$ select id from clients where code = 'RENEWA23' $$;
 
 do $$
+declare s subscriptions%rowtype;
 begin
   perform pg_temp.act_as('ana.renueva');
   perform app.register_client(pg_temp.aff('ana.renueva'), 'RENEWA23', 'Cliente Renovable', 'JM', 'St. James', null, pg_temp.auth('ana.renueva'));
   perform set_config('request.jwt.claim.sub', '', false);
-  assert (select collected_by_affiliate_id from subscriptions where client_id = pg_temp.client()) = pg_temp.aff('ana.renueva'),
-    'a registration is collected by the registering affiliate';
+  select * into s from subscriptions where client_id = pg_temp.client();
+  assert s.collected_by_affiliate_id = pg_temp.aff('ana.renueva') and s.registered_by_affiliate_id = pg_temp.aff('ana.renueva')
+     and s.affiliate_id = pg_temp.aff('ana.renueva') and s.affiliate_payout = 8.00,
+    'the registering business collects and earns the registration';
 end $$;
 
 -- --------------------------------------------------------------------------
--- Another affiliate looks up the code and renews early
+-- Another business looks up the code, renews early, and earns it
 -- --------------------------------------------------------------------------
 do $$
 declare r jsonb; s jsonb; v_end date; v_key uuid := 'aaaaaaaa-0000-4000-8000-000000000001'; sub subscriptions%rowtype;
@@ -50,7 +53,8 @@ begin
 
   s := app.renewal_status(pg_temp.client());
   assert s->>'full_name' = 'Cliente Renovable' and s->>'status' = 'active' and s->>'country' = 'JM', format('%s', s);
-  assert s->'original_affiliate'->>'name' = 'Tienda Ana' and not (s->'original_affiliate'->>'is_you')::boolean, format('%s', s);
+  assert s->'original_affiliate'->>'name' = 'Domcub' and not (s->'original_affiliate'->>'is_you')::boolean, format('%s', s);
+  assert (s->>'your_commission')::numeric = 8.00, format('the collector is told what they earn: %s', s);
   v_end := (s->>'period_end')::date;
   assert (s->>'next_period_start')::date = v_end, 'an early renewal will extend from the current end';
 
@@ -58,16 +62,16 @@ begin
   assert r->>'status' = 'renewed', format('%s', r);
   select * into sub from subscriptions where request_key = v_key;
   assert sub.kind = 'renewal' and sub.period_start = v_end and sub.period_end = (v_end + interval '6 months')::date, format('%s', row_to_json(sub));
-  assert sub.affiliate_id = pg_temp.aff('ana.renueva'), 'the original affiliate earns';
+  assert sub.affiliate_id = pg_temp.aff('beto.cobra') and sub.affiliate_payout = 8.00, 'the collecting business earns the renewal';
   assert sub.collected_by_affiliate_id = pg_temp.aff('beto.cobra'), 'the collector is recorded';
-  assert sub.affiliate_payout = 8.00 and sub.amount = 20.00 and sub.paid_at is not null and not sub.reactivation;
+  assert sub.registered_by_affiliate_id = pg_temp.aff('ana.renueva'), 'the registering business is recorded';
+  assert sub.amount = 20.00 and sub.paid_at is not null and not sub.reactivation;
+  assert (select affiliate_id from clients where id = pg_temp.client()) = pg_temp.aff('ana.renueva'), 'the client stays registered to Domcub';
 
-  -- The same form again: nothing new.
   r := app.affiliate_record_renewal(pg_temp.client(), v_key, pg_temp.auth('beto.cobra'));
   assert r->>'status' = 'duplicate', format('%s', r);
   assert (select count(*) from subscriptions where client_id = pg_temp.client()) = 2, 'a double tap records one renewal';
 
-  -- A different form within 10 minutes needs confirmation.
   r := app.affiliate_record_renewal(pg_temp.client(), 'aaaaaaaa-0000-4000-8000-000000000002', pg_temp.auth('beto.cobra'));
   assert r->>'status' = 'recent_renewal', format('%s', r);
   assert (select count(*) from subscriptions where client_id = pg_temp.client()) = 2;
@@ -78,29 +82,36 @@ begin
 
   r := app.renewal_receipt(v_key);
   assert r->>'full_name' = 'Cliente Renovable' and (r->>'collected_by_you')::boolean
-     and r->'earning_affiliate'->>'name' = 'Tienda Ana' and not (r->'earning_affiliate'->>'is_you')::boolean, format('%s', r);
+     and (r->'earning_affiliate'->>'is_you')::boolean and (r->>'commission')::numeric = 8.00
+     and r->'registered_by'->>'name' = 'Domcub' and not (r->'registered_by'->>'is_you')::boolean, format('%s', r);
   perform set_config('request.jwt.claim.sub', '', false);
-  raise notice 'PASS renewals: any affiliate renews by code; the original affiliate earns; double taps record once';
+  raise notice 'PASS renewals: any business renews by code and earns it; double taps record once';
 end $$;
 
 -- --------------------------------------------------------------------------
--- Visibility: the collector does not gain the client; the earner sees it all
+-- Visibility
 -- --------------------------------------------------------------------------
 do $$
 begin
   perform pg_temp.act_as('cata.cerrada');
-  assert app.renewal_receipt('aaaaaaaa-0000-4000-8000-000000000001') is null, 'an uninvolved affiliate sees no receipt';
+  assert app.renewal_receipt('aaaaaaaa-0000-4000-8000-000000000001') is null, 'an uninvolved business sees no receipt';
   assert (select count(*) from app.my_renewal_collections()) = 0;
   perform pg_temp.act_as('beto.cobra');
-  assert (select count(*) from app.my_renewal_collections() where earning_affiliate = 'Tienda Ana' and not earner_is_you and amount = 20.00) = 2,
-    'the collector sees the cash they took for another affiliate';
+  assert (select count(*) from app.my_renewal_collections()
+           where registered_by = 'Domcub' and not registered_by_you and amount = 20.00 and commission = 8.00) = 2,
+    'the collector lists renewals of another business''s client, with their commission';
 end $$;
 
 select pg_temp.act_as('beto.cobra');
 set role authenticated;
 do $$
+declare e record;
 begin
-  assert (select count(*) from clients where code = 'RENEWA23') = 0, 'collecting a renewal does not show the client in the collector''s list';
+  assert (select count(*) from clients where code = 'RENEWA23') = 0, 'collecting a renewal does not put the client in the collector''s list';
+  select * into e from affiliate_earnings;
+  assert e.sales = 0 and e.renewals = 2 and e.renewals_earned = 16.00 and e.renewals_other_clients = 2
+     and e.renewals_other_clients_earned = 16.00 and e.renewals_own_clients = 0 and e.earned = 16.00, format('%s', row_to_json(e));
+  raise notice 'PASS renewals: the collector''s earnings include renewals of other businesses'' clients';
 end $$;
 reset role;
 
@@ -110,10 +121,10 @@ do $$
 declare e record;
 begin
   select * into e from affiliate_earnings;
-  assert e.sales = 1 and e.renewals = 2 and e.sales_earned = 8.00 and e.renewals_earned = 16.00
-     and e.renewals_by_others = 2 and e.renewals_by_others_earned = 16.00 and e.earned = 24.00, format('%s', row_to_json(e));
-  assert (select count(*) from renewal_log where collected_by_other) = 2, 'the earner sees renewals others collected on their clients';
-  raise notice 'PASS renewals: the earner sees registrations and renewals apart, including renewals others collected';
+  assert e.sales = 1 and e.renewals = 0 and e.sales_earned = 8.00 and e.renewals_earned = 0
+     and e.own_clients_renewed_elsewhere = 2 and e.earned = 8.00, format('%s', row_to_json(e));
+  assert (select count(*) from renewal_log where renewed_elsewhere) = 2, 'the registering business sees its client renewed elsewhere';
+  raise notice 'PASS renewals: the registering business keeps the registration and sees renewals made elsewhere';
 end $$;
 reset role;
 
@@ -123,56 +134,57 @@ reset role;
 do $$
 declare r jsonb; sub subscriptions%rowtype;
 begin
-  -- 900 days pass: the periods and the payments that bought them move back together.
   update subscriptions set period_start = period_start - 900, period_end = period_end - 900, paid_at = paid_at - interval '900 days'
    where client_id = pg_temp.client();
   assert (select status from client_status where client_id = pg_temp.client()) = 'lapsed';
   assert not app.client_has_paid_access(pg_temp.client());
   r := app.client_access(pg_temp.client());
-  assert not (r->>'paid')::boolean and r->>'status' = 'lapsed' and r->>'code' = 'RENEWA23' and r->>'affiliate_name' = 'Tienda Ana', format('%s', r);
+  assert not (r->>'paid')::boolean and r->>'status' = 'lapsed' and r->>'code' = 'RENEWA23' and r->>'affiliate_name' = 'Domcub', format('%s', r);
 
   perform pg_temp.act_as('cata.cerrada');
   assert (app.renewal_status(pg_temp.client())->>'next_period_start')::date = app.business_today();
+  assert (app.renewal_status(pg_temp.client())->>'your_commission')::numeric = 10.00, 'each business earns at its own rate';
   r := app.affiliate_record_renewal(pg_temp.client(), 'aaaaaaaa-0000-4000-8000-000000000003', pg_temp.auth('cata.cerrada'));
   assert r->>'status' = 'renewed', format('%s', r);
   select * into sub from subscriptions where request_key = 'aaaaaaaa-0000-4000-8000-000000000003';
   assert sub.period_start = app.business_today() and sub.reactivation and sub.lapsed_days > 0, format('%s', row_to_json(sub));
+  assert sub.affiliate_id = pg_temp.aff('cata.cerrada') and sub.affiliate_payout = 10.00;
   assert app.client_has_paid_access(pg_temp.client()) and (app.client_access(pg_temp.client())->>'paid')::boolean,
     'the account is active again immediately';
 
-  -- The original affiliate's shop closes: a renewal still earns them the commission.
+  -- The registering business closes: renewals elsewhere still work and pay the collector.
   perform set_config('request.jwt.claim.sub', pg_temp.auth('renew.owner')::text, false);
   perform app.update_affiliate(pg_temp.aff('ana.renueva'), false, 0.40);
   perform pg_temp.act_as('beto.cobra');
   r := app.affiliate_record_renewal(pg_temp.client(), 'aaaaaaaa-0000-4000-8000-000000000004', pg_temp.auth('beto.cobra'), true);
   assert r->>'status' = 'renewed';
-  assert (select affiliate_id from subscriptions where request_key = 'aaaaaaaa-0000-4000-8000-000000000004') = pg_temp.aff('ana.renueva');
+  assert (select affiliate_id from subscriptions where request_key = 'aaaaaaaa-0000-4000-8000-000000000004') = pg_temp.aff('beto.cobra');
 
-  -- An inactive affiliate cannot collect.
   perform pg_temp.act_as('ana.renueva');
   begin
     perform app.renewal_lookup('RENEWA23');
-    assert false, 'an inactive affiliate must be refused';
+    assert false, 'an inactive business must be refused';
   exception when insufficient_privilege then null;
   end;
   perform set_config('request.jwt.claim.sub', pg_temp.auth('renew.owner')::text, false);
   perform app.update_affiliate(pg_temp.aff('ana.renueva'), true, 0.40);
   perform set_config('request.jwt.claim.sub', '', false);
-  raise notice 'PASS renewals: a lapsed client restarts today and is active at once; a closed shop still earns';
+  raise notice 'PASS renewals: a lapsed client restarts today and is active at once; each collector earns at its own rate';
 end $$;
 
 -- --------------------------------------------------------------------------
--- Owner renewals follow the same dates; deactivated clients are refused
+-- Owner renewals earn no business; deactivated clients are refused
 -- --------------------------------------------------------------------------
 do $$
-declare r jsonb;
+declare r jsonb; sub subscriptions%rowtype;
 begin
   update subscriptions set period_start = period_start - 2000, period_end = period_end - 2000 where client_id = pg_temp.client();
   perform set_config('request.jwt.claim.sub', pg_temp.auth('renew.owner')::text, false);
   r := app.record_renewal(pg_temp.client(), pg_temp.auth('renew.owner'));
   assert (r->>'period_start')::date = app.business_today() and (r->>'reactivation')::boolean, format('%s', r);
-  assert (select collected_by_affiliate_id from subscriptions where client_id = pg_temp.client() order by paid_at desc limit 1) is null,
-    'an owner renewal is collected by the owner';
+  select * into sub from subscriptions where client_id = pg_temp.client() order by paid_at desc limit 1;
+  assert sub.collected_by_affiliate_id is null and sub.affiliate_id = app.house_affiliate() and sub.affiliate_payout = 0.00,
+    format('an owner renewal is collected by no business and earns no commission: %s', row_to_json(sub));
 
   update clients set active = false where id = pg_temp.client();
   perform pg_temp.act_as('beto.cobra');
@@ -180,22 +192,25 @@ begin
   assert r->>'status' = 'client_inactive', format('%s', r);
   update clients set active = true where id = pg_temp.client();
   perform set_config('request.jwt.claim.sub', '', false);
-  raise notice 'PASS renewals: owner renewals use the same dates; a deactivated client is not renewed';
+  raise notice 'PASS renewals: owner renewals earn no business commission; a deactivated client is not renewed';
 end $$;
 
 -- --------------------------------------------------------------------------
--- Admin views, throttling, and engagement
+-- Admin views, throttling
 -- --------------------------------------------------------------------------
 do $$
 declare c record; l record; i int; r jsonb;
 begin
   perform set_config('request.jwt.claim.sub', pg_temp.auth('renew.owner')::text, false);
   select * into c from renewal_collection_by_affiliate where affiliate_id = pg_temp.aff('beto.cobra');
-  assert c.renewals_collected = 3 and c.collected_for_others = 3 and c.cash_collected = 60.00 and c.renewals_earned = 0, format('%s', row_to_json(c));
+  assert c.renewals_collected = 3 and c.renewals_other_clients = 3 and c.renewals_own_clients = 0
+     and c.cash_collected = 60.00 and c.renewal_commission = 24.00, format('%s', row_to_json(c));
   select * into c from renewal_collection_by_affiliate where affiliate_id = pg_temp.aff('ana.renueva');
-  assert c.renewals_earned = 5 and c.earned_collected_by_others = 5 and c.renewal_commission = 40.00
-     and c.cash_collected = 20.00, format('%s', row_to_json(c));
+  assert c.renewals_collected = 0 and c.own_clients_renewed_elsewhere = 4 and c.own_clients_renewed_by_owner = 1
+     and c.cash_collected = 20.00 and c.renewal_commission = 0.00, format('%s', row_to_json(c));
   assert (select count(*) from renewal_log where client_id = pg_temp.client() and reactivation) = 2;
+  assert (select count(*) from renewal_log where client_id = pg_temp.client() and renewed_elsewhere) = 4;
+  assert (select count(*) from renewal_log where client_id = pg_temp.client() and registered_by_affiliate = 'Ana Renueva') = 5;
 
   select * into l from affiliate_lapse_rate where affiliate_id = pg_temp.aff('ana.renueva');
   assert l.came_due = 1 and l.lapsed = 0 and l.renewed = 1 and l.reactivated = 1 and l.lapse_rate = 0, format('%s', row_to_json(l));
@@ -205,26 +220,24 @@ begin
   r := app.renewal_lookup('RENEWA23');
   assert r->>'status' = 'throttled', format('20 misses stop further lookups: %s', r);
   perform set_config('request.jwt.claim.sub', '', false);
-  raise notice 'PASS renewals: admin sees collection vs earning and lapse rate; code guessing is throttled';
+  raise notice 'PASS renewals: admin sees own clients vs other businesses'' and lapse rate; code guessing is throttled';
 end $$;
 
 -- --------------------------------------------------------------------------
 -- A voided renewal does not block the next one (0030)
 -- --------------------------------------------------------------------------
 do $$
-declare r jsonb; v_void uuid; v_start date;
+declare r jsonb; v_void uuid;
 begin
   perform set_config('request.jwt.claim.sub', pg_temp.auth('renew.owner')::text, false);
-  -- Age every payment so the 10-minute repeat guard is not what is tested.
   update subscriptions set paid_at = paid_at - interval '1 day' where client_id = pg_temp.client();
-  select id, period_start into v_void, v_start from subscriptions
+  select id into v_void from subscriptions
    where client_id = pg_temp.client() and voided_at is null order by period_end desc limit 1;
   perform app.void_subscription(v_void, 'cobrado dos veces');
 
   perform pg_temp.act_as('beto.cobra');
   r := app.affiliate_record_renewal(pg_temp.client(), 'aaaaaaaa-0000-4000-8000-000000000006', pg_temp.auth('beto.cobra'));
-  assert r->>'status' = 'renewed', format('an affiliate renews after a voided payment: %s', r);
-  assert (select period_start from subscriptions where request_key = 'aaaaaaaa-0000-4000-8000-000000000006') is not null;
+  assert r->>'status' = 'renewed', format('a business renews after a voided payment: %s', r);
 
   perform set_config('request.jwt.claim.sub', pg_temp.auth('renew.owner')::text, false);
   update subscriptions set voided_at = now(), void_reason = 'prueba' where request_key = 'aaaaaaaa-0000-4000-8000-000000000006';

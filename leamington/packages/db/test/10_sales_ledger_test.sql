@@ -124,7 +124,8 @@ begin
   v_end := (select max(period_end) from subscriptions where client_id = v_client);
   r := app.record_renewal(v_client, pg_temp.auth('ledger.owner'));
   assert (r->>'period_start')::date = v_end, 'an early renewal starts where the current period ends';
-  assert (r->>'affiliate_id')::uuid = pg_temp.aff('ana.ledger'), 'renewals credit the original affiliate';
+  -- Whoever collects a renewal earns it (0031); the owner is not a business.
+  assert (r->>'affiliate_id')::uuid = app.house_affiliate(), 'an owner renewal credits no business';
 
   -- Lapsed long ago: the renewal starts today.
   -- Shift every period 500 days back: each keeps its own start (one period per
@@ -134,13 +135,16 @@ begin
   r := app.record_renewal(v_client, pg_temp.auth('ledger.owner'));
   assert (r->>'period_start')::date = app.business_today(), 'a renewal after a long lapse starts on the day it is paid';
 
-  -- A new commission applies to later payments only.
+  -- A new commission applies to later payments only. Ana collects this renewal herself.
   perform app.update_affiliate(pg_temp.aff('ana.ledger'), true, 0.50);
-  perform app.record_renewal(v_client, pg_temp.auth('ledger.owner'));
+  perform pg_temp.act_as('ana.ledger');
+  r := app.affiliate_record_renewal(v_client, 'bbbbbbbb-0000-4000-8000-000000000010', pg_temp.auth('ana.ledger'), true);
+  assert r->>'status' = 'renewed', format('%s', r);
+  perform pg_temp.act_as('ledger.owner');
   assert (select array_agg(affiliate_payout order by paid_at, period_start) from subscriptions where client_id = v_client)
-         = array[8.00, 8.00, 8.00, 10.00]::numeric[], 'earlier payments keep the commission they were made at';
+         = array[8.00, 0.00, 0.00, 10.00]::numeric[], 'earlier payments keep the commission they were made at';
   perform app.update_affiliate(pg_temp.aff('ana.ledger'), true, 0.40);
-  raise notice 'PASS ledger: renewals are owner-only, credit the original affiliate, and start on the right date';
+  raise notice 'PASS ledger: owner renewals earn no business, collectors earn at their rate, and dates are right';
 end $$;
 
 -- --------------------------------------------------------------------------
@@ -150,9 +154,9 @@ do $$
 declare e affiliate_earnings%rowtype; ok boolean; v_last uuid;
 begin
   perform pg_temp.act_as('ledger.owner');
-  perform app.record_payout(pg_temp.aff('ana.ledger'), 20.00, 'efectivo', 'septiembre', pg_temp.auth('ledger.owner'));
+  perform app.record_payout(pg_temp.aff('ana.ledger'), 5.00, 'efectivo', 'septiembre', pg_temp.auth('ledger.owner'));
   select * into e from affiliate_earnings where affiliate_id = pg_temp.aff('ana.ledger');
-  assert e.earned = 34.00 and e.paid_out = 20.00 and e.owed = 14.00, format('%s', row_to_json(e));
+  assert e.earned = 18.00 and e.paid_out = 5.00 and e.owed = 13.00, format('%s', row_to_json(e));
 
   select id into v_last from subscriptions where client_id = (select id from clients where code = 'ACDEFG23')
    order by affiliate_payout desc limit 1;
@@ -164,7 +168,7 @@ begin
   assert ok, 'voiding needs a reason';
   perform app.void_subscription(v_last, 'registrado dos veces');
   select * into e from affiliate_earnings where affiliate_id = pg_temp.aff('ana.ledger');
-  assert e.earned = 24.00 and e.owed = 4.00, format('a voided payment earns nothing: %s', row_to_json(e));
+  assert e.earned = 8.00 and e.owed = 3.00, format('a voided payment earns nothing: %s', row_to_json(e));
   raise notice 'PASS ledger: payouts and voids give the right amount owed';
 end $$;
 
