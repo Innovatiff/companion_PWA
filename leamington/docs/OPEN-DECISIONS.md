@@ -142,10 +142,25 @@ on a flag, so the upgrade is a configuration change rather than a rebuild.
   - Guatemala: `standings: false`
   - Jamaica: `events: false`, `lineups: false`
 
-### Jamaica — real season, calendar NOT PUBLISHED beyond round 1 (probed 2026-09-13)
+### Jamaica — DECIDED 2026-09-13: the football slot is conditional, not country-specific
 
-This gates `apps/app`. API-Football lists Jamaica's 2026 season as Sep 13–15.
-That is round 1 of a real season, and it is all that has been published.
+> - The home-screen football line **renders when the user's team has a fixture
+>   and is absent when it does not**. That is already how it behaves for every
+>   user on most days (Motagua does not play daily either), so there is **no
+>   Jamaica-specific layout** and nothing to wait for.
+> - When the Jamaica Premier League publishes fixtures beyond round 1, Jamaican
+>   users see them with **zero code change**.
+> - The daily calendar re-check (`.github/workflows/jpl-calendar.yml`) stays
+>   running.
+>
+> This is not an open question and does not gate `apps/app`.
+
+The finding behind it is kept below.
+
+#### Finding: real season, calendar NOT PUBLISHED beyond round 1 (probed 2026-09-13)
+
+API-Football lists Jamaica's 2026 season as Sep 13–15. That is round 1 of a
+real season, and it is all that has been published.
 
 - **The season is not Sep 13–15.** The 2026–27 format is 14 clubs, 39 matches
   each and 247 matches, running September 2026 to May 2027 (Wikipedia).
@@ -164,12 +179,9 @@ That is round 1 of a real season, and it is all that has been published.
 - **Last season for comparison:** 2024-25 had 283 fixtures from September to
   May, including 16 in September and 30 in October.
 
-**So Jamaica has a season but no published calendar.** Until one is published,
-the Jamaican home screen has no football anchor on most days. The UI must say
-nothing, or when the schedule was last checked, and never "no match" as a fact.
-
-**Open: design the Jamaican segment without a football anchor, or wait for
-the calendar.** No PWA scaffold until this is decided.
+**So Jamaica has a season but no published calendar.** Under the decision above,
+the conditional football line is simply absent for Jamaican users until
+fixtures are published. It never says "no match" as a fact.
 
 **Re-check, independent of any session:** `.github/workflows/jpl-calendar.yml`
 runs the sweep daily at 11:40 UTC. It fails until a match more than 3 days
