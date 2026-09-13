@@ -119,10 +119,24 @@ file in a `schema_migrations` ledger, runs each migration in its own
 transaction, and stops on the first failure — so a failed run leaves that file
 fully rolled back rather than half applied.
 
+All three steps run from the repo root via `scripts/apply-migrations.sh`, which
+reads `DATABASE_URL` from the environment — no connection details are hardcoded:
+
+```bash
+export DATABASE_URL='postgresql://...pooler.supabase.com:6543/postgres?sslmode=no-verify'
+./scripts/apply-migrations.sh --preflight   # read-only check
+./scripts/apply-migrations.sh --dry-run     # list pending migrations
+./scripts/apply-migrations.sh               # apply them
+```
+
+`test/run-migrations.sh` now **refuses** to run when `DATABASE_URL` or `PGHOST`
+points anywhere non-local, so the local-only script can no longer be aimed at a
+managed database by accident.
+
 **1. Check the instance first (read-only, changes nothing):**
 
 ```bash
-psql "$DATABASE_URL" -f packages/db/preflight.sql
+./scripts/apply-migrations.sh --preflight
 ```
 
 It reports the connection role and whether it is a superuser, which required
@@ -143,8 +157,8 @@ dashboard avoids relying on the connection role's `CREATE EXTENSION` rights.
 **3. Dry run, then apply:**
 
 ```bash
-./packages/db/migrate.sh "$DATABASE_URL" --dry-run   # lists pending files
-./packages/db/migrate.sh "$DATABASE_URL"             # applies them
+./scripts/apply-migrations.sh --dry-run   # lists pending files
+./scripts/apply-migrations.sh             # applies them
 ```
 
 Safe to re-run: already-applied migrations are skipped.
@@ -159,6 +173,18 @@ for f in packages/db/seeds/*.sql; do psql "$DATABASE_URL" -f "$f"; done
 `/health` reports `unconfigured`.
 
 Only `alerts:JM` is `active`. Turning on another country is a deliberate act.
+
+### PostGIS schema placement — verified, no change needed
+
+Supabase installs PostGIS into `extensions`, not `public`. The migrations are
+**fully schema-qualified** — every type (`extensions.geography`), every function
+(`extensions.ST_SetSRID`, `extensions.ST_Covers`, …) and every cast. There are no
+unqualified references, so **no `search_path` adjustment is required**.
+
+The only implicit resolution is the GiST indexes on geography columns, which use
+the *default* operator class. That lookup is by type, not by `search_path`.
+Verified empirically against PostGIS installed in `extensions` with
+`search_path = public`: `gist_geography_ops` resolves and all 11 migrations apply.
 
 ## What /health returns at each stage
 
