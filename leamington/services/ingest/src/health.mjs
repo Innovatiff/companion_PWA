@@ -6,6 +6,9 @@
  * reports per-feed health and returns 503 when a feed the product depends on
  * has gone quiet. A green healthcheck must mean the data is current, not merely
  * that node is alive.
+ *
+ * It also reports whether owner alerts are reaching the owner. If they are not,
+ * the next feed to go quiet would do so unnoticed, so that alone is critical.
  */
 import { createServer } from "node:http";
 import { query } from "./db.mjs";
@@ -13,10 +16,10 @@ import { logger } from "./log.mjs";
 
 const log = logger("health");
 
-async function snapshot() {
+export async function snapshot() {
   const { rows } = await query(
     `select feed, label, health, since_last_ok::text as since_last_ok,
-            failures_24h, latest_error
+            failures_24h, latest_error, latest_result, alert_delivery_failures_24h
        from feed_health_detail order by feed`);
 
   // ZERO monitored feeds is not health -- it means feed_expectations has not
@@ -36,14 +39,26 @@ async function snapshot() {
     };
   }
 
+  const { rows: [delivery] } = await query(
+    `select status, last_attempt_at, last_delivered_at, last_failure_error, failures_24h
+       from owner_alert_delivery_health`);
+
   const degraded = rows.filter((r) => ["stale", "failing", "never_succeeded", "never_run"].includes(r.health));
   // Alerts are the feed a person's safety depends on; it alone can fail the check.
   const alertsDown = degraded.some((r) => r.feed.startsWith("alerts:"));
+  // An owner alert that cannot be delivered is the same as no owner alert.
+  const ownerUnreachable = delivery.status === "failing";
 
   return {
-    status: alertsDown ? "critical" : degraded.length ? "degraded" : "ok",
+    status: alertsDown || ownerUnreachable ? "critical"
+      : degraded.length || delivery.status === "untested" ? "degraded"
+      : "ok",
     checkedAt: new Date().toISOString(),
     feeds: rows,
+    ownerAlertDelivery: {
+      ...delivery,
+      note: "untested: no owner alert has been sent yet; failing: the latest one did not get through",
+    },
     note: "health reflects whether our copy of each feed is current; it is not a statement about the world",
   };
 }

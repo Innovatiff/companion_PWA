@@ -54,6 +54,11 @@ export async function lotteryJobs(delayMinutes = 4) {
   return jobs;
 }
 
+// croner does not catch a job that throws unless given a handler, and the
+// uncaught rejection exits the process -- one bad cycle would stop every feed.
+const onJobError = (feed) => (err) =>
+  log.error("job.threw", { feed, error: String(err?.message ?? err) });
+
 export async function startScheduler({ dryRun = false } = {}) {
   const jobs = [...FIXED_JOBS, ...(await lotteryJobs())];
   const handles = [];
@@ -61,12 +66,14 @@ export async function startScheduler({ dryRun = false } = {}) {
   for (const j of jobs) {
     log.info("job.registered", { feed: j.feed, cron: j.cron, tz: j.tz, label: j.label });
     if (dryRun) continue;
-    handles.push(new Cron(j.cron, { timezone: j.tz, protect: true }, () => runFeed(j.feed, j.fn)));
+    handles.push(new Cron(j.cron, { timezone: j.tz, protect: true, catch: onJobError(j.feed) },
+      () => runFeed(j.feed, j.fn)));
   }
 
   // Staleness runs often; it is the thing that notices everything else stopping.
   log.info("job.registered", { feed: "monitor:staleness", cron: "*/5 * * * *", tz: "UTC" });
-  if (!dryRun) handles.push(new Cron("*/5 * * * *", { protect: true }, () => checkStaleness()));
+  if (!dryRun) handles.push(new Cron("*/5 * * * *", { protect: true, catch: onJobError("monitor:staleness") },
+    () => checkStaleness()));
 
   return { jobs, handles };
 }
