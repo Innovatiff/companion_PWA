@@ -25,9 +25,9 @@ select v.id::uuid, '77777777-7777-7777-7777-777777777777', v.code, v.full_name, 
        v.lang::ui_language, m.id, m.name, t.id, v.segment::client_segment, v.departure::date, v.next_trip::date,
        'America/Toronto', v.active
   from (values
-    ('aaaa7777-0000-4000-8000-000000000001', 'HOMETST1', 'Ana María López', 'GT', 'es', 'Home Town GT', 'Home FC', 'seasonal', '2026-11-20', null, true),
-    ('aaaa7777-0000-4000-8000-000000000002', 'HOMETST2', 'Ricky Brown',     'JM', 'en', 'Home Town JM', null,      'settled',  null,         '2026-12-24', true),
-    ('aaaa7777-0000-4000-8000-000000000003', 'HOMETST3', 'Inactive Person', 'GT', 'es', 'Home Town GT', null,      'seasonal', '2026-11-20', null, false)
+    ('aaaa7777-0000-4000-8000-000000000001', 'HQMETZT4', 'Ana María López', 'GT', 'es', 'Home Town GT', 'Home FC', 'seasonal', '2026-11-20', null, true),
+    ('aaaa7777-0000-4000-8000-000000000002', 'HQMETZT2', 'Ricky Brown',     'JM', 'en', 'Home Town JM', null,      'settled',  null,         '2026-12-24', true),
+    ('aaaa7777-0000-4000-8000-000000000003', 'HQMETZT3', 'Inactive Person', 'GT', 'es', 'Home Town GT', null,      'seasonal', '2026-11-20', null, false)
   ) v(id, code, full_name, country, lang, town, team, segment, departure, next_trip, active)
   join municipalities m on m.name = v.town
   left join teams t on t.name = v.team
@@ -222,14 +222,14 @@ end $$;
 do $$
 declare res jsonb; i int;
 begin
-  res := app.login_with_code('HOMETST1', 'source-a');
+  res := app.login_with_code('HQMETZT4', 'source-a');
   assert res->>'status' = 'ok' and res->>'client_id' = 'aaaa7777-0000-4000-8000-000000000001', res::text;
   assert app.login_with_code('ZZZZZZZZ', 'source-a')->>'status' = 'invalid';
-  assert app.login_with_code('HOMETST3', 'source-a')->>'status' = 'inactive';
+  assert app.login_with_code('HQMETZT3', 'source-a')->>'status' = 'inactive';
 
   for i in 1..10 loop perform app.login_with_code('QQQQQQQQ', 'source-b'); end loop;
-  assert app.login_with_code('HOMETST1', 'source-b')->>'status' = 'throttled',
+  assert app.login_with_code('HQMETZT4', 'source-b')->>'status' = 'throttled',
     'after 10 failures in 15 minutes, even a valid code waits';
-  assert app.login_with_code('HOMETST1', 'source-c')->>'status' = 'ok', 'another source is unaffected';
+  assert app.login_with_code('HQMETZT4', 'source-c')->>'status' = 'ok', 'another source is unaffected';
   raise notice 'PASS home: login by code, inactive and invalid codes, throttled guessing';
 end $$;

@@ -12,7 +12,7 @@ insert into municipalities (country, admin_region, name, lat, lng, timezone)
 insert into clients (id, affiliate_id, code, full_name, country, municipality_id,
                      municipality, municipality_lat, municipality_lng, timezone)
 select 'cccc3333-0000-0000-0000-00000000000c','44444444-4444-4444-4444-444444444444',
-       'QUEUE001','Queue Client','JM', m.id, m.name, m.lat, m.lng,'America/Jamaica'
+       'QVEVE234','Queue Client','JM', m.id, m.name, m.lat, m.lng,'America/Jamaica'
 from municipalities m where m.name='Queue Town' on conflict do nothing;
 
 insert into alert_sources (country, agency, kind, feed_url, active)

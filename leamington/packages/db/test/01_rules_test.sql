@@ -18,13 +18,13 @@ insert into municipalities (country, admin_region, name, lat, lng, timezone) val
 insert into clients (id, affiliate_id, code, full_name, country, municipality_id,
                      admin_region, municipality, municipality_lat, municipality_lng)
 select 'aaaa1111-0000-0000-0000-00000000000a','11111111-1111-1111-1111-111111111111',
-       'ABCD1234','Cliente Uno','HN', m.id,'Cortés','San Pedro Sula',15.5042,-88.0250
+       'ACDE2346','Cliente Uno','HN', m.id,'Cortés','San Pedro Sula',15.5042,-88.0250
 from municipalities m where m.country='HN' and m.name='San Pedro Sula';
 
 insert into clients (id, affiliate_id, code, full_name, country, municipality_id,
                      admin_region, municipality, municipality_lat, municipality_lng)
 select 'bbbb2222-0000-0000-0000-00000000000b','22222222-2222-2222-2222-222222222222',
-       'EFGH5678','Cliente Dos','HN', m.id,'Cortés','Dry Corner',15.5042,-87.0000
+       'EFGH2346','Cliente Dos','HN', m.id,'Cortés','Dry Corner',15.5042,-87.0000
 from municipalities m where m.country='HN' and m.name='Dry Corner';
 
 -- Distinct agency name so this fixture never collides with seeds/alert_sources.sql.

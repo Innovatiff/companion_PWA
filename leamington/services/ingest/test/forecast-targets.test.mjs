@@ -70,7 +70,7 @@ async function addClientInJamaica() {
     `insert into clients (id, affiliate_id, code, full_name, country, municipality_id,
                           municipality, municipality_lat, municipality_lng, timezone)
      select 'eeee5555-0000-0000-0000-00000000000e', '66666666-6666-6666-6666-666666666666',
-            'FCST0001', 'Forecast Client', 'JM', m.id, m.name, m.lat, m.lng, m.timezone
+            'FCZT2346', 'Forecast Client', 'JM', m.id, m.name, m.lat, m.lng, m.timezone
        from municipalities m where m.country = 'JM' order by m.id limit 1`);
 }
 
