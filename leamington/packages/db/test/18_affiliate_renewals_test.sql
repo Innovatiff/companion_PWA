@@ -207,3 +207,31 @@ begin
   perform set_config('request.jwt.claim.sub', '', false);
   raise notice 'PASS renewals: admin sees collection vs earning and lapse rate; code guessing is throttled';
 end $$;
+
+-- --------------------------------------------------------------------------
+-- A voided renewal does not block the next one (0030)
+-- --------------------------------------------------------------------------
+do $$
+declare r jsonb; v_void uuid; v_start date;
+begin
+  perform set_config('request.jwt.claim.sub', pg_temp.auth('renew.owner')::text, false);
+  -- Age every payment so the 10-minute repeat guard is not what is tested.
+  update subscriptions set paid_at = paid_at - interval '1 day' where client_id = pg_temp.client();
+  select id, period_start into v_void, v_start from subscriptions
+   where client_id = pg_temp.client() and voided_at is null order by period_end desc limit 1;
+  perform app.void_subscription(v_void, 'cobrado dos veces');
+
+  perform pg_temp.act_as('beto.cobra');
+  r := app.affiliate_record_renewal(pg_temp.client(), 'aaaaaaaa-0000-4000-8000-000000000006', pg_temp.auth('beto.cobra'));
+  assert r->>'status' = 'renewed', format('an affiliate renews after a voided payment: %s', r);
+  assert (select period_start from subscriptions where request_key = 'aaaaaaaa-0000-4000-8000-000000000006') is not null;
+
+  perform set_config('request.jwt.claim.sub', pg_temp.auth('renew.owner')::text, false);
+  update subscriptions set voided_at = now(), void_reason = 'prueba' where request_key = 'aaaaaaaa-0000-4000-8000-000000000006';
+  r := app.record_renewal(pg_temp.client(), pg_temp.auth('renew.owner'));
+  assert (r->>'period_start') is not null, format('the owner renews after a voided payment: %s', r);
+  assert (select count(*) from subscriptions where client_id = pg_temp.client() and period_start = (r->>'period_start')::date) >= 2,
+    'the voided row with the same start date is kept as history';
+  perform set_config('request.jwt.claim.sub', '', false);
+  raise notice 'PASS renewals: a voided payment never blocks the next renewal';
+end $$;

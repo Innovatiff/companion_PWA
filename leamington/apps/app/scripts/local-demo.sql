@@ -59,7 +59,7 @@ insert into subscriptions (client_id, period_start, period_end, paid_at, kind, a
 select id, (now() at time zone 'America/Toronto')::date, ((now() at time zone 'America/Toronto')::date + interval '6 months')::date,
        now(), 'sale', affiliate_id
   from clients where code = 'DEMXHN42'
-on conflict (client_id, period_start) do nothing;
+on conflict (client_id, period_start) where voided_at is null do nothing;
 
 insert into clients (affiliate_id, code, full_name, country, language)
 values ('99999999-9999-4999-8999-999999999999', 'DEMXEX42', 'Rosa Vencida', 'HN', 'es')
@@ -67,4 +67,4 @@ on conflict (code) do nothing;
 insert into subscriptions (client_id, period_start, period_end, paid_at, kind, affiliate_id)
 select id, date '2026-01-01', date '2026-07-01', now() - interval '8 months', 'sale', affiliate_id
   from clients where code = 'DEMXEX42'
-on conflict (client_id, period_start) do nothing;
+on conflict (client_id, period_start) where voided_at is null do nothing;

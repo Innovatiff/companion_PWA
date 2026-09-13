@@ -45,4 +45,4 @@ insert into subscriptions (client_id, period_start, period_end, amount, affiliat
                            kind, affiliate_id, commission_rate)
 values ('7e57c000-0000-4000-8000-000000000001', date '2026-09-13', date '2027-03-13', 20.00, 8.00, now(),
         'sale', '7e57a000-0000-4000-8000-000000000001', 0.40)
-on conflict (client_id, period_start) do nothing;
+on conflict (client_id, period_start) where voided_at is null do nothing;
