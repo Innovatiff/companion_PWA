@@ -7,7 +7,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  lookupCode, lookupRedirect, recordRedirect, renewStatusLabel, periodPlacement, registeredByLabel, collectedByLabel,
+  lookupCode, lookupRedirect, recordRedirect, renewStatusLabel, periodPlacement, registeredByLabel, commissionLabel,
   commissionOf, slipLang, ticked, isRenewError, refusedAffiliate,
 } from "../lib/renew.ts";
 import { strings } from "../lib/strings.ts";
@@ -59,15 +59,16 @@ test("a lapsed or never-paid client starts today; anyone else extends from the c
   assert.equal(periodPlacement("active"), "extends");
 });
 
-test("who registered the client, and who collected a renewal", () => {
-  const es = strings("es");
-  assert.equal(registeredByLabel({ name: "Tienda Ana", is_you: false, is_house: false, active: true }, es), "Registrado por: Tienda Ana");
-  assert.equal(registeredByLabel({ name: "Tienda Ana", is_you: true, is_house: false, active: true }, es), "Registrado por: ti");
-  assert.equal(registeredByLabel({ name: "Registro directo del propietario", is_you: false, is_house: true, active: true }, es),
+test("who registered the client is information; the commission shown is always this business's", () => {
+  const es = strings("es"), en = strings("en");
+  assert.equal(registeredByLabel({ name: "Domcub", is_you: false, is_house: false }, es), "Registrado por: Domcub");
+  assert.equal(registeredByLabel({ name: "Domcub", is_you: true, is_house: false }, es), "Registrado por: ti");
+  assert.equal(registeredByLabel({ name: "Registro directo del propietario", is_you: false, is_house: true }, es),
     "Registrado por: Hoy (registro directo)");
-  assert.equal(collectedByLabel({ collected_by_owner: false, collected_by_other: false }, es), "ti");
-  assert.equal(collectedByLabel({ collected_by_owner: false, collected_by_other: true }, es), "otro afiliado");
-  assert.equal(collectedByLabel({ collected_by_owner: true, collected_by_other: true }, es), "Hoy");
+  assert.equal(commissionLabel(8, es), "Tu comisión: $8.00");
+  assert.equal(commissionLabel("10.00", en), "Your commission: $10.00");
+  assert.equal(commissionLabel("0.00", es), "Sin comisión");
+  assert.equal(commissionLabel(null, es), "Sin comisión");
 });
 
 test("commission is price times rate, to the cent", () => {
@@ -77,10 +78,14 @@ test("commission is price times rate, to the cent", () => {
   assert.equal(commissionOf("20.00", "0"), "0.00");
 });
 
-test("the earnings lines count renewals others collected, in both languages", () => {
-  assert.equal(strings("es").renewalsByOthers(3, "$24.00"), "3 renovaciones de tus clientes las cobró otro afiliado u Hoy — igual ganaste $24.00.");
-  assert.equal(strings("es").renewalsByOthers(1, "$8.00"), "1 renovación de tus clientes la cobró otro afiliado u Hoy — igual ganaste $8.00.");
-  assert.match(strings("en").renewalsByOthers(2, "$16.00"), /^2 renewals of your clients were collected/);
+test("earnings: renewals elsewhere are a count, not money; the incentive is renewing anyone", () => {
+  const es = strings("es"), en = strings("en");
+  assert.match(es.renewedElsewhere(2), /^2 renovaciones de tus clientes se hicieron en otro negocio/);
+  assert.match(es.renewedElsewhere(1), /^1 renovación de tus clientes se hizo en otro negocio/);
+  assert.doesNotMatch(es.renewedElsewhere(2), /\$/);
+  assert.match(es.renewAnywhere("$8.00"), /^Cualquier cliente de Hoy puede renovar contigo, y la comisión es tuya: \$8\.00/);
+  assert.match(en.renewAnywhere("$8.00"), /^Any Hoy client can renew with you/);
+  assert.equal(es.statRenewalsSplit(2, 1, "$8.00"), "2 de tus clientes · 1 de clientes de otros negocios ($8.00)");
   assert.equal(strings("es").collectButton("$20.00"), "Cobré $20.00 — renovar");
 });
 

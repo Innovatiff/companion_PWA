@@ -65,7 +65,7 @@ const es = {
 
   // Renew: enter the code
   renewTitle: "Renovar cliente",
-  renewIntro: "Escribe el código del recibo del cliente. Sirve para cualquier cliente, aunque lo haya registrado otro afiliado.",
+  renewIntro: "Escribe el código del recibo del cliente. Sirve para cualquier cliente de Hoy, aunque lo haya registrado otro negocio. La comisión de la renovación es tuya.",
   renewCodeLabel: "Código del cliente",
   renewFind: "Buscar cliente",
   errLookupInvalid: "Ese código no es válido. Son 8 letras y números, como ACDE-FG34.",
@@ -84,9 +84,7 @@ const es = {
   startsTodayNone: "Empieza hoy, porque no tiene ningún periodo pagado. La cuenta se activa en cuanto renuevas.",
   extendsFromEnd: "Se suma al periodo actual: empieza cuando termina el que ya pagó, así no pierde ningún día.",
   yourCommission: (money: string) => `Tu comisión: ${money}`,
-  commissionGoesTo: (name: string) =>
-    `La comisión de esta renovación es para ${name}, que registró a este cliente. Tú cobras en su nombre.`,
-  collectingForHouse: "Este cliente lo registró Hoy directamente. Tú cobras en nombre de Hoy.",
+  noCommission: "Sin comisión",
   clientInactive: "Esta cuenta está desactivada. Habla con Hoy.",
   recentWarning: (when: string, until: string, byYou: boolean) =>
     `Este cliente ya se renovó hace un momento (${when}${byYou ? ", lo cobraste tú" : ""}), pagado hasta el ${until}. Si cobras otra vez, se suman otros 6 meses.`,
@@ -102,10 +100,7 @@ const es = {
   voidedNote: "Hoy anuló esta renovación. No cuenta como pagada.",
   accountActive: "La cuenta ya está activa.",
   reactivated: "La cuenta estaba vencida y se reactivó con este pago.",
-  commissionFor: (name: string, money: string) => `Comisión para ${name}: ${money}`,
-  noCommission: "Sin comisión de afiliado (registro directo de Hoy).",
   collectedByYou: "Cobrado por: ti",
-  collectedBySomeoneElse: "Cobrado por: otra persona",
   amountPaid: (money: string) => `Cantidad: ${money}`,
   paidAt: (when: string) => `Fecha: ${when}`,
   renewAnother: "Renovar otro",
@@ -120,34 +115,28 @@ const es = {
   asOfToday: "a hoy",
   statRegistrations: (n: number) => `ganado en ${plural(n, "registro", "registros")}`,
   statRenewals: (n: number) => `ganado en ${plural(n, "renovación", "renovaciones")}`,
-  renewalPitch: (money: string) =>
-    `Cada cliente que registras te paga ${money} cada vez que renueva, aunque renueve con otro afiliado o con Hoy. No tienes que hacer nada.`,
-  renewalsByOthers: (n: number, money: string) =>
+  statRenewalsSplit: (own: number, other: number, otherMoney: string) =>
+    `${own} de tus clientes · ${other} de clientes de otros negocios (${otherMoney})`,
+  renewAnywhere: (money: string) =>
+    `Cualquier cliente de Hoy puede renovar contigo, y la comisión es tuya: ${money} por cada renovación que cobras, aunque lo haya registrado otro negocio. Registrar te da la comisión del registro; cada renovación que cobras te da la de esa renovación.`,
+  renewedElsewhere: (n: number) =>
     n === 1
-      ? `1 renovación de tus clientes la cobró otro afiliado u Hoy — igual ganaste ${money}.`
-      : `${n} renovaciones de tus clientes las cobró otro afiliado u Hoy — igual ganaste ${money}.`,
+      ? "1 renovación de tus clientes se hizo en otro negocio o con Hoy. Cuando le toque renovar otra vez, puede hacerlo contigo."
+      : `${n} renovaciones de tus clientes se hicieron en otro negocio o con Hoy. Cuando les toque renovar otra vez, pueden hacerlo contigo.`,
   allCad: "Todas las cantidades en dólares canadienses (CAD).",
-  renewalsCaption: "Renovaciones de tus clientes",
-  renewalsLatest: (n: number) => `Renovaciones de tus clientes, las ${n} más recientes`,
-  noRenewals: "Todavía no se ha renovado ninguno de tus clientes.",
+  renewalsCaption: "Renovaciones que cobraste",
+  renewalsLatest: (n: number) => `Renovaciones que cobraste, las ${n} más recientes`,
+  noRenewals: "Todavía no has cobrado ninguna renovación.",
   registrationsCaption: "Tus registros",
   registrationsLatest: (n: number) => `Tus registros, los ${n} más recientes`,
   noRegistrations: "Todavía no tienes registros.",
-  collectionsCaption: "Renovaciones que cobraste",
-  collectionsLatest: (n: number) => `Renovaciones que cobraste, las ${n} más recientes`,
-  collectionsNote: "El dinero que recibiste en mano. La comisión es siempre de quien registró al cliente.",
   colDate: "Fecha",
   colClient: "Cliente",
   colPeriod: "Periodo",
   colAmount: "Comisión",
   colCharged: "Cantidad",
-  colCollectedBy: "Cobrada por",
-  colCommissionFor: "Comisión",
-  byYou: "ti",
-  byOther: "otro afiliado",
-  byHoy: "Hoy",
-  forYou: "para ti",
-  forOther: (name: string) => `para ${name}`,
+  colRegisteredBy: "Registrado por",
+  youShort: "ti",
   periodRange: (from: string, to: string) => `${from} – ${to}`,
   payoutsCaption: "Pagos que has recibido",
   noPayouts: "Todavía no hay pagos registrados a tu nombre.",
@@ -234,7 +223,7 @@ const en: Strings = {
   backToClients: "See my clients",
 
   renewTitle: "Renew client",
-  renewIntro: "Type the code from the client's receipt. It works for any client, even one another affiliate registered.",
+  renewIntro: "Type the code from the client's receipt. It works for any Hoy client, even one another business registered. The renewal commission is yours.",
   renewCodeLabel: "Client code",
   renewFind: "Find client",
   errLookupInvalid: "That code is not valid. It is 8 letters and digits, like ACDE-FG34.",
@@ -252,9 +241,7 @@ const en: Strings = {
   startsTodayNone: "It starts today, because there is no paid period. The account is active as soon as you renew.",
   extendsFromEnd: "It adds on to the current period: it starts when the paid one ends, so no day is lost.",
   yourCommission: (money: string) => `Your commission: ${money}`,
-  commissionGoesTo: (name: string) =>
-    `The commission on this renewal goes to ${name}, who registered this client. You are collecting on their behalf.`,
-  collectingForHouse: "Hoy registered this client directly. You are collecting on Hoy's behalf.",
+  noCommission: "No commission",
   clientInactive: "This account is deactivated. Talk to Hoy.",
   recentWarning: (when: string, until: string, byYou: boolean) =>
     `This client was renewed a moment ago (${when}${byYou ? ", collected by you" : ""}), paid until ${until}. Collecting again adds another 6 months.`,
@@ -269,10 +256,7 @@ const en: Strings = {
   voidedNote: "Hoy voided this renewal. It does not count as paid.",
   accountActive: "The account is active now.",
   reactivated: "The account had lapsed and this payment reactivated it.",
-  commissionFor: (name: string, money: string) => `Commission for ${name}: ${money}`,
-  noCommission: "No affiliate commission (a direct Hoy registration).",
   collectedByYou: "Collected by: you",
-  collectedBySomeoneElse: "Collected by: someone else",
   amountPaid: (money: string) => `Amount: ${money}`,
   paidAt: (when: string) => `Date: ${when}`,
   renewAnother: "Renew another",
@@ -286,34 +270,28 @@ const en: Strings = {
   asOfToday: "as of today",
   statRegistrations: (n: number) => `earned from ${plural(n, "registration", "registrations")}`,
   statRenewals: (n: number) => `earned from ${plural(n, "renewal", "renewals")}`,
-  renewalPitch: (money: string) =>
-    `Every client you register pays you ${money} each time they renew, even with another affiliate or with Hoy. You do not have to do anything.`,
-  renewalsByOthers: (n: number, money: string) =>
+  statRenewalsSplit: (own: number, other: number, otherMoney: string) =>
+    `${own} of your clients · ${other} of other businesses' clients (${otherMoney})`,
+  renewAnywhere: (money: string) =>
+    `Any Hoy client can renew with you, and the commission is yours: ${money} for each renewal you collect, even if another business registered them. Registering earns you the registration; each renewal you collect earns you that renewal.`,
+  renewedElsewhere: (n: number) =>
     n === 1
-      ? `1 renewal of your clients was collected by another affiliate or Hoy — you still earned ${money}.`
-      : `${n} renewals of your clients were collected by another affiliate or Hoy — you still earned ${money}.`,
+      ? "1 renewal of your clients was made at another business or with Hoy. Next time it is due, it can be with you."
+      : `${n} renewals of your clients were made at another business or with Hoy. Next time they are due, they can be with you.`,
   allCad: "All amounts in Canadian dollars (CAD).",
-  renewalsCaption: "Renewals of your clients",
-  renewalsLatest: (n: number) => `Renewals of your clients, the ${n} most recent`,
-  noRenewals: "None of your clients has renewed yet.",
+  renewalsCaption: "Renewals you collected",
+  renewalsLatest: (n: number) => `Renewals you collected, the ${n} most recent`,
+  noRenewals: "You have not collected a renewal yet.",
   registrationsCaption: "Your registrations",
   registrationsLatest: (n: number) => `Your registrations, the ${n} most recent`,
   noRegistrations: "You have no registrations yet.",
-  collectionsCaption: "Renewals you collected",
-  collectionsLatest: (n: number) => `Renewals you collected, the ${n} most recent`,
-  collectionsNote: "The money you took in hand. The commission always belongs to whoever registered the client.",
   colDate: "Date",
   colClient: "Client",
   colPeriod: "Period",
   colAmount: "Commission",
   colCharged: "Amount",
-  colCollectedBy: "Collected by",
-  colCommissionFor: "Commission",
-  byYou: "you",
-  byOther: "another affiliate",
-  byHoy: "Hoy",
-  forYou: "for you",
-  forOther: (name: string) => `for ${name}`,
+  colRegisteredBy: "Registered by",
+  youShort: "you",
   periodRange: (from: string, to: string) => `${from} – ${to}`,
   payoutsCaption: "Payments you have received",
   noPayouts: "No payments to you have been recorded yet.",

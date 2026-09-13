@@ -1,8 +1,8 @@
 /**
  * Renew, step 3: the receipt, from app.renewal_receipt by request key.
  *
- * Only the affiliate who collected or the affiliate who earns gets a receipt;
- * anyone else gets 404. Printable like the code page: the print stylesheet
+ * Only the business that collected (and so earns, 0031) gets a receipt; anyone
+ * else, including the business that registered the client, gets 404. Printable like the code page: the print stylesheet
  * keeps the client's name, code and paid-until line, in the client's language.
  */
 import type { GetServerSideProps } from "next";
@@ -13,7 +13,7 @@ import { formatDate, formatDateTime, formatMoney } from "@leamington/shared/src/
 import { Page, setPageLang, viewerOf, type Viewer } from "../../../lib/layout.tsx";
 import { strings } from "../../../lib/strings.ts";
 import { isUuid } from "../../../lib/clients.ts";
-import { slipLang } from "../../../lib/renew.ts";
+import { commissionLabel, registeredByLabel, slipLang, type Registrant } from "../../../lib/renew.ts";
 
 export const config = { unstable_runtimeJS: false };
 
@@ -29,6 +29,7 @@ type Receipt = {
   reactivation: boolean;
   voided: boolean;
   earning_affiliate: { name: string; is_you: boolean };
+  registered_by: Registrant;
   collected_by_you: boolean;
   status_now: string;
 };
@@ -57,9 +58,8 @@ export default function RenewDone({ viewer, r }: Props) {
   const client = slipLang(r.country);
   const tc = strings(client);
   const printButton = `<button type="button" class="secondary" onclick="print()">${t.print}</button>`;
-  const commission = r.earning_affiliate.is_you
-    ? t.yourCommission(formatMoney(r.commission))
-    : Number(r.commission) === 0 ? t.noCommission : t.commissionFor(r.earning_affiliate.name, formatMoney(r.commission));
+  // The collecting business earns (0031); a receipt seen by anyone else carries no commission for them.
+  const commission = r.earning_affiliate.is_you ? commissionLabel(r.commission, t) : t.noCommission;
 
   return (
     <Page title={r.voided ? t.voidedTitle : t.renewedTitle} viewer={viewer} nav="renew">
@@ -72,7 +72,8 @@ export default function RenewDone({ viewer, r }: Props) {
           {r.reactivation && <p>{t.reactivated}</p>}
           <p className="note">
             {commission}<br />
-            {r.collected_by_you ? t.collectedByYou : t.collectedBySomeoneElse}<br />
+            {registeredByLabel(r.registered_by, t)}<br />
+            {r.collected_by_you && <>{t.collectedByYou}<br /></>}
             {t.amountPaid(formatMoney(r.amount))}<br />
             {t.paidAt(formatDateTime(r.paid_at, lang))}
           </p>

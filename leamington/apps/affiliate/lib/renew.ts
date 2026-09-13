@@ -1,14 +1,18 @@
 /**
- * Pure helpers for collecting a renewal in person (0029_affiliate_renewals.sql).
- * No database, no Next.
+ * Pure helpers for collecting a renewal in person (0029, 0031). No database, no Next.
+ *
+ * Any business can renew any Hoy client by the code on their receipt, and the
+ * business that collects a renewal earns its commission (0031). The client
+ * stays in the list of the business that registered them.
  *
  *   /renew                 type the code from the client's receipt
  *   POST /api/renew/lookup app.renewal_lookup -> /renew/<client id>
- *   /renew/<client id>     app.renewal_status: who, until when, who earns
+ *   /renew/<client id>     app.renewal_status: who, until when, your commission
  *   POST /api/renew/record app.affiliate_record_renewal -> /renew/done/<request key>
  *   /renew/done/<key>      app.renewal_receipt
  */
 import { isValidCode, normalizeCode } from "@leamington/shared/src/code.ts";
+import { formatMoney } from "@leamington/shared/src/format.ts";
 import { isUuid } from "./clients.ts";
 import type { Strings } from "./strings.ts";
 
@@ -62,15 +66,17 @@ export function periodPlacement(status: string): "lapsed" | "none" | "extends" {
   return status === "lapsed" ? "lapsed" : status === "none" ? "none" : "extends";
 }
 
-export type OriginalAffiliate = { name: string; is_you: boolean; is_house: boolean; active: boolean };
+/** The business that registered the client: information only, it does not decide who earns a renewal. */
+export type Registrant = { name: string; is_you: boolean; is_house: boolean };
 
-export function registeredByLabel(a: OriginalAffiliate, t: Strings): string {
+export function registeredByLabel(a: Registrant, t: Strings): string {
   return a.is_you ? t.registeredByYou : a.is_house ? t.registeredByHouse : t.registeredBy(a.name);
 }
 
-/** renewal_log: who took the $20 on a renewal of this affiliate's client. */
-export function collectedByLabel(row: { collected_by_owner: boolean; collected_by_other: boolean }, t: Strings): string {
-  return row.collected_by_owner ? t.byHoy : row.collected_by_other ? t.byOther : t.byYou;
+/** "Tu comisión: $8.00", or "Sin comisión" when this business earns nothing on it. */
+export function commissionLabel(commission: number | string | null | undefined, t: Strings): string {
+  const n = Number(commission ?? 0);
+  return n > 0 ? t.yourCommission(formatMoney(n)) : t.noCommission;
 }
 
 /** price × rate, to the cent, as app.insert_renewal rounds it. */

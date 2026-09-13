@@ -4,7 +4,8 @@
 //   list -> earnings -> logout, and affiliate B cannot see A's clients or code
 //   pages (row-level security, through the running app).
 //
-//   Renewals in person: B looks up A's client by code, renews early (A earns),
+//   Renewals in person: B looks up A's client by code, renews early (B earns it,
+//   the client stays A's),
 //   a double tap records once, a second renewal within 10 minutes needs the
 //   confirmation box, both earnings pages show it, and a lapsed client restarts
 //   today. The lapse is made with psql, so psql must reach the same local
@@ -253,11 +254,17 @@ r = await get("/clients/not-a-uuid/code", cookieA);
 check("a malformed client id is 404", r.status === 404, r.status);
 
 // ---------------------------------------------------------------------------
-// Renewals in person: B collects for A's client; A earns.
+// Renewals in person: B collects A's client's renewal and earns it (0031); the client stays A's.
 const renewalsOf = (id) => Number(sql(`select count(*) from subscriptions where client_id = '${id}' and kind = 'renewal'`));
 const loginLiteral = (login) => `'${login.replace(/'/g, "''")}'`;
-const earnerName = sql(`select coalesce(a.business_name, a.name) from affiliates a join portal_logins p on p.affiliate_id = a.id where p.login = ${loginLiteral(A.login)}`);
+const registrant = sql(`select coalesce(a.business_name, a.name) from affiliates a join portal_logins p on p.affiliate_id = a.id where p.login = ${loginLiteral(A.login)}`);
 const periodEnd = (id) => sql(`select max(period_end) from subscriptions where client_id = '${id}' and paid_at is not null and voided_at is null`);
+const money = (v) => `$${Number(v).toFixed(2)}`;
+const earnedBy = (key, login) => sql(`select (s.affiliate_id = p.affiliate_id and s.affiliate_payout = 8.00)::text
+  from subscriptions s, portal_logins p where s.request_key = '${key}' and p.login = ${loginLiteral(login)}`) === "true";
+const earningsOf = (login) => sql(`select e.renewals || ' ' || e.renewals_earned || ' ' || e.renewals_own_clients || ' ' || e.renewals_other_clients
+    || ' ' || e.renewals_other_clients_earned || ' ' || e.own_clients_renewed_elsewhere
+  from affiliate_earnings e join portal_logins p on p.affiliate_id = e.affiliate_id where p.login = ${loginLiteral(login)}`).split(" ");
 const plus6 = (iso) => sql(`select (date '${iso}' + interval '6 months')::date`);
 
 r = await get("/renew", cookieB);
@@ -277,8 +284,8 @@ let p = plain(r.text);
 check("renew 2: the status page shows name, country in words, formatted code, period end and an Active chip",
   r.status === 200 && p.includes(jm.name) && p.includes("Jamaica") && p.includes(jmCode) && p.includes(`Paid until: <b>${longDate(endBefore, "en")}</b>`)
   && p.includes(">Active<"), p.slice(0, 400));
-check(`renew 2: "Registered by: ${earnerName}" and the commission goes to ${earnerName}`,
-  p.includes(`Registered by: ${earnerName}`) && p.includes(`The commission on this renewal goes to ${earnerName}, who registered this client. You are collecting on their behalf.`));
+check(`renew 2: "Registered by: ${registrant}" as information, and "Your commission: $8.00" for B`,
+  p.includes(`Registered by: ${registrant}`) && p.includes("Your commission: $8.00") && !p.includes("on their behalf") && !p.includes("goes to"));
 check("renew 2: an early renewal extends from the current end",
   p.includes(`New period: ${longDate(endBefore, "en")} – ${longDate(endAfter, "en")}`) && p.includes("It adds on to the current period"));
 check("renew 2: one primary button 'I collected $20.00 — renew', no confirmation box yet",
@@ -296,16 +303,19 @@ r = await get(receiptUrl, cookieB);
 p = plain(r.text);
 check("renew 3: the receipt says Renewed, with the period extended from the old end",
   r.status === 200 && p.includes(">Renewed</h1>") && p.includes(`New period: ${longDate(endBefore, "en")} – ${longDate(endAfter, "en")}`), p.slice(0, 600));
-check(`renew 3: "Commission for ${earnerName}: $8.00", "Collected by: you", $20.00, a 24 h time, and the account is active`,
-  p.includes(`Commission for ${earnerName}: $8.00`) && p.includes("Collected by: you") && p.includes("Amount: $20.00")
+check(`renew 3: "Your commission: $8.00", "Registered by: ${registrant}", "Collected by: you", $20.00, a 24 h time, and the account is active`,
+  p.includes("Your commission: $8.00") && p.includes(`Registered by: ${registrant}`) && p.includes("Collected by: you") && p.includes("Amount: $20.00")
   && /Date: [^<]*\b([01]\d|2[0-3]):[0-5]\d\b/.test(p) && p.includes("The account is active now."));
 check("renew 3: the receipt is printable and offers Renew another", r.text.includes('onclick="print()"') && p.includes('href="/renew">Renew another<'));
 check("renew 3: the period in the database is the one the receipt shows",
   sql(`select period_start || ' ' || period_end from subscriptions where request_key = '${form1.request_key}'`) === `${endBefore} ${endAfter}`);
+check("renew 3: B, the collecting business, earns the $8.00", earnedBy(form1.request_key, B.login));
+check("renew 3: the client stays registered to A, and the renewal records A as registrant",
+  sql(`select (s.registered_by_affiliate_id = c.affiliate_id and c.affiliate_id = p.affiliate_id)::text
+         from subscriptions s join clients c on c.id = s.client_id, portal_logins p
+        where s.request_key = '${form1.request_key}' and p.login = ${loginLiteral(A.login)}`) === "true");
 r = await get(receiptUrl, cookieA);
-p = plain(r.text);
-check("renew 3: A (the earner) can open the receipt: her commission, collected by someone else",
-  r.status === 200 && p.includes("Tu comisión: $8.00") && p.includes("Cobrado por: otra persona"), r.status);
+check("renew 3: A, who neither collected nor earns it, gets 404 for the receipt", r.status === 404, r.status);
 
 r = await post("/api/renew/record", form1, cookieB);
 check("renew 4: the exact same form again lands on the same receipt", r.status === 303 && r.location === receiptUrl, r.location);
@@ -329,9 +339,12 @@ r = await get(`/renew/${bClient.id}`, cookieB);
 p = plain(r.text);
 check("renew 5b: B's own client says 'Registered by: you' and 'Your commission: $8.00'",
   r.status === 200 && p.includes("Registered by: you") && p.includes("Your commission: $8.00"));
-r = await post("/api/renew/record", { client_id: hidden(r.text, "client_id"), request_key: hidden(r.text, "request_key") }, cookieB);
+const ownForm = { client_id: hidden(r.text, "client_id"), request_key: hidden(r.text, "request_key") };
+r = await post("/api/renew/record", ownForm, cookieB);
 r = await get(r.location, cookieB);
-check("renew 5b: B's own receipt: 'Your commission: $8.00'", r.status === 200 && plain(r.text).includes("Your commission: $8.00") && plain(r.text).includes("Collected by: you"));
+check("renew 5b: B's own receipt: 'Your commission: $8.00', 'Registered by: you', 'Collected by: you'",
+  r.status === 200 && plain(r.text).includes("Your commission: $8.00") && plain(r.text).includes("Registered by: you") && plain(r.text).includes("Collected by: you"));
+check("renew 5b: a business renewing its own client earns it", earnedBy(ownForm.request_key, B.login));
 r = await get(`/renew/${bClient.id}`, cookieB);
 const confirmForm = { client_id: hidden(r.text, "client_id"), request_key: hidden(r.text, "request_key"), confirm_repeat: "1" };
 const bBefore = renewalsOf(bClient.id);
@@ -342,28 +355,34 @@ const bOwnReceipt = r.location;
 r = await get(bOwnReceipt, cookieA);
 check("renew 5b: A gets 404 for a receipt she neither collected nor earns", r.status === 404, r.status);
 
+const [aRen, aRenEarned, , , , aElsewhere] = earningsOf(A.login);
+if (A.token) check("renew 6: on this fresh run, A has 0 renewals and 1 renewal of her clients made elsewhere", aRen === "0" && aElsewhere === "1", `${aRen} ${aElsewhere}`);
 r = await get("/earnings", cookieA);
 p = plain(r.text);
-const aRenewal = rowWith(table(r.text, "renewals"), jm.name);
-check("renew 6: A's earnings list the renewal under renewals: $8.00, collected by another affiliate, with its period",
-  r.status === 200 && aRenewal.includes("$8.00") && aRenewal.includes("otro afiliado") && aRenewal.includes(`${longDate(endBefore, "es")} – ${longDate(endAfter, "es")}`), aRenewal);
-check("renew 6: the registration is listed separately", rowWith(table(r.text, "registrations"), jm.name).includes("$8.00") && !table(r.text, "registrations").includes("otro afiliado"));
-check("renew 6: the prominent line: renewals of her clients collected by someone else, and she still earned",
-  /\d+ renovaci(ón|ones) de tus clientes las? cobró otro afiliado u Hoy — igual ganaste \$\d+\.\d{2}\./.test(p));
-check("renew 6: the standing sentence and separate stat blocks for registrations and renewals",
-  p.includes("Cada cliente que registras te paga $8.00 cada vez que renueva") && /<b>\$[\d.]+<\/b>ganado en \d+ registros?<br\/?><small>desde tu primer registro/.test(p)
-  && /<b>\$[\d.]+<\/b>ganado en \d+ renovaci(ón|ones)<br\/?><small>desde tu primer registro/.test(p));
-const aCollected = Number(sql(`select count(*) from subscriptions s join portal_logins p on p.affiliate_id = s.collected_by_affiliate_id
-                                where p.login = ${loginLiteral(A.login)} and s.kind = 'renewal' and s.voided_at is null`));
-check("renew 6: A's 'Renovaciones que cobraste' appears only if she has collected one", p.includes("Renovaciones que cobraste") === aCollected > 0, aCollected);
+check("renew 6: A's renewals stat counts only what she collected, and B's renewal of her client is not in her list",
+  r.status === 200 && p.includes(`<b>${money(aRenEarned)}</b>ganado en ${aRen} ${aRen === "1" ? "renovación" : "renovaciones"}`)
+  && !table(r.text, "renewals").includes(jm.name), `${aRen} ${aRenEarned}`);
+check("renew 6: A sees, as information and not money, that her client renewed elsewhere",
+  p.includes(aElsewhere === "1" ? "<p>1 renovación de tus clientes se hizo en otro negocio o con Hoy." : `<p>${aElsewhere} renovaciones de tus clientes se hicieron en otro negocio o con Hoy.`));
+check("renew 6: nothing says a renewal elsewhere still pays her", !p.includes("igual ganaste") && !p.includes("cada vez que renueva"));
+check("renew 6: the incentive: any Hoy client can renew with you and the commission is yours",
+  p.includes("Cualquier cliente de Hoy puede renovar contigo, y la comisión es tuya: $8.00 por cada renovación que cobras"));
+check("renew 6: registrations and renewals are separate stat blocks, and the registration is listed",
+  /<b>\$[\d.]+<\/b>ganado en \d+ registros?<br\/?>/.test(p) && /<b>\$[\d.]+<\/b>ganado en \d+ renovaci(ón|ones)<br\/?>/.test(p)
+  && rowWith(table(r.text, "registrations"), jm.name).includes("$8.00"));
 
+const [, , bOwn, bOther, bOtherEarned] = earningsOf(B.login);
+if (B.token) check("renew 7: on this fresh run, B has 2 renewals of its own client and 1 of another business's", bOwn === "2" && bOther === "1" && bOtherEarned === "8.00", `${bOwn} ${bOther} ${bOtherEarned}`);
 r = await get("/earnings", cookieB);
-p = plain(r.text);
-const bCollected = rowWith(table(r.text, "collections"), jm.name);
-check(`renew 7: B's earnings show it under "Renewals you collected": $20.00 for ${earnerName}`,
-  r.status === 200 && p.includes(">Renewals you collected<") && bCollected.includes("$20.00") && bCollected.includes(`for ${earnerName}`), bCollected);
-check("renew 7: B's own client's renewals say 'for you'", rowWith(table(r.text, "collections"), bClient.name).includes("for you"));
-check("renew 7: A's client earns B nothing", !table(r.text, "renewals").includes(jm.name) && !table(r.text, "registrations").includes(jm.name));
+p = decode(plain(r.text));
+const bRow = rowWith(table(r.text, "renewals"), jm.name);
+check(`renew 7: B's "Renewals you collected" lists A's client: $8.00 commission, registered by ${registrant}, the period`,
+  r.status === 200 && p.includes(">Renewals you collected<") && bRow.includes("<td class=\"num\">$8.00</td>") && bRow.includes(`<td>${registrant}</td>`)
+  && bRow.includes(`${longDate(endBefore, "en")} – ${longDate(endAfter, "en")}`), bRow);
+check("renew 7: B's renewals stat splits own clients from other businesses' clients",
+  p.includes(`${bOwn} of your clients · ${bOther} of other businesses' clients (${money(bOtherEarned)})`));
+check("renew 7: B's own client's renewals say 'Registered by: you'", rowWith(table(r.text, "renewals"), bClient.name).includes("<td>you</td>"));
+check("renew 7: A's client is not among B's registrations", !table(r.text, "registrations").includes(jm.name));
 r = await get("/", cookieB);
 check("renew 7: A's client still does not appear in B's client list", r.status === 200 && !r.text.includes(jm.name) && !r.text.includes(jmCode));
 r = await get(jm.location, cookieB);
@@ -392,6 +411,11 @@ check("renew 8: the receipt starts today, says the account is active and was rea
 check("renew 8: the database agrees: starts today, a reactivation, the client active again",
   sql(`select s.period_start || ' ' || s.reactivation || ' ' || cs.status from subscriptions s join client_status cs on cs.client_id = s.client_id
         where s.request_key = '${lapsedForm.request_key}'`) === `${today} true active`);
+
+check("renew 8: A renewing her own client earns it", earnedBy(lapsedForm.request_key, A.login));
+r = await get("/earnings", cookieA);
+check("renew 8: and it is in her renewals: $8.00, registered by her", rowWith(table(r.text, "renewals"), jm.name).includes("$8.00")
+  && rowWith(table(r.text, "renewals"), jm.name).includes("<td>ti</td>"));
 
 let absent = "QQQQQQQQ";
 for (const c of ["QQQQQQQQ", "QQQQQQQR", "QQQQQQQT"]) if (sql(`select count(*) from clients where code = '${c}'`) === "0") { absent = c; break; }

@@ -2,9 +2,10 @@
  * Renew, step 2: what the affiliate needs to see before taking $20.
  *
  * From app.renewal_status: who the client is, where their period stands, who
- * registered them (and so earns the commission), and exactly which period this
- * payment buys. Any active affiliate can open any client found by code; the
- * client id alone is a uuid nobody types.
+ * registered them (information only), exactly which period this payment buys,
+ * and this business's commission on it: whoever collects a renewal earns it
+ * (0031). Any active affiliate can open any client found by code; the client id
+ * alone is a uuid nobody types.
  *
  * The form carries a request key generated here, once per render, so a double
  * tap records one renewal. A renewal in the last 10 minutes (or ?recent=1 from a
@@ -20,7 +21,7 @@ import { Page, setPageLang, viewerOf, type Viewer } from "../../lib/layout.tsx";
 import { strings } from "../../lib/strings.ts";
 import { countryName, isUuid } from "../../lib/clients.ts";
 import {
-  commissionOf, periodPlacement, refusedAffiliate, registeredByLabel, renewStatusLabel, type OriginalAffiliate,
+  commissionLabel, periodPlacement, refusedAffiliate, registeredByLabel, renewStatusLabel, type Registrant,
 } from "../../lib/renew.ts";
 
 export const config = { unstable_runtimeJS: false };
@@ -36,14 +37,15 @@ type Status = {
   period_start: string | null;
   period_end: string | null;
   days_left: number | null;
-  original_affiliate: OriginalAffiliate;
+  original_affiliate: Registrant & { active: boolean };
   amount: number | string;
+  your_commission: number | string;
   next_period_start: string;
   next_period_end: string;
   recent_renewal: { paid_at: string; period_end: string; collected_by_you: boolean } | null;
 };
 
-type Props = { viewer: Viewer; s: Status; myRate: string | null; requestKey: string; recent: boolean };
+type Props = { viewer: Viewer; s: Status; requestKey: string; recent: boolean };
 
 export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, params, query }) => {
   res.setHeader("Cache-Control", "private, no-store");
@@ -55,30 +57,22 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
   const clientId = params?.clientId;
   if (!isUuid(clientId)) return { notFound: true };
 
-  let row: { s: Status | null; my_rate: string | null } | undefined;
+  let s: Status | null | undefined;
   try {
-    row = await asPerson(person.authUserId, async (q) => (await q.query(
-      `select app.renewal_status($1::uuid) as s,
-              (select commission_rate::text from affiliates where id = app.current_affiliate_id()) as my_rate`,
-      [clientId])).rows[0]);
+    s = await asPerson(person.authUserId, async (q) =>
+      (await q.query("select app.renewal_status($1::uuid) as s", [clientId])).rows[0]?.s);
   } catch (err) {
     if (refusedAffiliate(err)) return { redirect: { destination: "/login", permanent: false } };
     throw err;
   }
-  if (!row?.s) return { notFound: true };
-  return {
-    props: {
-      viewer: viewerOf(person), s: row.s, myRate: row.my_rate ?? null,
-      requestKey: randomUUID(), recent: query.recent === "1",
-    },
-  };
+  if (!s) return { notFound: true };
+  return { props: { viewer: viewerOf(person), s, requestKey: randomUUID(), recent: query.recent === "1" } };
 };
 
-export default function RenewClient({ viewer, s, myRate, requestKey, recent }: Props) {
+export default function RenewClient({ viewer, s, requestKey, recent }: Props) {
   const t = strings(viewer.lang);
   const lang = viewer.lang;
   const day = (d: string) => formatDate(d, lang, true);
-  const orig = s.original_affiliate;
   const placement = periodPlacement(s.status);
   const warn = Boolean(s.recent_renewal) || recent;
 
@@ -95,7 +89,7 @@ export default function RenewClient({ viewer, s, myRate, requestKey, recent }: P
           <span className={`chip s-${s.status}`}>{renewStatusLabel(s.status, s.days_left, t)}</span>
           {s.period_end && <> · {t.periodEnds}: <b>{day(s.period_end)}</b></>}
         </p>
-        <p>{registeredByLabel(orig, t)}</p>
+        <p>{registeredByLabel(s.original_affiliate, t)}</p>
 
         {!s.client_active ? (
           <p className="err" role="alert">{t.clientInactive}</p>
@@ -104,11 +98,7 @@ export default function RenewClient({ viewer, s, myRate, requestKey, recent }: P
             <h2>{t.whatItBuys}</h2>
             <p className="big">{t.newPeriod(day(s.next_period_start), day(s.next_period_end))}</p>
             <p>{placement === "lapsed" ? t.startsTodayLapsed : placement === "none" ? t.startsTodayNone : t.extendsFromEnd}</p>
-            <p className="note">
-              {orig.is_you
-                ? (myRate != null ? t.yourCommission(formatMoney(commissionOf(s.amount, myRate))) : null)
-                : orig.is_house ? t.collectingForHouse : t.commissionGoesTo(orig.name)}
-            </p>
+            <p className="note big">{commissionLabel(s.your_commission, t)}</p>
 
             <form method="post" action="/api/renew/record">
               <input type="hidden" name="client_id" value={s.client_id} />
