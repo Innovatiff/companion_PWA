@@ -5,8 +5,10 @@
 // CODE signs in and visits every page. SETUP_CODE (optional) walks the setup
 // flow: search, choose a town, skip, answer, finish. It changes that client.
 import http from "node:http";
+import https from "node:https";
 
 const BASE = new URL(process.env.BASE ?? "http://localhost:3100");
+const client = BASE.protocol === "https:" ? https : http;
 const CODE = process.env.CODE;
 if (!CODE) { console.error("set CODE to a client code"); process.exit(2); }
 
@@ -26,7 +28,7 @@ function send(path, { method = "GET", cookie, form, json, origin } = {}) {
       headers["content-type"] = form ? "application/x-www-form-urlencoded" : "application/json";
       headers["content-length"] = Buffer.byteLength(body);
     }
-    const req = http.request({ host: BASE.hostname, port: BASE.port, path, method, headers }, (res) => {
+    const req = client.request({ host: BASE.hostname, port: BASE.port || undefined, path, method, headers }, (res) => {
       const chunks = [];
       res.on("data", (c) => chunks.push(c));
       res.on("end", () => resolve({

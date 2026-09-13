@@ -315,6 +315,28 @@ account is needed.
 - Spanish by default; each portal login has a language setting (es/en).
 - Hoy follows the client's `language`, which is English for Jamaica.
 
+### 3.11a Deployment (2026-09-13)
+
+- **Services:** `hoy`, `affiliate` and `admin` in the same Railway project as
+  ingest, each built from `apps/Dockerfile` (`APP` selects the app) and
+  deployed with `railway up` from a clean `git archive` of the committed tree.
+  The ingest service was not redeployed; its deployment id is unchanged.
+- **Database URL:** each web service uses `${{companion_PWA.DATABASE_URL}}`,
+  the ingest service's own variable, so there is one connection string to
+  rotate. Each web service has its own `SESSION_SECRET`.
+- **Push keys:** VAPID keys were generated locally and never printed. The public
+  key is on `hoy`; the private key and subject are on the ingest service with
+  deploys skipped. `VAPID_SUBJECT` is Hoy's https address rather than a
+  personal email, which push services would receive.
+- **Held back until ingest redeploys after the soak:** the running ingest is
+  the pre-build commit, so push delivery (`notify:send`, `notify:plan`) and the
+  new lottery parsers are not running in production yet. Their seeds
+  (`feed_expectations` rows for `notify:*`, `lottery_games`) are not applied:
+  applied now, the monitor would report never-run feeds and alert the owner
+  during the soak. **After the soak:** merge to `main`, then apply both seeds.
+- **Owner account:** login `owner`, created with a one-time setup link (72
+  hours). The owner sets the password; it is never seen by anyone else.
+
 ### 3.12 Lottery sources
 
 All 11 v1 games parse from the operator's own published results; none from a
