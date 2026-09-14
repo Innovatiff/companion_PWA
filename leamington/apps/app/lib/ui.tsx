@@ -159,6 +159,58 @@ export function localDayEnd(now: Date, timeZone: string): string {
   return new Date(`${next}T00:00:00${offset(guess)}`).toISOString();
 }
 
+// ---------------------------------------------------------------------------
+// Sky: sunrise, sunset and the moon's phase are astronomy, computed from a
+// place's coordinates and the date (the standard sunrise equation, accurate to
+// a minute or two). Not a forecast.
+// ---------------------------------------------------------------------------
+const RAD = Math.PI / 180;
+
+/** Sunrise and sunset on a local calendar date ("YYYY-MM-DD") at lat/lng; null in polar day or night. */
+export function sunTimes(lat: number, lng: number, date: string): { rise: Date; set: Date } | null {
+  const [y, m, d] = date.slice(0, 10).split("-").map(Number);
+  const julian = Date.UTC(y, m - 1, d, 12) / 86_400_000 + 2440587.5;
+  const n = Math.round(julian - 2451545.0 + 0.0008);
+  const jStar = n - lng / 360;
+  const M = (357.5291 + 0.98560028 * jStar) % 360;
+  const C = 1.9148 * Math.sin(M * RAD) + 0.02 * Math.sin(2 * M * RAD) + 0.0003 * Math.sin(3 * M * RAD);
+  const lambda = (M + C + 180 + 102.9372) % 360;
+  const transit = 2451545.0 + jStar + 0.0053 * Math.sin(M * RAD) - 0.0069 * Math.sin(2 * lambda * RAD);
+  const sinDec = Math.sin(lambda * RAD) * Math.sin(23.4397 * RAD);
+  const cosDec = Math.cos(Math.asin(sinDec));
+  const cosH = (Math.sin(-0.833 * RAD) - Math.sin(lat * RAD) * sinDec) / (Math.cos(lat * RAD) * cosDec);
+  if (!Number.isFinite(cosH) || cosH < -1 || cosH > 1) return null;
+  const h = Math.acos(cosH) / RAD / 360;
+  const toDate = (j: number) => new Date((j - 2440587.5) * 86_400_000);
+  return { rise: toDate(transit - h), set: toDate(transit + h) };
+}
+
+/** The moon's phase at a moment: an index 0-7 (new, waxing crescent, first quarter, ..., waning crescent). */
+export function moonPhase(at: Date): number {
+  const synodic = 29.530588853;
+  const age = ((at.getTime() / 86_400_000 + 2440587.5 - 2451550.1) % synodic + synodic) % synodic;
+  return Math.floor((age / synodic) * 8 + 0.5) % 8;
+}
+
+export const MOON: Record<Lang, string[]> = {
+  es: ["Luna nueva", "Luna creciente", "Cuarto creciente", "Gibosa creciente", "Luna llena", "Gibosa menguante", "Cuarto menguante", "Luna menguante"],
+  en: ["New moon", "Waxing crescent", "First quarter", "Waxing gibbous", "Full moon", "Waning gibbous", "Last quarter", "Waning crescent"],
+};
+
+/** A league logo from our own domain, only when we hold one. */
+export function LeagueLogo({ id, has, size }: { id?: number | null; has?: boolean | null; size: number }) {
+  return has && id != null
+    ? <img className="lgo" src={`/league-crest/${id}`} width={size} height={size} alt="" loading="lazy" decoding="async" />
+    : null;
+}
+
+/** "Regular Season - 8" as "Jornada 8" / "Matchday 8"; other rounds as the provider wrote them. */
+export function roundName(round: string | null | undefined, lang: Lang): string | null {
+  if (!round) return null;
+  const m = /^Regular Season\s*-\s*(\d+)$/i.exec(round.trim());
+  return m ? `${lang === "en" ? "Matchday" : "Jornada"} ${m[1]}` : round;
+}
+
 /** Whole days from one "YYYY-MM-DD" to another. */
 export function daysBetween(from: string, to: string): number {
   return Math.round((Date.parse(to.slice(0, 10)) - Date.parse(from.slice(0, 10))) / 86_400_000);

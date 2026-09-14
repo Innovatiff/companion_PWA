@@ -63,10 +63,11 @@ type More = {
   school_next: { event_name: string; start_date: string; end_date: string | null; verified_at: string } | null;
 };
 type Expired = { language: "es" | "en"; access: Access };
+type Here = { name: string; d: { temp: string; low: number | null; rain: boolean; rain_prob?: number | null } };
 type Props =
   | {
       renderId: string; renderedAt: string; language: "es" | "en"; lines: Line[]; prompt: string | null;
-      extras: Extras | null; more: More | null; watchPhotos: Photo[]; pushReady: boolean; expired?: undefined;
+      extras: Extras | null; more: More | null; watchPhotos: Photo[]; pushReady: boolean; here: Here | null; expired?: undefined;
     }
   | { expired: Expired };
 
@@ -85,10 +86,15 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }
     return { props: { expired: { language: a.language, access: a.access } } };
   }
 
-  const [home, extras, moreRow] = await Promise.all([
+  const [home, extras, moreRow, hereRow] = await Promise.all([
     db().query("select app.render_home($1) as m", [clientId]),
     db().query("select app.home_extras($1) as x", [clientId]),
     db().query("select app.home_more($1) as h", [clientId]),
+    // Leamington today (0036), under the same two-provider rules as Clima.
+    db().query(
+      `select lp.name, app.local_forecast_summary(lp.id, (now() at time zone lp.timezone)::date, now(), c.language::text) as d
+         from local_places lp, clients c
+        where lp.key = 'leamington' and lp.active and c.id = $1`, [clientId]),
   ]);
   const m = home.rows[0]?.m;
   if (!m) {
@@ -108,6 +114,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }
     props: {
       renderId: m.render_id, renderedAt: m.rendered_at, language: m.language, lines: m.lines, prompt: m.prompt ?? null,
       extras: extras.rows[0]?.x ?? null, more, watchPhotos,
+      here: hereRow.rows[0]?.d ? { name: hereRow.rows[0].name, d: hereRow.rows[0].d } : null,
       // The "turn on alerts" card only where this server can actually subscribe a phone.
       pushReady: Boolean(process.env.VAPID_PUBLIC_KEY?.trim()),
     },
@@ -187,7 +194,7 @@ const HOUR = 3_600_000;
 
 export default function Home(props: Props) {
   if (props.expired) return <ExpiryScreen {...props.expired} />;
-  const { renderId, renderedAt, language: lang, lines, prompt, extras: x, more: h, watchPhotos, pushReady } = props;
+  const { renderId, renderedAt, language: lang, lines, prompt, extras: x, more: h, watchPhotos, pushReady, here } = props;
   const [greeting, ...rest] = lines;
   const tz = x?.timezone ?? "America/Toronto";
   const now = Date.parse(renderedAt);
@@ -195,6 +202,8 @@ export default function Home(props: Props) {
   const live = (until: string | null | undefined): until is string => Boolean(until) && Date.parse(until!) > now;
   const today = localDate(renderedAt, tz);
   const dayEnd = localDayEnd(new Date(now), tz);
+  // Leamington today: until local midnight, and no longer than the forecast window (3 hours).
+  const hereUntil = new Date(Math.min(Date.parse(dayEnd), now + 3 * HOUR)).toISOString();
   const moment = (iso: string) =>
     localDate(iso, tz) === today ? formatTime12(iso, tz) : `${formatTime12(iso, tz)}, ${formatDate(localDate(iso, tz), lang)}`;
   const verified = (day: string) => `${t(lang, "Verificado", "Verified")}: ${formatDate(day, lang)}`;
@@ -296,6 +305,17 @@ export default function Home(props: Props) {
             ? <a key={line.key} href={tile.href} className={cls} data-line={line.key} data-until={line.valid_until}>{inner}</a>
             : <div key={line.key} className={cls} data-line={line.key} data-until={line.valid_until}>{inner}</div>;
         })}
+
+        {here && (
+          <a className={`tile ${here.d.rain ? "rainy" : "sunny"}`} href="/clima#aqui" data-line="local" data-until={hereUntil}>
+            <span className="ico"><Icon name={here.d.rain ? "rain" : "sun"} /></span>
+            <span>
+              <small>{`${here.name} ${t(lang, "hoy", "today")} ${FLAG.CA}`}</small>
+              <p className="line">{`${here.d.temp}${here.d.low != null ? ` · ${t(lang, "mín", "low")} ${here.d.low}°` : ""}${here.d.rain ? t(lang, ", lluvia", ", rain") : ""}`}</p>
+              {here.d.rain_prob != null && <small>{t(lang, `Probabilidad de lluvia: ${here.d.rain_prob}%`, `Chance of rain: ${here.d.rain_prob}%`)}</small>}
+            </span>
+          </a>
+        )}
 
         {showAlerts && al && (
           <section data-line="alerts" data-until={alertsUntil!}>

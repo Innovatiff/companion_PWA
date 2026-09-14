@@ -58,26 +58,27 @@ async function page(path, cookie, label = path) {
   return r.text;
 }
 
-// Images come only from our own domain: team crests (each at most 50 KB, lazy)
-// and town photos (each at most 120 KB, always with a credit on the same page).
+// Images come only from our own domain: team crests (each at most 50 KB, lazy),
+// league logos (at most 150 KB, lazy) and town photos (each at most 120 KB,
+// always with a credit on the same page).
 // All sized, all cached for 30 days with an ETag, nosniff, and a 304 on the ETag.
 const imagesChecked = new Set();
 async function images(html, label) {
   const imgs = [...html.matchAll(/<img\b[^>]*>/g)].map((m) => m[0]);
-  check(imgs.every((i) => /src="\/(crest|photo)\/\d+"/.test(i) && /width="\d+"/.test(i) && /height="\d+"/.test(i) && / alt=""/.test(i)),
+  check(imgs.every((i) => /src="\/(crest|photo|league-crest)\/\d+"/.test(i) && /width="\d+"/.test(i) && /height="\d+"/.test(i) && / alt=""/.test(i)),
     `${label}: every image is a crest or a town photo from our own domain, sized`, imgs.join(" "));
-  check(imgs.filter((i) => i.includes('src="/crest/')).every((i) => / loading="lazy"/.test(i)), `${label}: crests load lazily`);
+  check(imgs.filter((i) => /src="\/(crest|league-crest)\//.test(i)).every((i) => / loading="lazy"/.test(i)), `${label}: crests and league logos load lazily`);
   const photos = new Set(imgs.map((i) => /src="\/photo\/(\d+)"/.exec(i)?.[1]).filter(Boolean));
   const credited = new Set([...html.matchAll(/<small class="credit" data-photo="(\d+)">([\s\S]*?)<\/small>/g)]
     .filter((m) => /<a href="https?:\/\/[^"]+"[^>]*>[^<]+<\/a>/.test(m[2]) && /· /.test(m[2])).map((m) => m[1]));
   check([...photos].every((id) => credited.has(id)), `${label}: every town photo shown has its credit (author, linked, and license)`,
     `photos ${[...photos]} credited ${[...credited]}`);
   for (const i of imgs) {
-    const [, kind, id] = /src="\/(crest|photo)\/(\d+)"/.exec(i) ?? [];
+    const [, kind, id] = /src="\/(crest|photo|league-crest)\/(\d+)"/.exec(i) ?? [];
     if (!kind || imagesChecked.has(kind + id)) continue;
     imagesChecked.add(kind + id);
     const path = `/${kind}/${id}`;
-    const limit = kind === "crest" ? 50_000 : 120_000;
+    const limit = kind === "crest" ? 50_000 : kind === "photo" ? 120_000 : 150_000;
     const r = await send(path);
     check(r.status === 200 && /^image\//.test(r.headers["content-type"] ?? "") && r.bytes > 0 && r.bytes <= limit,
       `${path} serves an image of at most ${limit / 1000} KB`, `${r.status} ${r.headers["content-type"]} ${r.bytes}`);
@@ -162,6 +163,40 @@ async function more(cookie, label) {
   await images(clima, `${label} /clima`);
 }
 
+// Fútbol and Clima (0036): a score only on a finished match, form and goals only
+// with results, no empty next-match shell, the league named even without a logo,
+// Canada's places only with a forecast, sunrise and sunset only for places with
+// coordinates, and home's "Leamington hoy" exactly when Clima has it.
+async function richer(cookie, label) {
+  const [futbol, clima, home] = await Promise.all(["/futbol", "/clima", "/"].map(async (p) => (await send(p, { cookie })).text));
+  const rows = [...futbol.matchAll(/<li class="fx">([\s\S]*?)<\/li>/g)].map((m) => m[1]);
+  check(rows.every((r) => /class="sc"/.test(r) !== /class="chip"/.test(r)), `${label}: every match row shows a final score or a kickoff chip, never both`);
+  const next = /<section class="card match nx">([\s\S]*?)<\/section>/.exec(futbol)?.[1] ?? "";
+  check(!/class="score"|class="sc"|\d+–\d+/.test(next), `${label}: the next match shows no score`);
+  check(!/Próximo partido|Next match/.test(futbol) || Boolean(next), `${label}: no next-match heading without a match`);
+  const hasResults = /<section class="card match res [WDL]"/.test(futbol);
+  check(!futbol.includes('class="form"') || hasResults, `${label}: form chips show only with results`);
+  check(!futbol.includes('class="stats"') || hasResults, `${label}: goal stats show only with results`);
+  check([...futbol.matchAll(/<section class="card match res [WDL]"[^>]*>([\s\S]*?)<\/section>/g)].every((m) => /class="score">\d+–\d+</.test(m[1])),
+    `${label}: every result card has its final score`);
+  check(!/sin partidos|no hay partidos|no matches|sin datos|no data/i.test(visible(futbol)), `${label}: Fútbol never says there is nothing`);
+  check([...futbol.matchAll(/<section class="card grp">(<header>[\s\S]*?<\/header>)/g)].every((m) => /<h3>[^<]+<\/h3>/.test(m[1])),
+    `${label}: every league group names its league, with or without a logo`);
+  const aqui = /<section id="aqui">([\s\S]*?)<\/section>/.exec(clima)?.[1];
+  if (aqui) {
+    const cards = (aqui.match(/class="card here/g) ?? []).length;
+    check(cards > 0 && cards === (aqui.match(/class="tp"/g) ?? []).length, `${label}: every place in "Aquí en Canadá" has today's forecast`);
+  }
+  const places = clima.split(/(?=<section |<div class="card here)/);
+  check(places.filter((p) => p.includes('class="sky')).every((p) => /data-lat="-?\d/.test(p.slice(0, 240))),
+    `${label}: sunrise and sunset only for places with coordinates`);
+  check(places.filter((p) => /^<section id="t\d+"/.test(p)).every((p) => p.includes('class="card now')), `${label}: every town shown has today's card`);
+  const leamington = /<div class="card here[^"]*"[^>]*><b class="nm">Leamington<\/b>/.test(clima);
+  check(home.includes('data-line="local"') === leamington, `${label}: "Leamington hoy" is on home exactly when Clima has Leamington's forecast`);
+  await images(futbol, `${label} /futbol (richer)`);
+  await images(clima, `${label} /clima (richer)`);
+}
+
 // Signed out.
 const anon = await send("/clima");
 check(anon.status === 307 && anon.location.includes("/login"), "signed out, a section redirects to /login", `${anon.status} ${anon.location}`);
@@ -182,7 +217,8 @@ for (const path of ["/", "/futbol", "/mas", "/mas/tasa", "/mas/feriados", "/mas/
 await extras(cookie, CODE);
 await more(cookie, CODE);
 await teamVisuals(cookie, CODE);
-for (const path of ["/crest/999999999999", "/crest/abc", "/photo/999999999999", "/photo/abc"]) {
+await richer(cookie, CODE);
+for (const path of ["/crest/999999999999", "/crest/abc", "/photo/999999999999", "/photo/abc", "/league-crest/999999999999", "/league-crest/abc"]) {
   const r = await send(path);
   check(r.status === 404 && r.headers["x-content-type-options"] === "nosniff", `${path} is 404`, String(r.status));
 }
@@ -233,6 +269,7 @@ if (process.env.SETUP_CODE) {
   check(mas.text.indexOf("/mas/escuela") < mas.text.indexOf("/mas/tasa"), "a parent sees the school calendar first in Más");
   await extras(c, process.env.SETUP_CODE);
   await more(c, process.env.SETUP_CODE);
+  await richer(c, process.env.SETUP_CODE);
   await teamVisuals(c, process.env.SETUP_CODE);
 }
 
@@ -244,6 +281,7 @@ if (process.env.CREST_CODE) {
   check(await teamVisuals(k.cookie, process.env.CREST_CODE) > 0, `${process.env.CREST_CODE}: a team with a stored crest shows it as an image`);
   await extras(k.cookie, process.env.CREST_CODE);
   await more(k.cookie, process.env.CREST_CODE);
+  await richer(k.cookie, process.env.CREST_CODE);
 }
 
 // A client whose paid period has ended: the expiry screen, and only the

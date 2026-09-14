@@ -21,6 +21,8 @@ export default {
       { source: "/health", destination: "/api/health" },
       // Team crests, from our own database (0033).
       { source: "/crest/:id", destination: "/api/crest/:id" },
+      // League logos, from our own database (0036).
+      { source: "/league-crest/:id", destination: "/api/league-crest/:id" },
       // Hometown photos, from our own database (0034).
       { source: "/photo/:id", destination: "/api/photo/:id" },
     ];

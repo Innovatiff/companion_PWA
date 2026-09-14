@@ -495,3 +495,22 @@ show the real place or team.
   morning. Both are monitored with a one-day interval.
 - **Budgets:** the pictures are cached for 30 days, so they cost data once
   per phone.
+- **League logos** (0036, 0037): one per league, from the same media host, at
+  most 150 KB (the provider's are 110–135 KB). There are only four, shown on
+  Fútbol only, and each is cached for 30 days. The provider's second stock
+  picture, a grey camera reading "image not available" (90,381 bytes), is
+  refused by fingerprint, as is "logo soon".
+- **Local places** (0036): Leamington and Windsor are forecast like client
+  towns, so Clima can show "Aquí en Canadá" beside home.
+
+### 3.21 Football provider account suspended — OWNER ACTION (2026-09-13)
+
+API-Football's `/status` answers "Your account is suspended, check on
+https://dashboard.api-football.com." The fixtures feed fails on every run.
+
+- **What clients see:** results already stored stay. Upcoming schedules stop
+  showing 3 hours after the last good fetch, because a stale kickoff time is
+  worse than none. Fútbol then shows the team's recent form and results,
+  and when fixtures were last confirmed. It never says "no matches".
+- **Fix:** reactivate the account in the API-Football dashboard, or choose
+  another provider (a paid decision). Nothing in the apps changes either way.
