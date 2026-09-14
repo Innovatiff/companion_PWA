@@ -29,7 +29,7 @@ beforeEach(async () => {
   process.env.OPENWEATHER_KEY = "test-openweather";
   process.env.WEATHERAPI_KEY = "test-weatherapi";
   if (!unavailable) {
-    await db.query("truncate source_runs, forecasts, client_watch_locations restart identity cascade");
+    await db.query("truncate source_runs, forecasts, local_forecasts, client_watch_locations restart identity cascade");
     await db.query("delete from clients");
   }
 });
@@ -88,7 +88,10 @@ test("the same feed is ok once an active client has a municipality", { skip }, a
   await addClientInJamaica();
   const { run, health } = await runForecast();
   assert.equal(run.status, "ok");
-  assert.equal(run.records_written, 9, "three days from each of three providers");
+  // The client's town, plus Leamington and Windsor (0036): three days from each of three providers.
+  assert.equal(run.records_written, 27, "3 places x 3 providers x 3 days");
+  assert.equal((await db.query("select count(*)::int as n from forecasts")).rows[0].n, 9, "the client's town");
+  assert.equal((await db.query("select count(*)::int as n from local_forecasts")).rows[0].n, 18, "Leamington and Windsor");
   assert.equal(run.notes, null);
   assert.equal(health, "ok");
 });

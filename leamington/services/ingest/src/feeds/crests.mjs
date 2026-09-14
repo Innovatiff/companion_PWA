@@ -64,6 +64,40 @@ export async function ingestCrests(ctx) {
     }
   }
 
+  // League logos, under the same rules.
+  const { rows: leagues } = await query(
+    `select l.id, l.name, l.crest_source_url
+       from leagues l left join league_crests c on c.league_id = l.id
+      where l.crest_source_url is not null
+        and (c.league_id is null or c.fetched_at < now() - interval '30 days' or c.source_url <> l.crest_source_url)
+      order by l.id`);
+  for (const l of leagues) {
+    try {
+      const url = new URL(l.crest_source_url);
+      if (url.protocol !== "https:" || !ALLOWED_HOSTS.has(url.hostname)) throw new Error(`host not allowed: ${url.hostname}`);
+      const ac = new AbortController();
+      const timer = setTimeout(() => ac.abort(), 15_000);
+      const res = await fetch(url, { signal: ac.signal, headers: { "user-agent": "leamington-ingest/0.1" } });
+      clearTimeout(timer);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const type = (res.headers.get("content-type") ?? "").split(";")[0].trim();
+      const bytes = Buffer.from(await res.arrayBuffer());
+      const sha256 = createHash("sha256").update(bytes).digest("hex");
+      const why = crestRejection({ type, bytes, sha256 });
+      if (why) throw new Error(why);
+      await query(
+        `insert into league_crests (league_id, content_type, bytes, sha256, source_url, fetched_at)
+         values ($1, $2, $3, $4, $5, now())
+         on conflict (league_id) do update
+           set content_type = excluded.content_type, bytes = excluded.bytes, sha256 = excluded.sha256,
+               source_url = excluded.source_url, fetched_at = now()`,
+        [l.id, type, bytes, sha256, l.crest_source_url]);
+      stored++;
+    } catch (err) {
+      skipped.push(`league ${l.name}: ${err?.name === "AbortError" ? "timeout" : err.message}`);
+    }
+  }
+
   // An image identical for several teams is stock, not a crest; oversized ones break the budget.
   const removed = await query(
     `delete from team_crests

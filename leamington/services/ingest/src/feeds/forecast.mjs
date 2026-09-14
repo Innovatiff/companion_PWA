@@ -49,16 +49,24 @@ const PROVIDERS = [
   },
 ];
 
-/** Only municipalities someone actually reads: homes plus watched towns. */
+/**
+ * Only places someone actually reads: clients' homes and watched towns, plus
+ * the local places where clients work (Leamington, Windsor; 0036).
+ */
 async function targetMunicipalities() {
   const { rows } = await query(
-    `select distinct m.id, m.lat, m.lng, m.name, m.country
+    `select distinct m.id, m.lat, m.lng, m.name, m.country::text, 'municipality' as kind
        from municipalities m
       where m.id in (select municipality_id from clients where active and municipality_id is not null)
          or m.id in (select municipality_id from client_watch_locations)
-      order by m.id`);
+     union all
+     select lp.id, lp.lat, lp.lng, lp.name, 'CA', 'local' from local_places lp
+      where lp.active and exists (select 1 from clients where active)
+      order by kind, id`);
   return rows;
 }
+
+const FORECAST_TABLE = { municipality: ["forecasts", "municipality_id"], local: ["local_forecasts", "place_id"] };
 
 export async function ingestForecast(ctx) {
   const { log } = ctx;
@@ -88,13 +96,14 @@ export async function ingestForecast(ctx) {
         const key = p.needsKey ? process.env[p.needsKey] : null;
         const { body } = await fetchText(p.url(m, key), { timeoutMs: 20_000 });
         const days = p.parse(JSON.parse(body));
+        const [table, keyColumn] = FORECAST_TABLE[m.kind] ?? FORECAST_TABLE.municipality;
         for (const d of days) {
           if (!d.date) continue;
           await query(
-            `insert into forecasts (municipality_id, provider, target_date,
+            `insert into ${table} (${keyColumn}, provider, target_date,
                                     temp_min_c, temp_max_c, precip_prob, precip_mm)
              values ($1,$2::forecast_provider,$3,$4,$5,$6,$7)
-             on conflict (municipality_id, provider, target_date) do update
+             on conflict (${keyColumn}, provider, target_date) do update
                set temp_min_c = excluded.temp_min_c, temp_max_c = excluded.temp_max_c,
                    precip_prob = excluded.precip_prob, precip_mm = excluded.precip_mm,
                    fetched_at = now()`,

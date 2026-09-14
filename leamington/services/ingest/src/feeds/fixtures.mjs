@@ -91,15 +91,24 @@ export async function ingestFixtures(ctx, { offsetDays = 0, now = new Date() } =
         const away = await upsertTeam(client, leagueId, f.teams.away);
         await client.query(
           `insert into fixtures (league_id, home_team_id, away_team_id, kickoff_utc, status,
-                                 home_score, away_score, source, source_fixture_id, season, round, fetched_at)
-           values ($1, $2, $3, $4, $5::fixture_status, $6, $7, 'api-football', $8, $9, $10, now())
+                                 home_score, away_score, source, source_fixture_id, season, round,
+                                 venue_name, venue_city, fetched_at)
+           values ($1, $2, $3, $4, $5::fixture_status, $6, $7, 'api-football', $8, $9, $10, $11, $12, now())
            on conflict (source, source_fixture_id) do update
              set home_team_id = excluded.home_team_id, away_team_id = excluded.away_team_id,
                  kickoff_utc = excluded.kickoff_utc, status = excluded.status,
                  home_score = excluded.home_score, away_score = excluded.away_score,
-                 season = excluded.season, round = excluded.round, fetched_at = now()`,
+                 season = excluded.season, round = excluded.round,
+                 venue_name = coalesce(excluded.venue_name, fixtures.venue_name),
+                 venue_city = coalesce(excluded.venue_city, fixtures.venue_city), fetched_at = now()`,
           [leagueId, home, away, f.fixture.date, status, f.goals?.home ?? null, f.goals?.away ?? null,
-           String(f.fixture.id), season, f.league?.round ?? null]);
+           String(f.fixture.id), season, f.league?.round ?? null,
+           f.fixture?.venue?.name ?? null, f.fixture?.venue?.city ?? null]);
+        // The league's logo address, for league_crests (fetched by the crests feed).
+        if (f.league?.logo) {
+          await client.query(`update leagues set crest_source_url = $2 where id = $1 and crest_source_url is distinct from $2`,
+            [leagueId, f.league.logo]);
+        }
         // The provider's current season, as seen on a live date query.
         if (season) {
           await client.query(
