@@ -60,15 +60,24 @@ export function NowChips({ n, lang }: { n: Now; lang: Lang }) {
  * Clima's "Ahora" block: the sky's picture, the temperature big, its word, the
  * time it was observed in the place's own timezone, and the chips.
  */
+// The picture, the time it was observed, the temperature and its word. Inside a
+// Canada card they sit in their own grid (the time on top, the picture beside the
+// number), so the card can put today's forecast next to them.
+const ahoraMain = (n: Now, lang: Lang, tz: string, size: number) => (
+  <>
+    <Art name={nowArt(n)} size={size} />
+    <span>
+      <small>{ahoraWord(lang)}{` · ${t(lang, "a las", "at")} ${formatTime12(n.observed_at, tz)}`}</small>
+      <Num value={n.temp} className="tn" />
+      {n.label && <b className="lab">{n.label}</b>}
+    </span>
+  </>
+);
+
 export function AhoraCard({ n, lang, tz, inside = false }: { n: Now; lang: Lang; tz: string; inside?: boolean }) {
   return (
     <div className={inside ? "ahora in" : "ahora card"} {...nowData("now", n)}>
-      <Art name={nowArt(n)} size={inside ? 60 : 96} />
-      <span>
-        <small>{ahoraWord(lang)}{` · ${t(lang, "a las", "at")} ${formatTime12(n.observed_at, tz)}`}</small>
-        <Num value={n.temp} className="tn" />
-        {n.label && <b className="lab">{n.label}</b>}
-      </span>
+      {inside ? <div className="an">{ahoraMain(n, lang, tz, 48)}</div> : ahoraMain(n, lang, tz, 96)}
       <NowChips n={n} lang={lang} />
     </div>
   );

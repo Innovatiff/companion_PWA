@@ -97,27 +97,34 @@ export default function Mas({ client, x, e, ok }: Props) {
             <small>{t(lang, "Déjala vacía para borrarla.", "Leave it empty to clear it.")}</small>
           </section>
         )}
-        {/* Modo noche (0046): three previews; the current one is marked. */}
+        {/* Modo noche (0046) and Letra grande: each choice a full-width row (a preview, the name and a short hint, a check on the current one). */}
         <section id="tema" className="card letra">
           <h2>{t(lang, "Tema", "Theme")}</h2>
-          <form method="post" action="/api/theme" className="aa th">
+          <form method="post" action="/api/theme" className="optlist">
             {(["auto", "light", "dark"] as const).map((v) => (
               <button key={v} type="submit" name="theme" value={v} className={client.theme === v ? "on" : "secondary"} aria-pressed={client.theme === v}>
                 <span className={`sw ${v}`} aria-hidden="true" />
-                {v === "auto" ? t(lang, "Automático", "Automatic") : v === "light" ? t(lang, "Claro", "Light") : t(lang, "Oscuro", "Dark")}
+                <span className="ot">
+                  <b>{v === "auto" ? t(lang, "Automático", "Automatic") : v === "light" ? t(lang, "Claro", "Light") : t(lang, "Oscuro", "Dark")}</b>
+                  <small>{v === "auto" ? t(lang, "Como tu teléfono", "Like your phone") : v === "light" ? t(lang, "Fondo claro", "Light background") : t(lang, "Fondo oscuro, para la noche", "Dark background, for night")}</small>
+                </span>
+                <span className="ck" aria-hidden="true">{client.theme === v ? "✓" : ""}</span>
               </button>
             ))}
           </form>
         </section>
-        {/* Letra grande: two big previews; the current one is marked. */}
         <section id="letra" className="card letra">
           <h2>{t(lang, "Tamaño de letra", "Text size")}</h2>
-          <form method="post" action="/api/text-size" className="aa">
+          <form method="post" action="/api/text-size" className="optlist">
             {(["normal", "large"] as const).map((size) => (
               <button key={size} type="submit" name="size" value={size} className={client.textSize === size ? "on" : "secondary"}
                       aria-pressed={client.textSize === size}>
-                <span className={size === "large" ? "a2" : "a1"} aria-hidden="true">Aa</span>
-                {size === "large" ? t(lang, "Grande", "Large") : t(lang, "Normal", "Normal")}
+                <span className={size === "large" ? "az l" : "az"} aria-hidden="true">Aa</span>
+                <span className="ot">
+                  <b>{size === "large" ? t(lang, "Grande", "Large") : t(lang, "Normal", "Normal")}</b>
+                  <small>{size === "large" ? t(lang, "Letra más grande en toda la app", "Bigger text everywhere in the app") : t(lang, "El tamaño de siempre", "The usual size")}</small>
+                </span>
+                <span className="ck" aria-hidden="true">{client.textSize === size ? "✓" : ""}</span>
               </button>
             ))}
           </form>

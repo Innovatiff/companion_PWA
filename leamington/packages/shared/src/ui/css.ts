@@ -16,20 +16,20 @@ export const TOKENS =
 
 export const BASE = TOKENS +
   "*{box-sizing:border-box}html{-webkit-text-size-adjust:100%}" +
-  "body{margin:0;font:17px/1.5 system-ui,-apple-system,Roboto,\"Segoe UI\",sans-serif;color:var(--ink);background:var(--paper)}" +
+  "body{margin:0;overflow-wrap:break-word;font:16px/1.5 system-ui,-apple-system,Roboto,\"Segoe UI\",sans-serif;color:var(--ink);background:var(--paper)}" +
   "a{color:var(--brand-ink)}:focus-visible{outline:3px solid var(--focus);outline-offset:2px}" +
-  "h1{font-size:1.65rem;line-height:1.2;margin:.4rem 0 1rem;font-weight:800;letter-spacing:-.02em}" +
-  "h2{font-size:1.12rem;line-height:1.3;margin:1.5rem .2rem .65rem;font-weight:750;letter-spacing:-.01em}" +
-  "p{margin:.5rem 0}small,.muted{color:var(--muted);font-size:.85rem}" +
+  "h1,h2,h3,p.line,.lab{hyphens:auto}h1{font-size:1.45rem;line-height:1.2;margin:.4rem 0 .9rem;font-weight:800;letter-spacing:-.02em}" +
+  "h2{font-size:1.05rem;line-height:1.3;margin:1.35rem .2rem .55rem;font-weight:750;letter-spacing:-.01em}" +
+  "p{margin:.5rem 0}small,.muted{color:var(--muted);font-size:.82rem}" +
   ".sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}" +
   "ul.rows{list-style:none;margin:0 0 1rem;padding:.2rem 1.1rem;background:var(--card);border-radius:var(--r);box-shadow:var(--shadow)}" +
   "ul.rows>li{padding:.85rem 0;border-bottom:1px solid var(--line)}ul.rows>li:last-child{border-bottom:0}" +
   "label{display:block;font-weight:650;margin:1rem 0 .4rem}" +
-  "input,select{font:inherit;width:100%;min-height:52px;padding:.6rem 1rem;border:1.5px solid #d3d7ee;border-radius:16px;background:var(--card);color:var(--ink)}" +
+  "input,select{font:inherit;width:100%;min-height:50px;padding:.6rem 1rem;border:1.5px solid #d3d7ee;border-radius:16px;background:var(--card);color:var(--ink)}" +
   "input:focus,select:focus{outline:3px solid rgba(79,91,213,.22);border-color:var(--brand)}" +
   "input[type=checkbox],input[type=radio]{width:1.35rem;min-height:1.35rem;vertical-align:middle;margin:0 .7rem 0 0;accent-color:var(--brand)}" +
-  ".choice{display:flex;align-items:center;min-height:56px;font-weight:550;margin:.5rem 0;padding:.5rem 1rem;background:var(--card);border-radius:18px;box-shadow:var(--shadow)}" +
-  "button,.button{display:block;width:100%;min-height:54px;font:inherit;font-weight:700;padding:.85rem 1rem;border:0;border-radius:999px;" +
+  ".choice{display:flex;align-items:center;min-height:52px;font-weight:550;margin:.5rem 0;padding:.5rem 1rem;background:var(--card);border-radius:18px;box-shadow:var(--shadow)}" +
+  "button,.button{display:block;width:100%;min-height:50px;font:inherit;font-weight:700;padding:.7rem 1rem;border:0;border-radius:999px;" +
   "background:linear-gradient(135deg,var(--brand),var(--brand-2));color:#fff;text-align:center;text-decoration:none;cursor:pointer;margin:.75rem 0;box-shadow:0 10px 22px rgba(79,91,213,.3)}" +
   ".button.secondary,button.secondary{background:var(--card);color:var(--brand-ink);box-shadow:var(--shadow)}" +
   ".err{color:var(--danger);background:var(--danger-soft);padding:.75rem 1rem;border-radius:16px}.ok{color:var(--ok)}" +
@@ -54,7 +54,7 @@ export const APP_CSS = BASE +
   ".ring>span{position:relative;text-align:center;line-height:1.05}.ring b{display:block;font-size:1.05rem;font-weight:800}.ring small{display:block;font-size:.68rem;font-weight:650}" +
   "@media (prefers-reduced-motion:reduce){*,::before,::after{animation:none!important;transition:none!important}}" +
   // Home's top row: initials, the member pill, the warnings bell
-  ".top{display:flex;align-items:center;justify-content:space-between;gap:.75rem;margin:0 0 1rem}" +
+  ".top{display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin:0 0 1rem}" +
   ".av{display:grid;place-items:center;flex:none;width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#ffd9b0,#ffb9cc);color:#5a2140;font-weight:800;box-shadow:0 0 0 3px #fff,var(--shadow)}" +
   ".member{display:inline-flex;align-items:center;gap:.45rem;min-height:48px;padding:0 1.35rem;border-radius:999px;background:linear-gradient(135deg,var(--brand),var(--brand-2));color:#fff;font-weight:750;text-decoration:none;box-shadow:0 10px 22px rgba(79,91,213,.35)}.member b{color:#ffd66b}" +
   ".bellbtn,.back{position:relative;display:grid;place-items:center;flex:none;width:48px;height:48px;border-radius:50%;background:var(--card);color:var(--ink);box-shadow:var(--shadow)}" +
@@ -64,7 +64,7 @@ export const APP_CSS = BASE +
   ".hello{position:relative;isolation:isolate;overflow:hidden;display:flex;align-items:center;gap:.75rem;color:#fff;border-radius:24px;padding:1.25rem;margin:0 0 1rem;" +
   "background:linear-gradient(125deg,#3b44b5,#5f6be3);box-shadow:0 16px 34px rgba(63,75,196,.28)}" +
   ".hello::before{content:\"\";position:absolute;inset:0;z-index:-1;background:linear-gradient(115deg,transparent 52%,rgba(255,255,255,.09) 52% 66%,transparent 66%)}" +
-  ".hello>div{flex:1;min-width:0}.hello h1{margin:.5rem 0 0;color:#fff;font-size:1.8rem;line-height:1.15}.hello p{margin:.35rem 0 0;color:rgba(255,255,255,.92);font-size:.95rem}.hello small{color:rgba(255,255,255,.88)}" +
+  ".hello>div{flex:1;min-width:0}.hello h1{margin:.5rem 0 0;color:#fff;font-size:1.55rem;line-height:1.15}.hello p{margin:.35rem 0 0;color:rgba(255,255,255,.92);font-size:.92rem}.hello small{color:rgba(255,255,255,.88)}" +
   ".hello .ico{width:3.6rem;height:3.6rem;border-radius:50%;background:rgba(255,255,255,.16);color:#fff}.art{flex:none;display:block}" +
   ".lbl{display:inline-flex;align-items:center;gap:.35rem;padding:.25rem .75rem;border-radius:999px;background:rgba(10,14,60,.2);font-size:.8rem;font-weight:700}" +
   // Home's live sky: dawn, day, dusk, night in Leamington right now
@@ -81,84 +81,84 @@ export const APP_CSS = BASE +
   ".ht{display:flex;align-items:center;gap:.75rem;margin:1rem 0 0;padding:.5rem;border-radius:18px;background:rgba(10,14,60,.24)}" +
   ".ht>a{flex:none;display:block}.ht img{display:block;width:5.5rem;height:4.2rem;border-radius:13px;object-fit:cover}.ht>span{min-width:0}" +
   ".place{display:inline-flex;align-items:center;gap:.3rem;font-size:.95rem;font-weight:750}" +
-  ".credit{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin:.35rem .2rem 0;font-size:.7rem;line-height:1.35;color:var(--muted)}.credit a{color:inherit}" +
-  ".hello .credit{margin:.15rem 0 0;color:rgba(255,255,255,.9)}.ht .credit{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}" +
+  ".credit{display:block;margin:.35rem .2rem 0;font-size:.7rem;line-height:1.35;color:var(--muted);overflow-wrap:anywhere}.credit a{color:inherit}" +
+  ".hello .credit{margin:.4rem .1rem 0;color:rgba(255,255,255,.9)}" +
   // Section headers with "Ver todo", section page headers, the once-a-day prompt
   ".sh{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin:1.25rem .2rem .35rem}.sh h2{margin:0}" +
   ".sh>a{display:inline-flex;align-items:center;min-height:48px;padding:0 .2rem;font-weight:700;font-size:.92rem;text-decoration:none;color:var(--brand-ink)}" +
-  ".ph{display:grid;grid-template-columns:48px minmax(0,1fr) 52px;align-items:center;gap:.6rem;margin:0 0 1rem}.ph h1{margin:0;text-align:center;font-size:1.35rem}" +
-  ".ph.tab{grid-template-columns:minmax(0,1fr) 52px}.ph.tab h1{text-align:left;font-size:1.8rem}" +
+  ".ph{display:grid;grid-template-columns:48px minmax(0,1fr) 52px;align-items:center;gap:.6rem;margin:0 0 1rem}.ph h1{margin:0;text-align:center;font-size:1.2rem}" +
+  ".ph.tab{grid-template-columns:minmax(0,1fr) 52px}.ph.tab h1{text-align:left;font-size:1.55rem}" +
   ".prompt{display:flex;align-items:center;min-height:52px;padding:.8rem 1.1rem;background:var(--brand-soft);color:var(--brand-ink);border-radius:18px;text-decoration:none;font-weight:700;margin:0 0 .75rem}" +
   "#stamp{color:var(--muted);font-size:.9rem;margin-top:1rem;text-align:center}.step{color:var(--muted);font-size:.85rem;margin:0;font-weight:650}" +
   // Cards and rows: a picture on a rounded tile, a short label, the line or a big number
   ".card,.tile{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);margin:0 0 .75rem}.card{padding:1rem 1.1rem}" +
-  ".tile{display:flex;gap:.9rem;align-items:center;min-height:4.75rem;padding:.8rem 1rem;text-decoration:none;color:var(--ink)}.tile>span:not([class]){flex:1;min-width:0}" +
+  ".tile{display:flex;gap:.85rem;align-items:center;min-height:4.25rem;padding:.8rem 1rem;text-decoration:none;color:var(--ink)}.tile>span:not([class]){flex:1;min-width:0}" +
   ".pic,.ico,.mi{display:grid;place-items:center;flex:none;border-radius:16px;background:var(--tile);color:var(--brand-ink)}" +
-  ".pic{width:3.5rem;height:3.5rem}.pic .art{width:2.6rem;height:2.6rem}.ico{width:3rem;height:3rem}" +
+  ".pic{width:3.1rem;height:3.1rem}.pic .art{width:2.3rem;height:2.3rem}.ico{width:3rem;height:3rem}" +
   ".ico svg,.i svg,.dial svg,.place svg{width:25px;height:25px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}" +
   ".i{display:inline-grid;place-items:center;vertical-align:-.2em;margin-right:.35rem;color:var(--brand-ink)}.i svg,.dial svg,.place svg{width:1.15em;height:1.15em;stroke-width:2.2}" +
   ".tile p{margin:.1rem 0}.tile small{display:block}.tile small:first-child{font-weight:650}" +
-  "p.line{font-size:1.15rem;font-weight:700;margin:.05rem 0 0;line-height:1.3}" +
-  ".nb{display:block;font-size:2.1rem;font-weight:800;line-height:1.1;letter-spacing:-.02em;font-variant-numeric:tabular-nums}" +
-  ".nb em{font-style:normal;font-size:.95rem;font-weight:700;color:var(--muted);letter-spacing:0;margin-left:.3rem}" +
+  "p.line{font-size:1.02rem;font-weight:700;margin:.05rem 0 0;line-height:1.3}" +
+  ".nb{display:block;font-size:1.75rem;font-weight:800;line-height:1.1;letter-spacing:-.02em;font-variant-numeric:tabular-nums}" +
+  ".nb em{display:inline-block;font-style:normal;font-size:.95rem;font-weight:700;color:var(--muted);letter-spacing:0;margin-left:.3rem}" +
   // "Ahora" beside its forecast fallback: the fallback shows only once "Ahora" is gone
-  "span.ahora,.fc{display:contents}.ahora+.fc{display:none}.tx{flex:1;min-width:0}.aw{font-weight:800;color:var(--brand-ink)}.tb .aw{display:inline}.hello .aw{color:#fff}" +
+  ".tile.x{flex-wrap:wrap}.tile.x .tx{flex:1 1 7rem}span.ahora,.fc{display:contents}.ahora+.fc{display:none}.tx{flex:1;min-width:0}.aw{font-weight:800;color:var(--brand-ink)}.tb .aw{display:inline}.hello .aw{color:#fff}" +
   // Round 2 on home: the season ring card, the badges row, Allá y aquí
   ".season{position:relative;isolation:isolate;overflow:hidden;display:flex;align-items:center;gap:.9rem;color:#fff;border-radius:24px;padding:1.15rem 1.2rem;margin:0 0 .75rem;" +
   "background:radial-gradient(circle at 90% 10%,rgba(255,255,255,.18),transparent 40%),linear-gradient(125deg,#3b44b5,#6a4fd8);box-shadow:0 16px 34px rgba(63,75,196,.26)}" +
-  ".season>div{flex:1;min-width:0}.season .lbl{background:rgba(255,255,255,.18)}.season small{display:block;color:rgba(255,255,255,.92)}.season a{color:#fff;font-weight:750}" +
-  ".sbig{margin:.35rem 0 .15rem;font-size:3.1rem;font-weight:800;line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums}.sbig em{font-style:normal;font-size:1.1rem;font-weight:700;margin-left:.35rem;letter-spacing:0}.sbig.sm{font-size:1.35rem;line-height:1.25}.sbig .pc{margin-left:.05rem}.tile small.at{font-weight:600;color:var(--muted)}" +
-  ".sring{position:relative;display:grid;place-items:center;flex:none;width:6.75rem;height:6.75rem;text-align:center;line-height:1.05}" +
+  ".season{flex-wrap:wrap}.season>div{flex:1 1 9rem;min-width:0}.season .lbl{background:rgba(255,255,255,.18)}.season small{display:block;color:rgba(255,255,255,.92)}.season a{color:#fff;font-weight:750}" +
+  ".sbig{margin:.35rem 0 .15rem;font-size:2.6rem;font-weight:800;line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums}.sbig em{display:inline-block;font-style:normal;font-size:1rem;font-weight:700;margin-left:.35rem;letter-spacing:0}.sbig.sm{font-size:1.2rem;line-height:1.25}.sbig .pc{margin-left:.05rem}.tile small.at{font-weight:600;color:var(--muted)}" +
+  ".sring{position:relative;display:grid;place-items:center;flex:none;width:6rem;height:6rem;text-align:center;line-height:1.05}" +
   ".sring>i{position:absolute;inset:0;border-radius:50%;background:conic-gradient(#fff calc(var(--p)*1%),rgba(255,255,255,.22) 0);" +
   "-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 12px),#000 calc(100% - 11px));mask:radial-gradient(farthest-side,transparent calc(100% - 12px),#000 calc(100% - 11px));animation:fill 1.3s .2s cubic-bezier(.2,.7,.3,1) both}" +
-  ".sring b{display:block;font-size:1.65rem;font-weight:800}.sring small{font-size:.76rem}.sring .art{width:3.4rem;height:3.4rem}" +
+  ".sring b{display:block;font-size:1.4rem;font-weight:800}.sring small{font-size:.76rem}.sring .art{width:3.4rem;height:3.4rem}" +
   ".brow .bar{margin-top:.35rem}" +
   // Round 4 on home (0044): the workday card, the next hours strip, the clock change
   ".work{display:block;background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:1rem 1.1rem;margin:0 0 .75rem;color:var(--ink);text-decoration:none}" +
   ".wtop2{display:flex;align-items:center;justify-content:space-between;gap:.4rem;flex-wrap:wrap}.work .lbl{background:var(--brand);color:#fff}" +
-  ".wnum{display:flex;gap:1.75rem;margin:.6rem 0 .1rem}.wnum small{display:block;font-weight:650}.wnum b{font-size:2.4rem;font-weight:800;line-height:1.05;font-variant-numeric:tabular-nums}" +
+  ".wnum{display:flex;flex-wrap:wrap;gap:.2rem 1.5rem;margin:.6rem 0 .1rem}.wnum small{display:block;font-weight:650}.wnum b{font-size:2rem;font-weight:800;line-height:1.05;font-variant-numeric:tabular-nums}" +
   ".wflags{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.5rem;margin:.7rem 0 0}" +
   ".wf{display:flex;flex-direction:column;align-items:flex-start;gap:.1rem;min-width:0;padding:.65rem .75rem;border-radius:16px;background:var(--tile)}.wf small{overflow-wrap:anywhere}" +
   ".wf .art{animation:hop .6s .3s ease-out both}@keyframes hop{40%{transform:translateY(-6px)}}" +
   ".hstrip{display:flex;gap:.5rem;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -1rem .75rem;padding:.2rem 1rem .6rem;text-decoration:none;color:var(--ink)}" +
   ".hs{flex:none;scroll-snap-align:start;display:flex;flex-direction:column;align-items:center;gap:.1rem;min-width:4.5rem;padding:.6rem .4rem;background:var(--card);border-radius:18px;box-shadow:var(--shadow)}" +
-  ".hs b{font-size:1.25rem;font-weight:800}.hs small{font-weight:650}.hsr{color:var(--rain)}" +
+  ".hs b{font-size:1.1rem;font-weight:800}.hs small{font-weight:650}.hsr{color:var(--rain)}" +
   ".dst{display:flex;align-items:center;gap:.9rem}.dst b{display:block;line-height:1.3}.dst small{display:block;margin-top:.25rem}" +
   // Round 5: the offline line, Clima's gallery strip, theme previews
   ".offbar{margin:0 0 .75rem;padding:.6rem 1rem;border-radius:16px;background:#1b1f3b;color:#fff;font-weight:700}" +
   // Home's rate row: the week of the rate as seven dots (0042)
   ".wd{display:flex;gap:.3rem;margin-top:.4rem}.wd i{width:.72rem;height:.72rem;border-radius:50%;border:2px solid var(--brand)}.wd i.up{background:var(--brand)}.wd i.same{border-color:#8f98f5}.wd i.nd{border-style:dashed;border-color:#aab2e6}.wd i.no{background:transparent}" +
   ".alla{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:.85rem 1rem 1rem;margin:0 0 .75rem}.alla>header{display:flex;align-items:center;gap:.5rem;font-weight:750}" +
-  ".ah2{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:.4rem;margin-top:.5rem}" +
-  ".ah{display:flex;flex-direction:column;align-items:center;text-align:center;gap:.05rem;min-width:0}.ah small{font-size:.8rem;font-weight:650;line-height:1.2;overflow-wrap:break-word;hyphens:auto}" +
-  ".clk{font-size:1.55rem;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}.nowt{font-size:1.05rem;font-weight:800;color:var(--brand-ink)}" +
-  ".dif{max-width:5.25rem;padding:.35rem .5rem;border-radius:999px;background:var(--tile);color:var(--brand-ink);font-size:.78rem;font-weight:750;text-align:center;line-height:1.2}" +
+  ".ah2{display:grid;gap:.4rem;margin-top:.5rem}" +
+  ".ah{display:flex;flex-wrap:wrap;align-items:center;gap:.15rem .6rem;min-width:0;padding:.4rem .7rem;border-radius:16px;background:var(--tile)}.ah .art{width:2.1rem;height:2.1rem}.ah small{flex:1 1 6.5rem;min-width:0;font-size:.9rem;font-weight:700;color:var(--ink);line-height:1.25;hyphens:auto}.ah .nowt{min-width:2.5rem;text-align:right}" +
+  ".clk{font-size:1.3rem;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}.nowt{font-size:1.05rem;font-weight:800;color:var(--brand-ink)}" +
+  ".dif{justify-self:start;margin-left:.7rem;padding:.25rem .7rem;border-radius:999px;background:var(--tile);color:var(--brand-ink);font-size:.78rem;font-weight:750;text-align:center;line-height:1.2}" +
   // Letra grande's two previews (Más)
   "a.tile.x::after{display:none}.ev{display:flex;gap:.85rem;align-items:center}.ev>span{flex:1;min-width:0}" +
   "a.tile::after{content:\"›\";display:grid;place-items:center;flex:none;width:2.2rem;height:2.2rem;margin-left:auto;border-radius:50%;background:var(--tile);color:var(--brand-ink);font-size:1.4rem;line-height:1}" +
   ".stale .pic,.due .pic{background:var(--warn-soft)}" +
   ".flag{font-size:.95rem;letter-spacing:0;margin-right:.35rem}" +
-  ".chip{display:inline-block;padding:.15rem .65rem;border-radius:999px;background:var(--brand-soft);color:var(--brand-ink);font-size:.8rem;font-weight:750;white-space:nowrap;vertical-align:middle}" +
+  ".chip{display:inline-block;padding:.15rem .65rem;border-radius:999px;background:var(--brand-soft);color:var(--brand-ink);font-size:.78rem;font-weight:750;vertical-align:middle}" +
   ".chip.ok{background:var(--ok-soft);color:var(--ok)}.chip.warn{background:var(--warn-soft);color:var(--warn)}" +
   // Crests, date blocks, lottery balls, tap-to-call
   ".cr{display:grid;place-items:center;flex:none;font-weight:800;object-fit:contain}span.cr{border-radius:50%}" +
-  ".dt{display:grid;place-items:center;align-content:center;flex:none;width:3.5rem;height:3.6rem;border-radius:16px;background:var(--tile);color:var(--brand-ink);font-size:.72rem;font-weight:750;text-transform:uppercase;line-height:1.15}.dt b{font-size:1.5rem;line-height:1}" +
+  ".dt{display:grid;place-items:center;align-content:center;flex:none;width:3.5rem;height:3.6rem;border-radius:16px;background:var(--tile);color:var(--brand-ink);font-size:.72rem;font-weight:750;text-transform:uppercase;line-height:1.15}.dt b{font-size:1.3rem;line-height:1}" +
   ".holiday .dt{background:#ffeede;color:#9a3d00}.school .dt{background:var(--ok-soft);color:var(--ok)}" +
-  ".balls{display:flex;flex-wrap:wrap;gap:.4rem;margin:.35rem 0}.balls b{display:grid;place-items:center;min-width:2.4rem;height:2.4rem;padding:0 .3rem;border-radius:999px;color:#fff;font-weight:800;font-variant-numeric:tabular-nums;" +
+  ".balls{display:flex;flex-wrap:wrap;gap:.4rem;margin:.35rem 0}.balls b{display:grid;place-items:center;min-width:2.2rem;height:2.2rem;padding:0 .3rem;border-radius:999px;color:#fff;font-weight:800;font-variant-numeric:tabular-nums;" +
   "background:radial-gradient(circle at 35% 30%,#8f98f5,#3f4bc4 70%);box-shadow:0 3px 8px rgba(27,31,59,.2)}" +
   ".balls b:nth-child(3n+2){background:radial-gradient(circle at 35% 30%,#ffb46b,#c25400 70%)}.balls b:nth-child(3n){background:radial-gradient(circle at 35% 30%,#5ad19e,#0f7a55 70%)}" +
-  ".call{display:flex;flex-direction:column;align-items:flex-start;gap:.3rem;text-decoration:none;color:var(--ink);min-width:0}" +
-  ".call>a:not(.dial){display:flex;flex-direction:column;gap:.3rem;color:inherit;text-decoration:none}" +
-  ".num{display:block;font-size:2rem;font-weight:800;line-height:1.1;letter-spacing:-.01em;font-variant-numeric:tabular-nums}" +
+  ".call{display:flex;flex-wrap:wrap;align-items:center;gap:.6rem .85rem;text-decoration:none;color:var(--ink);min-width:0}.cx{flex:1 1 11rem;min-width:0}.cx small{display:block}.cx .dial{margin:.35rem 0 .15rem}" +
+  ".cx>a:not(.dial){display:block;color:inherit;text-decoration:none}" +
+  ".num{display:block;font-size:1.7rem;font-weight:800;line-height:1.1;letter-spacing:-.01em;font-variant-numeric:tabular-nums}" +
   ".sos{background:linear-gradient(135deg,#b42318,#d63d42);color:#fff;box-shadow:0 12px 26px rgba(180,35,24,.28)}.sos small,.sos a{color:#fff}.sos .ico{background:rgba(255,255,255,.2);color:#fff}.sos .pic{background:#fff}" +
-  ".dial{display:inline-flex;align-items:center;gap:.45rem;min-height:48px;padding:.45rem .9rem;border-radius:999px;background:var(--ok-soft);color:var(--ok);font-weight:750;text-decoration:none;font-size:.92rem}" +
-  ".dialrow{display:flex;align-items:center;gap:.9rem;text-decoration:none;color:inherit;min-height:48px}" +
-  ".pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem}.pair .card{padding:1rem .85rem}.pair .dial{font-size:.8rem;padding:.4rem .6rem;gap:.3rem;white-space:nowrap}.dialrow .num{font-size:1.6rem;white-space:nowrap}" +
+  ".dial{display:inline-flex;align-items:center;gap:.45rem;min-height:48px;padding:.45rem .9rem;border-radius:999px;background:var(--ok-soft);color:var(--ok);font-weight:750;text-decoration:none;font-size:.9rem;white-space:nowrap}.dn{display:flex;flex-wrap:wrap;column-gap:.3rem}" +
+  ".dialrow{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem .85rem;text-decoration:none;color:inherit;min-height:48px}.dialrow>span{flex:1 1 16.5rem;min-width:0}" +
+  ".pair{display:grid}.dialrow .num{font-size:1.3rem;white-space:nowrap}" +
   // Match cards (home and Fútbol), today in the league
   ".match{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:.5rem;text-align:center;text-decoration:none;color:var(--ink)}.match>small{grid-column:1/-1;font-weight:650}" +
   ".match>span{display:flex;flex-direction:column;align-items:center;gap:.35rem;font-weight:700;font-size:.92rem;line-height:1.2;overflow-wrap:anywhere}" +
   ".match>.chip{padding:.4rem .8rem;background:linear-gradient(135deg,var(--brand),var(--brand-2));color:#fff}" +
-  ".score{font-size:1.9rem;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}" +
+  ".score{font-size:1.6rem;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}" +
   ".lg{display:block;text-decoration:none;color:var(--ink)}.lg>small{display:block;font-weight:650}" +
   ".lg>span{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:.5rem;margin-top:.6rem;font-weight:650;font-size:.88rem}" +
   ".lg>span>span{display:flex;align-items:center;gap:.4rem;min-width:0}.lg>span>span:last-child{justify-content:flex-end;text-align:right}.lg b{font-variant-numeric:tabular-nums}" +
@@ -171,10 +171,10 @@ export const APP_CSS = BASE +
   ".towns{display:flex;gap:.7rem;overflow-x:auto;margin:0 -1rem;padding:.2rem 1rem .8rem;scroll-snap-type:x mandatory}" +
   ".town{flex:1 0 10rem;scroll-snap-align:start;background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;text-decoration:none;color:var(--ink)}" +
   ".thumb{display:grid;place-items:center;width:100%;height:6rem;object-fit:cover;background:linear-gradient(135deg,#e3e7fd,#f6f7ff)}" +
-  ".tb{display:block;padding:.6rem .85rem .75rem}.tb b{display:block;font-size:.95rem;line-height:1.2}.tt{display:flex;align-items:center;gap:.3rem;font-size:1.75rem;font-weight:800;margin:.1rem 0;line-height:1.1}" +
+  ".tb{display:block;padding:.6rem .85rem .75rem}.tb b{display:block;font-size:.95rem;line-height:1.2}.tt{display:flex;align-items:center;gap:.3rem;font-size:1.5rem;font-weight:800;margin:.1rem 0;line-height:1.1}" +
   "main>section{margin-bottom:.25rem}" +
   // Más grid, login and expiry
-  ".inf{display:flex;gap:.7rem;align-items:flex-start;margin:.6rem 0}.inf>.i{margin:0;padding-top:.1rem}" +
+  ".inf{display:flex;gap:.7rem;align-items:flex-start;margin:.6rem 0}.inf>:last-child{min-width:0;overflow-wrap:anywhere}.ev{flex-wrap:wrap}.ev>span{flex:1 1 11rem}.inf>.i{margin:0;padding-top:.1rem}" +
   // Tab bar: white, rounded top, outline icons with labels, a raised round Clima button
   "nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;align-items:flex-end;max-width:34rem;margin:0 auto;background:var(--card);border-radius:26px 26px 0 0;" +
   "box-shadow:0 -8px 30px rgba(40,48,120,.1);padding:.35rem .4rem calc(.35rem + env(safe-area-inset-bottom))}" +
@@ -184,12 +184,12 @@ export const APP_CSS = BASE +
   ".fab{display:grid;place-items:center;width:62px;height:62px;margin:-34px 0 .1rem;border-radius:50%;color:#fff;background:linear-gradient(135deg,var(--brand),var(--brand-2));box-shadow:0 0 0 7px rgba(79,91,213,.15),0 12px 24px rgba(79,91,213,.4)}" +
   "nav.tabs .fab svg{width:32px;height:32px;padding:0;stroke-width:2}nav.tabs a.c[aria-current=page] .fab{box-shadow:0 0 0 8px rgba(79,91,213,.32),0 12px 24px rgba(79,91,213,.45)}" +
   // Letra grande (clients.text_size = 'large'): <html class="big">
-  "html.big{font-size:125%;--muted:#3a405e;--line:#cdd1e8}html.big body{font-size:20px;line-height:1.45}" +
+  "html.big{font-size:118.75%;--muted:#3a405e;--line:#cdd1e8}html.big body{font-size:19px;line-height:1.45}" +
   "html.big small,html.big .credit,html.big .step{font-weight:600}html.big p.line{font-weight:750}html.big .credit{font-size:.74rem}" +
   "html.big .tile{min-height:5.75rem;padding:.95rem}html.big .pair,html.big .menu{grid-template-columns:minmax(0,1fr)}" +
   "html.big .menu a,html.big h1,html.big p.line,html.big .match>span{overflow-wrap:anywhere}" +
   "html.big nav.tabs a{font-size:.66rem;min-height:66px}html.big nav.tabs svg{height:32px}html.big main{padding-bottom:calc(9rem + env(safe-area-inset-bottom))}" +
-  "html.big .sh>a,html.big .seg a,html.big .dial{min-height:56px}html.big a.tile::after{display:none}html.big .pic{width:3rem;height:3rem}html.big .pic .art{width:2.2rem;height:2.2rem}html.big .sk>.art{width:4.25rem;height:4.25rem}html.big .sk h1{padding-right:3.5rem}html.big .lbl{max-width:calc(100% - 4rem)}html.big .ring{width:4.4rem;height:4.4rem}html.big .nb{font-size:1.9rem}html.big .sbig{font-size:2.5rem}html.big .sring{width:5.5rem;height:5.5rem}html.big .ah2{grid-template-columns:minmax(0,1fr);gap:.6rem}";
+  "html.big .sh>a,html.big .seg a,html.big .dial{min-height:56px}html.big .member{padding:0 .85rem}html.big a.tile::after{display:none}html.big .pic{width:3rem;height:3rem}html.big .pic .art{width:2.2rem;height:2.2rem}html.big .sk>.art{width:4.25rem;height:4.25rem}html.big .sk h1{padding-right:3.5rem}html.big .sk .lbl{max-width:calc(100% - 4rem)}html.big .ht img{width:4.5rem;height:3.5rem}html.big .ring{width:4.4rem;height:4.4rem}html.big .nb{font-size:1.6rem}html.big .sbig{font-size:2.2rem}html.big .sring{width:5.5rem;height:5.5rem}html.big .ah2{grid-template-columns:minmax(0,1fr);gap:.6rem}";
 
 /**
  * Modo noche (0046): a deep navy ground, dark indigo cards, light text at WCAG
@@ -215,6 +215,7 @@ const DARK_RULES: [string, string][] = [
   [".chart .b", "fill:#4a5296"],
   [".chart .b.on", "fill:#8e98ff"],
   [".rb", "background:#22305a"],
+  [".ck", "border-color:#4a5296"],
   [".hl .tp", "background:#4a2a12;color:#ffc58a"],
   [".hl .lo", "background:#1d2f5c;color:#a9c8ff"],
   [".chart .tk", "fill:#b3b9dd"],

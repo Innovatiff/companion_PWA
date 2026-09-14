@@ -32,28 +32,30 @@ Hoy's budgets were raised on 2026-09-14 (from 15 KB cold and 5 KB warm) for the
 round-1 look the owner asked for: pictures, motion and bigger type cost about
 1.5 KB more CSS and markup per page, while the pictures themselves are cached files.
 
-Measured 2026-09-14 after the round 5 polish (local, demo client DEMXHN42, the
-fullest home). Every warm page keeps at least 1 KB under its budget:
+Measured 2026-09-14 after the layout fix (16 px type, tight pairs stacked; local,
+demo client DEMXHN42, the fullest home). Every warm page keeps at least 1 KB
+under its budget:
 
 | Hoy page | Bytes |
 | --- | --- |
-| Cold: sign-in plus home (redirect, login, sign-in, home, sw.js, manifest, open ping) | 22,610 |
-| Home (warm) | 10,706 |
-| Tasa, Mes | 10,675 |
-| Clima | 10,434 |
-| Hoy en Leamington | 10,170 |
-| Tu semana | 9,442 (MX on a Monday, with both fallbacks: 9,338) |
-| Feriados | 8,952 |
-| Miembro | 8,835 |
-| Fútbol | 8,661 |
-| Lotería | 8,628 (JM 8,605) |
-| Transporte | 8,387 |
-| Consulado | 8,346 |
-| Más | 8,297 |
-| Emergencias | 8,049 |
-| Setup step | 7,653 |
-| Notificaciones | 7,533 |
-| Escuela | 7,357 |
+| Cold: sign-in plus home (redirect, login, sign-in, home, sw.js, manifest, open ping) | 22,746 |
+| Tasa, 3 meses | 10,994 |
+| Tasa, Mes | 10,771 |
+| Home (warm) | 10,746 |
+| Clima | 10,450 |
+| Hoy en Leamington | 10,291 |
+| Tu semana | 9,546 |
+| Feriados | 9,053 |
+| Miembro | 8,940 |
+| Lotería (with a number check: 8,941) | 8,720 |
+| Fútbol | 8,764 |
+| Más | 8,628 |
+| Transporte | 8,485 |
+| Consulado | 8,453 |
+| Emergencias | 8,151 |
+| Setup step | 7,753 |
+| Notificaciones | 7,634 |
+| Escuela | 7,457 |
 | Illustrations, largest | 523 gzipped (badge-temporada.svg); first load of the 36 used: 38,438 |
 
 Our inline JavaScript: home 1,676 bytes (the open script and the expiry
@@ -152,20 +154,45 @@ Colour is never the only signal. An alert level is written in words ("Rojo",
 
 - **Font:** `system-ui, -apple-system, Roboto, "Segoe UI", sans-serif`, and
   `ui-monospace, "Roboto Mono", monospace` for codes. Nothing is downloaded.
-- **Base size:** 17 px, line height 1.5. Bold headings, few words.
+- **Base size:** 16 px, line height 1.5. Bold headings, few words (owner's
+  direction 2026-09-14, from his iPhone: the type was too big).
 - **Scale:**
 
 | Use | Size |
 | --- | --- |
-| Greeting (hero) | 1.8 rem, 800 |
-| Tab page title | 1.8 rem |
-| Big number in a row (temperature, rate, days) | 2.1 rem, 800 |
-| Clima temperature | 3 rem |
-| Row line | 1.15 rem, 700 |
-| Section title | 1.12 rem, 750, sentence case |
+| Greeting (hero) | 1.55 rem, 800 |
+| Tab page title | 1.55 rem |
+| Page title (with back) | 1.2 rem |
+| Big number in a row (temperature, rate, days) | 1.75 rem, 800 |
+| Clima "Ahora" temperature | 2.8 rem (1.9 rem inside a Canada card) |
+| Rate on Tasa, gauge value | 2.7 rem, 2.45 rem |
+| Row line | 1.02 rem, 700 |
+| Section title | 1.05 rem, 750, sentence case |
 | Body | 1 rem |
-| Small | 0.85 rem |
-| Access code | 2.1 rem, letter-spaced |
+| Small | 0.82 rem |
+| Access code | 1.75 rem, letter-spaced |
+
+### Narrow screens: nothing tight, nothing out of its box
+
+- **Vertical when tight.** Two or three boxes side by side stack into one
+  column unless each holds only a short label or number: the Canada cards, the
+  home Emergencias and Consulado cards (each full width, horizontal inside), Allá
+  y aquí (one row per place), the Más menu (one row per section), and settings
+  (Tema and Tamaño de letra are full-width option rows: a preview, the name and
+  a short hint, a check on the current one; the whole row is the button).
+- **Rows wrap instead of squeezing.** Flex rows give their text a real basis and
+  wrap (the number moves under the picture) rather than shrinking text to
+  nothing; flex and grid children carry `min-width:0`.
+- **Never out of the box.** Words wrap at word boundaries (`hyphens:auto` on
+  titles and labels, `overflow-wrap` everywhere). Only numbers that must not
+  break (temperatures, times, money, phone numbers) are `nowrap`, and they get
+  the room. Credits are shown whole, never clamped.
+- **Checked, not assumed.** `apps/app/scripts/layout-audit.mjs` opens every page
+  at 320, 360, 375, 390 and 430 px, normal and Letra grande, light and dark, and
+  with a wide-font stress (Verdana, standing in for iOS's wider glyphs), and
+  fails on a page that scrolls sideways, anything past its box, anything wider
+  inside than out (other than the listed horizontal scrollers) and text clipped
+  by overflow. It must end with zero failures.
 
 ### Space and shape
 
@@ -180,9 +207,11 @@ Colour is never the only signal. An alert level is written in words ("Rojo",
 
 `<html class="big">` (set by `_document` from `req.appTextSize`, which
 `loadClient` and home set from `clients.text_size`) raises the root size to
-125% and body text to 20 px, darkens and thickens muted text, stacks Más and
-paired cards into one column, drops row chevrons, makes targets at least 56 px,
-and keeps every page within a 360 px screen.
+118.75% and body text to 19 px (every rem size grows with it, so it stays
+clearly larger than the 16 px normal), darkens and thickens muted text, drops
+row chevrons, shrinks previews and gaps so words keep their room, makes targets
+at least 56 px, and keeps every page within a 320 px screen (the layout audit
+checks it).
 
 ## 4. Components
 

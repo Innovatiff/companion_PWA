@@ -423,15 +423,16 @@ export default function Home(props: Props) {
               <h1>{greeting.text}</h1>
               {/* Ahora: Leamington's current conditions (home_more.leamington_now) will sit here. */}
               {photo && (
-                <div className="ht">
-                  <a href={`/clima#t${photo.municipality_id}`} aria-label={t(lang, `Fotos de ${h?.home_town ?? ""}`, `Photos of ${h?.home_town ?? ""}`)}>
-                    <TownPhoto p={photo} lazy={false} />
-                  </a>
-                  <span>
-                    {h?.home_town && <span className="place"><Icon name="pin" />{h.home_town}</span>}
-                    <Credit p={photo} lang={lang} licenseFirst />
-                  </span>
-                </div>
+                <>
+                  <div className="ht">
+                    <a href={`/clima#t${photo.municipality_id}`} aria-label={t(lang, `Fotos de ${h?.home_town ?? ""}`, `Photos of ${h?.home_town ?? ""}`)}>
+                      <TownPhoto p={photo} lazy={false} />
+                    </a>
+                    {h?.home_town && <span><span className="place"><Icon name="pin" />{h.home_town}</span></span>}
+                  </div>
+                  {/* The credit whole, under the photo row (never cut short). */}
+                  <Credit p={photo} lang={lang} licenseFirst />
+                </>
               )}
             </div>
           </header>
@@ -640,22 +641,26 @@ export default function Home(props: Props) {
             {sos && (
               <a className="card call sos" href={tel(sos.number)}>
                 <Pic name="phone" />
-                <small>{t(lang, "Emergencias", "Emergencies")}</small>
-                <span className="num">{sos.number}</span>
-                <small>{t(lang, "Policía, bomberos y ambulancia", "Police, fire, ambulance")}</small>
-                <small>{verified(sos.verified_at)}</small>
+                <span className="cx">
+                  <small>{t(lang, "Emergencias", "Emergencies")}</small>
+                  <span className="num">{sos.number}</span>
+                  <small>{t(lang, "Policía, bomberos y ambulancia", "Police, fire, ambulance")}</small>
+                  <small>{verified(sos.verified_at)}</small>
+                </span>
               </a>
             )}
             {con && (
               <div className="card call">
-                <a href="/mas/consulado">
-                  <Pic name="consulate" />
-                  <small>{t(lang, "Tu consulado", "Your consulate")}</small>
-                  <span className="line">{con.city}</span>
-                </a>
-                {/* The first number; /mas/consulado lists them all. */}
-                {con.phone && <a className="dial" href={tel(con.phone)}><Icon name="phone" />{con.phone.split("/")[0].trim()}</a>}
-                <small>{verified(con.verified_at)}</small>
+                <Pic name="consulate" />
+                <span className="cx">
+                  <a href="/mas/consulado">
+                    <small>{t(lang, "Tu consulado", "Your consulate")}</small>
+                    <span className="line">{con.city}</span>
+                  </a>
+                  {/* The first number; /mas/consulado lists them all. */}
+                  {con.phone && <a className="dial" href={tel(con.phone)}><Icon name="phone" />{con.phone.split("/")[0].trim()}</a>}
+                  <small>{verified(con.verified_at)}</small>
+                </span>
               </div>
             )}
           </div>

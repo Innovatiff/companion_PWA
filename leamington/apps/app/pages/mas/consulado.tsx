@@ -55,7 +55,8 @@ export default function Consulado({ lang, country, consulates }: Props) {
               </div>
               {c.address && <p className="inf"><span className="i"><Icon name="pin" /></span><span>{c.address}</span></p>}
               {c.hours && <p className="inf"><span className="i"><Icon name="clock" /></span><span>{c.hours}</span></p>}
-              {c.phone && <p><a className="dial" href={tel(c.phone)}><Icon name="phone" />{c.phone}</a></p>}
+              {/* Several numbers ("(416) 598-3008 / 2639 / 3053") wrap between numbers, never inside one. */}
+              {c.phone && <p><a className="dial" href={tel(c.phone)}><Icon name="phone" /><span className="dn">{c.phone.split("/").map((x, i) => <span key={i}>{`${i ? "/ " : ""}${x.trim()}`}</span>)}</span></a></p>}
               {c.email && <p className="inf"><span className="i"><Icon name="mail" /></span><a href={`mailto:${c.email}`}>{c.email}</a></p>}
               {c.booking_url && <a className="button secondary" href={c.booking_url} rel="noopener">{t(lang, "Pedir cita", "Book an appointment")}</a>}
               <p><small>

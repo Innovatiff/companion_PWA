@@ -286,25 +286,34 @@ export default function Clima({ w, country, today, now, photos, galleries }: Pro
               {locals.map((p) => {
                 const placeToday = localDate(at, p.timezone);
                 const d = p.days[0] as Day | undefined;
+                const skyOf = (q: typeof p) => sky(q.lat, q.lng, q.timezone, placeToday, undefined, true);
                 return (
                   <div key={p.key} className={`card here ${d?.rain ? "rain" : "sun"}`} data-lat={p.lat ?? undefined} data-line="local" data-until={forecastUntil}>
                     <b className="nm">{p.name}</b>
                     <small>{p.region}</small>
-                    {nowLive(p.now, nowMs) && <AhoraCard n={p.now} lang={lang} tz={p.timezone} inside />}
-                    {d && (
-                      <>
-                        <span className="hn"><Art name={dayArt(d)} size={30} lazy /><small>{dayName(d.date, placeToday)}</small>{highLow(d)}</span>
-                        {rainBar(d)}
-                      </>
+                    {/* Full width: "Ahora" beside today's forecast (stacked when narrow), then tomorrow, sunrise and sunset in one row. */}
+                    <div className="hrow">
+                      {nowLive(p.now, nowMs) && <AhoraCard n={p.now} lang={lang} tz={p.timezone} inside />}
+                      {d && (
+                        <div className="htd">
+                          <span className="hn"><Art name={dayArt(d)} size={30} lazy /><small>{dayName(d.date, placeToday)}</small></span>
+                          {highLow(d)}
+                          {rainBar(d)}
+                        </div>
+                      )}
+                    </div>
+                    {(p.days.length > 1 || skyOf(p)) && (
+                      <div className="hfoot">
+                        {p.days.length > 1 && (
+                          <ul className="mini">
+                            {p.days.slice(1).map((x) => (
+                              <li key={x.date}><small>{dayName(x.date, placeToday, true)}</small><Art name={dayArt(x)} size={24} lazy /><b>{x.temp}</b></li>
+                            ))}
+                          </ul>
+                        )}
+                        {skyOf(p)}
+                      </div>
                     )}
-                    {p.days.length > 1 && (
-                      <ul className="mini">
-                        {p.days.slice(1).map((x) => (
-                          <li key={x.date}><small>{dayName(x.date, placeToday, true)}</small><Art name={dayArt(x)} size={24} lazy /><b>{x.temp}</b></li>
-                        ))}
-                      </ul>
-                    )}
-                    {sky(p.lat, p.lng, p.timezone, placeToday, undefined, true)}
                     {p.key === "leamington" && <a className="aquilink" href="/clima/aqui">{t(lang, "Hoy en Leamington →", "Today in Leamington →")}</a>}
                   </div>
                 );
