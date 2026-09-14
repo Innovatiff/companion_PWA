@@ -15,12 +15,14 @@ import { query } from "../db.mjs";
 const ALLOWED_HOSTS = new Set(["media.api-sports.io", "media-1.api-sports.io", "media-2.api-sports.io", "media-3.api-sports.io", "media-4.api-sports.io"]);
 const TYPES = new Set(["image/png", "image/jpeg", "image/webp", "image/svg+xml"]);
 export const MAX_CREST_BYTES = 50_000;
+// League logos: four images, shown on Fútbol only, cached 30 days (0037).
+export const MAX_LEAGUE_LOGO_BYTES = 150_000;
 export const PLACEHOLDER_SHA256 = new Set(["9f8004a0b4a645c2061f82ebf7ede6520830c071eb2ca9a37fa3f150d53bef11"]);
 
 /** Why a fetched image may not be stored as a crest, or null. Exported for tests. */
-export function crestRejection({ type, bytes, sha256 }) {
+export function crestRejection({ type, bytes, sha256 }, maxBytes = MAX_CREST_BYTES) {
   if (!TYPES.has(type)) return `not an image: ${type || "no type"}`;
-  if (!bytes || bytes.length === 0 || bytes.length > MAX_CREST_BYTES) return `size ${bytes?.length ?? 0}`;
+  if (!bytes || bytes.length === 0 || bytes.length > maxBytes) return `size ${bytes?.length ?? 0}`;
   if (PLACEHOLDER_SHA256.has(sha256)) return "provider placeholder image, not a crest";
   return null;
 }
@@ -83,7 +85,7 @@ export async function ingestCrests(ctx) {
       const type = (res.headers.get("content-type") ?? "").split(";")[0].trim();
       const bytes = Buffer.from(await res.arrayBuffer());
       const sha256 = createHash("sha256").update(bytes).digest("hex");
-      const why = crestRejection({ type, bytes, sha256 });
+      const why = crestRejection({ type, bytes, sha256 }, MAX_LEAGUE_LOGO_BYTES);
       if (why) throw new Error(why);
       await query(
         `insert into league_crests (league_id, content_type, bytes, sha256, source_url, fetched_at)
