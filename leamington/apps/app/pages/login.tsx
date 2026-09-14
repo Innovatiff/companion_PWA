@@ -8,7 +8,7 @@
 import Head from "next/head";
 import type { GetServerSideProps } from "next";
 import { readSession, cookieValue } from "../lib/session";
-import { Art, Icon, type IconName } from "../lib/ui";
+import { Art, type ArtName } from "../lib/ui";
 import { LOGIN_CSS } from "../lib/page-css";
 
 export const config = { unstable_runtimeJS: false };
@@ -32,8 +32,8 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
 };
 
 // What Hoy has, in both languages.
-const FEATURES: [IconName, string][] = [
-  ["ball", "Fútbol · Football"], ["sun", "Clima · Weather"], ["swap", "Tasa · Rate"], ["calendar", "Feriados · Holidays"],
+const FEATURES: [ArtName, string, string][] = [
+  ["football", "Fútbol", "Football"], ["partly-day", "Clima", "Weather"], ["money", "Tasa", "Rate"], ["calendar", "Feriados", "Holidays"],
 ];
 
 const STEPS: [string, string][] = [
@@ -56,10 +56,10 @@ export default function Login({ error }: Props) {
             <div className="brandmark">Hoy</div>
             <p>Tu día en un vistazo<br /><small>Your day at a glance</small></p>
           </div>
-          <Art name="morning" size={64} />
+          <Art name="sun" size={80} />
         </header>
         <ul className="feat">
-          {FEATURES.map(([icon, label]) => <li key={icon}><span className="i"><Icon name={icon} /></span>{label}</li>)}
+          {FEATURES.map(([art, es, en]) => <li key={art}><Art name={art} size={40} />{es}<small>{en}</small></li>)}
         </ul>
         <section className="card">
           <h1>Escribe tu código<br /><small>Enter your code</small></h1>

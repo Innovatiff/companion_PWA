@@ -15,10 +15,13 @@ import { db } from "../../lib/db";
 import { loadClient, recordView } from "../../lib/client";
 import { t } from "../../lib/t";
 import { SETUP_CSS } from "../../lib/page-css";
+import { Art, type ArtName } from "../../lib/ui";
 
 export const config = { unstable_runtimeJS: false };
 
 const STEPS = ["municipality", "watch", "segment", "kids", "corridor"] as const;
+// Each question's picture.
+const STEP_ART: ArtName[] = ["pin", "partly-day", "plane", "school", "money"];
 type Step = (typeof STEPS)[number];
 type Place = { id: number; name: string; admin_region: string };
 type Lang = "es" | "en";
@@ -142,7 +145,11 @@ export default function SetupStep(p: Props) {
         <style dangerouslySetInnerHTML={{ __html: SETUP_CSS }} />
       </Head>
       <main>
-        <p className="step">{t(lang, `Paso ${p.index + 1} de 5`, `Step ${p.index + 1} of 5`)}</p>
+        <div className="prog">
+          <span className="bar"><i style={{ width: `${(p.index + 1) * 20}%` }} /></span>
+          <p className="step">{t(lang, `Paso ${p.index + 1} de 5`, `Step ${p.index + 1} of 5`)}</p>
+        </div>
+        <Art name={STEP_ART[p.index]} size={72} />
         {p.error && <p className="err" role="alert">{pick(ERRORS[p.error])}</p>}
 
         {step === "municipality" && (

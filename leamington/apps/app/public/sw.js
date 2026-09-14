@@ -33,7 +33,9 @@ self.addEventListener("fetch", (event) => {
     // Section pages are never cached: they have no per-line expiry, and an old
     // warning list must not be shown as the list. Offline, say so plainly.
     event.respondWith(fetch(req).catch(() => offline()));
-  } else if (STATIC.includes(url.pathname)) {
+  } else if (STATIC.includes(url.pathname) || url.pathname.startsWith("/art/")) {
+    // Illustrations are versioned (?v=), so a cached copy is never out of date,
+    // and an offline home screen keeps its pictures.
     event.respondWith(staticAsset(req));
   }
 });

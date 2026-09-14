@@ -90,6 +90,33 @@ console.log(`  TOTAL ${total(install)} bytes`);
 console.log("\nWarm load, the next open");
 warm.forEach((r) => console.log(row(r)));
 console.log(`  TOTAL ${total(warm)} bytes`);
+// Every page a signed-in client opens, fetched fresh as on a warm open (the
+// service worker never caches section pages). Budget: 12,000 bytes each.
+const PAGES = ["/", "/futbol", "/clima", "/mas", "/mas/tasa", "/mas/feriados", "/mas/escuela", "/mas/consulado",
+  "/mas/emergencias", "/mas/transporte", "/mas/loteria", "/mas/avisos", "/setup/municipality?edit=1"];
+const WARM_BUDGET = 12_000, COLD_BUDGET = 25_000, ART_BUDGET = 1_500;
+const arts = new Set();
+console.log(`\nWarm pages, one fresh fetch each (budget ${WARM_BUDGET} bytes)`);
+for (const path of PAGES) {
+  const r = await send(path, { cookie });
+  for (const m of decode(r).matchAll(/\/art\/[a-z-]+\.svg\?v=\d+/g)) arts.add(m[0]);
+  console.log(`${row(r)}${r.body + r.headers > WARM_BUDGET ? "  OVER" : ""}`);
+}
+const signin = await send("/login");
+for (const m of decode(signin).matchAll(/\/art\/[a-z-]+\.svg\?v=\d+/g)) arts.add(m[0]);
+
+// Illustrations: fetched once, then cached for 30 days; not counted in the page budgets.
+console.log(`\nIllustrations referenced (budget ${ART_BUDGET} bytes gzipped each; cached, outside page budgets)`);
+let artTotal = 0;
+for (const path of [...arts].sort()) {
+  const r = await send(path);
+  artTotal += r.body + r.headers;
+  // Files under 1 KB are sent uncompressed (below the server's gzip threshold); the limit is on size.
+  console.log(`${row(r)}${r.body > ART_BUDGET ? "  OVER" : ""}`);
+}
+console.log(`  ${arts.size} files, TOTAL ${artTotal} bytes the first time`);
+console.log(`\nBudgets: cold sign-in + home ${total(cold)} / ${COLD_BUDGET} ${total(cold) <= COLD_BUDGET ? "ok" : "OVER"}`);
+
 console.log(`\nHome HTML: ${html.length} bytes on the wire, ${Buffer.byteLength(decoded)} decoded`);
 console.log(`<script> tags: ${scripts.length}; with src (framework or external JS): ${external.length}${external.length ? " -> " + external.join(" ") : ""}`);
 console.log(`references to /_next/: ${(decoded.match(/\/_next\//g) ?? []).length}`);

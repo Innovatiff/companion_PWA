@@ -7,10 +7,11 @@
  */
 import Head from "next/head";
 import type { GetServerSideProps } from "next";
-import { TabBar } from "@leamington/shared/src/ui/TabBar.tsx";
 import { db } from "../../lib/db";
 import { loadClient, recordView } from "../../lib/client";
 import { t } from "../../lib/t";
+import { PageHead, TabBar } from "../../lib/frame";
+import { Pic } from "../../lib/ui";
 
 export const config = { unstable_runtimeJS: false };
 
@@ -65,14 +66,17 @@ export default function Avisos({ lang, vapid, pushLevels, agency }: Props) {
         <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
       </Head>
       <main data-vapid={vapid ?? undefined} data-lang={lang}>
-        <p><a href="/mas">← {t(lang, "Más", "More")}</a></p>
-        <h1>{t(lang, "Notificaciones", "Notifications")}</h1>
-        <p>{t(lang, "Te enviamos:", "We send you:")}</p>
-        <ul>
-          <li>{alertLine}</li>
-          <li>{t(lang, "Como máximo una más al día: tu equipo juega, la tasa más alta del mes, o la lotería.",
-                        "At most one more a day: your team plays, the month's best rate, or the lottery.")}</li>
-        </ul>
+        <PageHead lang={lang} title={t(lang, "Notificaciones", "Notifications")} art="bell" back />
+        <p className="step">{t(lang, "Te enviamos:", "We send you:")}</p>
+        <div className="tile">
+          <Pic name="warning" />
+          <span><p>{alertLine}</p></span>
+        </div>
+        <div className="tile">
+          <Pic name="bell" />
+          <span><p>{t(lang, "Como máximo una más al día: tu equipo juega, la tasa más alta del mes, o la lotería.",
+                          "At most one more a day: your team plays, the month's best rate, or the lottery.")}</p></span>
+        </div>
         {vapid ? (
           <>
             <button id="on" type="button" hidden>{t(lang, "Activar en este teléfono", "Turn on for this phone")}</button>

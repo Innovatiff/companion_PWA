@@ -188,3 +188,51 @@ select lp.id, v.provider::forecast_provider, (now() at time zone lp.timezone)::d
 on conflict (place_id, provider, target_date) do update
   set temp_max_c = excluded.temp_max_c, temp_min_c = excluded.temp_min_c, precip_prob = excluded.precip_prob,
       precip_mm = excluded.precip_mm, fetched_at = now();
+
+-- LOCAL ONLY, round 1 "Ahora" (0040): the weather right now from two or three
+-- providers, observed and fetched now, so it counts for 90 minutes. Re-run just
+-- before screenshots. San Pedro Sula disagrees by more than 2° (a range) and has
+-- humidity from one provider only (absent); Morelia has no feeling reported.
+-- Day or night follows each place's real clock. Invented, like everything above.
+insert into current_conditions (municipality_id, provider, observed_at, temp_c, feels_like_c, humidity, wind_kph, condition, is_day, fetched_at)
+select m.id, v.provider::forecast_provider, now() - interval '12 minutes', v.t, v.f, v.h, v.w, v.c,
+       extract(hour from now() at time zone m.timezone) between 6 and 17, now()
+  from (values
+    ('HN', 'La Ceiba', 'open-meteo', 29, 33, 78, 12, 'partly_cloudy'), ('HN', 'La Ceiba', 'openweather', 30, 34, 80, 15, 'partly_cloudy'),
+    ('HN', 'La Ceiba', 'weatherapi', 29, 33, 75, 10, 'clear'),
+    ('HN', 'San Pedro Sula', 'open-meteo', 30, 35, null, 9, 'rain'), ('HN', 'San Pedro Sula', 'openweather', 33, 37, 70, 11, 'rain'),
+    ('HN', 'San Pedro Sula', 'weatherapi', 34, 38, null, null, 'storm'),
+    ('MX', 'Morelia', 'open-meteo', 17, null, 72, 6, 'cloudy'), ('MX', 'Morelia', 'weatherapi', 18, null, 68, 8, 'cloudy'),
+    ('JM', 'Montego Bay', 'open-meteo', 31, 36, 74, 18, 'storm'), ('JM', 'Montego Bay', 'openweather', 31, 37, 76, 22, 'rain'),
+    ('JM', 'Montego Bay', 'weatherapi', 32, 37, 73, 20, 'storm')
+  ) v(country, town, provider, t, f, h, w, c)
+  join municipalities m on m.country = v.country::country_code and m.name = v.town
+ where (v.town <> 'San Pedro Sula' or m.admin_region = 'Cortés')
+on conflict (municipality_id, provider) where municipality_id is not null do update
+  set observed_at = excluded.observed_at, temp_c = excluded.temp_c, feels_like_c = excluded.feels_like_c, humidity = excluded.humidity,
+      wind_kph = excluded.wind_kph, condition = excluded.condition, is_day = excluded.is_day, fetched_at = now();
+
+insert into current_conditions (place_id, provider, observed_at, temp_c, feels_like_c, humidity, wind_kph, condition, is_day, fetched_at)
+select lp.id, v.provider::forecast_provider, now() - interval '8 minutes', v.t, v.f, v.h, v.w, v.c,
+       extract(hour from now() at time zone lp.timezone) between 7 and 19, now()
+  from (values ('leamington', 'open-meteo', 14, 13, 88, 8, 'cloudy'), ('leamington', 'weatherapi', 15, 13, 90, 11, 'cloudy'),
+               ('windsor', 'open-meteo', 15, 14, 85, 12, 'fog'), ('windsor', 'weatherapi', 16, 15, 86, 14, 'fog')) v(key, provider, t, f, h, w, c)
+  join local_places lp on lp.key = v.key
+on conflict (place_id, provider) where place_id is not null do update
+  set observed_at = excluded.observed_at, temp_c = excluded.temp_c, feels_like_c = excluded.feels_like_c, humidity = excluded.humidity,
+      wind_kph = excluded.wind_kph, condition = excluded.condition, is_day = excluded.is_day, fetched_at = now();
+
+-- LOCAL ONLY, for the home bell's dot: Jamaica's warnings checked just now, and
+-- one invented active warning covering Montego Bay (TEZTJM24's town). The
+-- identifier marks it as local; it is replaced on every run.
+insert into source_runs (feed, started_at, finished_at, status, records_written) values ('alerts:JM', now(), now(), 'ok', 1);
+delete from weather_alerts where cap_identifier like 'local-demo-%';
+insert into weather_alerts (source_id, country, cap_identifier, cap_sender, cap_sent, msg_type, event, headline, area_desc, severity_raw,
+                            level, issued_at, effective_at, expires_at, center_geog, radius_m, source_url, fetched_at)
+select s.id, 'JM', 'local-demo-1', 'local-demo', now() - interval '25 minutes', 'Alert', 'Flash Flood Watch',
+       'LOCAL DEMO: Flash Flood Watch for St. James', 'St. James', 'Moderate', 'orange',
+       now() - interval '25 minutes', now() - interval '25 minutes', now() + interval '6 hours', m.geog, 25000,
+       'https://metservice.gov.jm/', now()
+  from alert_sources s, municipalities m
+ where s.country = 'JM' and s.active and m.country = 'JM' and m.name = 'Montego Bay'
+ limit 1;

@@ -4,11 +4,12 @@
  */
 import Head from "next/head";
 import type { GetServerSideProps } from "next";
-import { TabBar } from "@leamington/shared/src/ui/TabBar.tsx";
 import { formatDate } from "@leamington/shared/src/format.ts";
 import { db } from "../../lib/db";
 import { loadClient, recordView } from "../../lib/client";
 import { t } from "../../lib/t";
+import { PageHead, TabBar } from "../../lib/frame";
+import { Pic } from "../../lib/ui";
 
 export const config = { unstable_runtimeJS: false };
 
@@ -40,22 +41,24 @@ export default function Transporte({ lang, transit }: Props) {
         <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
       </Head>
       <main>
-        <p><a href="/mas">← {t(lang, "Más", "More")}</a></p>
-        <h1>{t(lang, "Transporte", "Getting around")}</h1>
+        <PageHead lang={lang} title={t(lang, "Transporte", "Getting around")} art="bus" back />
         {areas.map((area) => (
           <section key={area}>
             <h2>{area}</h2>
             <ul className="rows">
               {transit.filter((r) => r.area === area).map((r) => (
-                <li key={r.id}>
-                  <strong>{r.name}</strong><br /><small>{r.operator}</small>
-                  {r.description && <p>{r.description}</p>}
-                  {r.fares && <p><small>{t(lang, "Tarifa", "Fare")}: {r.fares}</small></p>}
-                  {r.contact && <p><small>{r.contact}</small></p>}
-                  <small>
-                    {r.schedule_url && <><a href={r.schedule_url} rel="noopener">{t(lang, "Horarios", "Schedules")}</a>{" · "}</>}
-                    {t(lang, "Verificado", "Verified")}: {formatDate(r.verified_at, lang)}
-                  </small>
+                <li className="ev" key={r.id}>
+                  <Pic name="bus" lazy />
+                  <span>
+                    <strong>{r.name}</strong><br /><small>{r.operator}</small>
+                    {r.description && <p>{r.description}</p>}
+                    {r.fares && <p><small>{t(lang, "Tarifa", "Fare")}: {r.fares}</small></p>}
+                    {r.contact && <p><small>{r.contact}</small></p>}
+                    <small>
+                      {r.schedule_url && <><a href={r.schedule_url} rel="noopener">{t(lang, "Horarios", "Schedules")}</a>{" · "}</>}
+                      {t(lang, "Verificado", "Verified")}: {formatDate(r.verified_at, lang)}
+                    </small>
+                  </span>
                 </li>
               ))}
             </ul>

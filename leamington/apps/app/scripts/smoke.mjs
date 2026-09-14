@@ -8,6 +8,7 @@
 // must show and be served from /crest/{id} with 30-day caching.
 import http from "node:http";
 import https from "node:https";
+import zlib from "node:zlib";
 
 const BASE = new URL(process.env.BASE ?? "http://localhost:3100");
 const client = BASE.protocol === "https:" ? https : http;
@@ -55,7 +56,25 @@ async function page(path, cookie, label = path) {
   // Images' loading="lazy" attribute is markup, not words on the screen.
   const bad = FORBIDDEN.find((re) => re.test(visible(r.text)));
   check(!bad, `${label} has no reassurance-from-silence or placeholder text`, String(bad));
+  if (r.status === 200 && !path.startsWith("/setup/")) {
+    tabs(r.text, label, path === "/" ? "/" : path.startsWith("/mas/tasa") ? "/mas/tasa" : path.startsWith("/mas") ? "/mas" : path);
+  }
+  if (r.status === 200) await images(r.text, label);
   return r.text;
+}
+
+// The tab bar (docs/DESIGN.md): five labelled items in this order, Clima as the
+// raised round centre button, and exactly the page's own tab marked current.
+const TAB_HREFS = ["/", "/futbol", "/clima", "/mas/tasa", "/mas"];
+function tabs(html, label, current) {
+  const nav = /<nav class="tabs"[^>]*>([\s\S]*?)<\/nav>/.exec(html)?.[1] ?? "";
+  const links = [...nav.matchAll(/<a ([^>]*)>/g)].map((m) => m[1]);
+  const hrefs = links.map((a) => /href="([^"]*)"/.exec(a)?.[1]);
+  check(hrefs.join(" ") === TAB_HREFS.join(" "), `${label}: the tab bar is Inicio, Fútbol, Clima, Tasa, Más`, hrefs.join(" "));
+  check(/<a href="\/clima" class="c"[^>]*><span class="fab"><svg/.test(nav), `${label}: Clima is the raised centre button`);
+  check(nav.split("</a>").slice(0, 5).every((chunk) => /<span>[^<]+<\/span>$/.test(chunk)), `${label}: every tab has a text label`);
+  const marked = links.map((a, i) => (a.includes('aria-current="page"') ? i : -1)).filter((i) => i >= 0);
+  check(marked.length === 1 && marked[0] === TAB_HREFS.indexOf(current), `${label}: its own tab is marked current`, `marked ${marked}`);
 }
 
 // Images come only from our own domain: team crests (each at most 50 KB, lazy),
@@ -63,10 +82,11 @@ async function page(path, cookie, label = path) {
 // always with a credit on the same page).
 // All sized, all cached for 30 days with an ETag, nosniff, and a 304 on the ETag.
 const imagesChecked = new Set();
+const ART_SRC = /src="(\/art\/[a-z-]+\.svg\?v=\d+)"/;
 async function images(html, label) {
   const imgs = [...html.matchAll(/<img\b[^>]*>/g)].map((m) => m[0]);
-  check(imgs.every((i) => /src="\/(crest|photo|league-crest)\/\d+"/.test(i) && /width="\d+"/.test(i) && /height="\d+"/.test(i) && / alt=""/.test(i)),
-    `${label}: every image is a crest or a town photo from our own domain, sized`, imgs.join(" "));
+  check(imgs.every((i) => (/src="\/(crest|photo|league-crest)\/\d+"/.test(i) || ART_SRC.test(i)) && /width="\d+"/.test(i) && /height="\d+"/.test(i) && / alt=""/.test(i)),
+    `${label}: every image is a crest, a town photo or an illustration from our own domain, sized`, imgs.join(" "));
   check(imgs.filter((i) => /src="\/(crest|league-crest)\//.test(i)).every((i) => / loading="lazy"/.test(i)), `${label}: crests and league logos load lazily`);
   const photos = new Set(imgs.map((i) => /src="\/photo\/(\d+)"/.exec(i)?.[1]).filter(Boolean));
   const credited = new Set([...html.matchAll(/<small class="credit" data-photo="(\d+)">([\s\S]*?)<\/small>/g)]
@@ -74,6 +94,23 @@ async function images(html, label) {
   check([...photos].every((id) => credited.has(id)), `${label}: every town photo shown has its credit (author, linked, and license)`,
     `photos ${[...photos]} credited ${[...credited]}`);
   for (const i of imgs) {
+    // Illustrations: versioned, immutable for 30 days, at most 1.5 KB gzipped,
+    // no script or outside reference, and still under reduced motion.
+    const art = ART_SRC.exec(i);
+    if (art) {
+      if (imagesChecked.has(art[1])) continue;
+      imagesChecked.add(art[1]);
+      const r = await send(art[1]);
+      const gz = zlib.gzipSync(Buffer.from(r.text), { level: 9 }).length;
+      check(r.status === 200 && /^image\/svg\+xml/.test(r.headers["content-type"] ?? "") && gz <= 1500,
+        `${art[1]} serves an SVG of at most 1.5 KB gzipped`, `${r.status} ${r.headers["content-type"]} ${gz}`);
+      const cc = r.headers["cache-control"] ?? "";
+      check(/public/.test(cc) && /max-age=2592000/.test(cc) && /immutable/.test(cc) && r.headers["x-content-type-options"] === "nosniff",
+        `${art[1]} is cached for 30 days, immutable, with nosniff`, cc);
+      check(!/animation/.test(r.text) || /@media\s*\(prefers-reduced-motion:\s*reduce\)/.test(r.text), `${art[1]} stops its motion under reduced motion`);
+      check(!/<script|<foreignObject|(xlink:)?href="(https?:)?\/\//i.test(r.text), `${art[1]} has no script and no outside reference`);
+      continue;
+    }
     const [, kind, id] = /src="\/(crest|photo|league-crest)\/(\d+)"/.exec(i) ?? [];
     if (!kind || imagesChecked.has(kind + id)) continue;
     imagesChecked.add(kind + id);
@@ -127,6 +164,24 @@ async function more(cookie, label) {
   const section = (key) => new RegExp(`<section data-line="${key}"[\\s\\S]*?</section>`).exec(home)?.[0] ?? "";
 
   check(!/sin avisos|no alerts|no hay (alertas|avisos)|all clear/i.test(visible(home)), `${label}: home never says "sin avisos" or "no alerts"`);
+
+  // Home's top row: initials, the member pill, and a bell whose dot shows exactly
+  // when home lists an official warning (never a calm sign when it does not).
+  const top = /<div class="top">([\s\S]*?)<\/div>/.exec(home)?.[1] ?? "";
+  check(/<span class="av" aria-hidden="true">\p{Lu}{1,2}<\/span>/u.test(top), `${label}: home shows the member's initials`);
+  check(/<a class="member" href="\/mas">/.test(top), `${label}: the Miembro pill links to Más`);
+  check(/<a class="bellbtn" href="\/clima#avisos"/.test(top), `${label}: the bell opens Clima's official warnings`);
+  const listed = (section("alerts").match(/class="alert [a-z]+"/g) ?? []).length;
+  check(top.includes('class="dot"') === (listed > 0), `${label}: the bell's dot shows exactly when home lists an official warning`, `listed ${listed}`);
+  check(clima.includes('id="avisos"'), `${label}: Clima has the warnings the bell opens`);
+
+  // The hero follows Leamington's sky; ?sky= changes it only with the local preview on.
+  const phase = /<header class="hello sk s-(dawn|day|dusk|night)"/.exec(home)?.[1];
+  check(!home.includes('data-line="greeting"') || Boolean(phase), `${label}: the greeting sits on Leamington's sky`);
+  if (phase && process.env.SKY_PREVIEW !== "1") {
+    const forced = (await send(`/?sky=${phase === "night" ? "day" : "night"}`, { cookie })).text;
+    check(forced.includes(`class="hello sk s-${phase}"`), `${label}: ?sky= cannot change the sky without the local preview`);
+  }
   const monitored = !/todavía no recibe|does not receive/.test(clima);
   check(Boolean(section("alerts")) === monitored, `${label}: the warnings section shows exactly when we read that country's official warnings`);
   if (section("alerts")) {
@@ -163,6 +218,36 @@ async function more(cookie, label) {
   await images(clima, `${label} /clima`);
 }
 
+// "Ahora" (0040): shown only with a temperature and an observation time, the
+// temperature as the data wrote it (a range stays a range), the picture of the
+// sky it reports, and its own validity (at most 90 minutes after observing).
+const NOW_ART = (cond, day) => cond === "clear" ? (day === "0" ? "moon" : "sun")
+  : cond === "partly_cloudy" ? (day === "0" ? "partly-night" : "partly-day")
+  : ["fog", "drizzle", "rain", "storm", "snow"].includes(cond) ? cond : "cloud";
+function ahora(html, label, { time = false } = {}) {
+  const blocks = [...html.matchAll(/<(div|span) class="ahora[^"]*" data-line="[^"]+" data-until="([^"]*)" data-temp="([^"]*)" data-at="([^"]*)" data-cond="([^"]*)" data-day="([^"]*)">/g)];
+  const words = (html.match(/>(Ahora|Now)</g) ?? []).length;
+  const marked = (html.match(/<b class="aw">(Ahora|Now)<\/b>/g) ?? []).length;
+  check(words === blocks.length && marked === blocks.length, `${label}: "Ahora" appears only inside a current-conditions block`, `${words} words, ${marked} marked, ${blocks.length} blocks`);
+  const at = Date.now();
+  for (const b of blocks) {
+    const [whole, , until, temp, observed, cond, day] = b;
+    const rest = html.slice(b.index + whole.length);
+    const body = rest.slice(0, Math.min(...[rest.indexOf('class="fc"'), rest.indexOf('class="ahora'), 2500].filter((i) => i >= 0)));
+    const tag = `${label}: "Ahora" ${temp}`;
+    check(/^-?\d+°$|^-?\d+–-?\d+°$/.test(temp) && Number.isFinite(Date.parse(observed)) && Date.parse(observed) <= at + 10 * 60_000,
+      `${tag} has a temperature and an observed time`, `${temp} ${observed}`);
+    check(body.includes(`>${temp}<`) && (!temp.includes("–") || !/class="cu"/.test(body.slice(0, body.indexOf(`>${temp}<`)))),
+      `${tag} shows the temperature as the data wrote it (a range stays a range)`);
+    check(Number.isFinite(Date.parse(until)) && Date.parse(until) > at && Date.parse(until) - Date.parse(observed) <= 90 * 60_000 + 1000,
+      `${tag} carries its validity`, `${observed} -> ${until}`);
+    const art = /src="\/art\/([a-z-]+)\.svg/.exec(body)?.[1];
+    check(art === NOW_ART(cond, day), `${tag}: the picture matches the sky (${cond || "none"}, ${day === "0" ? "night" : "day"})`, String(art));
+    if (time) check(/(a las|at) \d{1,2}(:\d{2})?(am|pm)/.test(body), `${tag} says when it was observed`);
+  }
+  return blocks.length;
+}
+
 // Fútbol and Clima (0036): a score only on a finished match, form and goals only
 // with results, no empty next-match shell, the league named even without a logo,
 // Canada's places only with a forecast, sunrise and sunset only for places with
@@ -190,9 +275,25 @@ async function richer(cookie, label) {
   const places = clima.split(/(?=<section |<div class="card here)/);
   check(places.filter((p) => p.includes('class="sky')).every((p) => /data-lat="-?\d/.test(p.slice(0, 240))),
     `${label}: sunrise and sunset only for places with coordinates`);
-  check(places.filter((p) => /^<section id="t\d+"/.test(p)).every((p) => p.includes('class="card now')), `${label}: every town shown has today's card`);
-  const leamington = /<div class="card here[^"]*"[^>]*><b class="nm">Leamington<\/b>/.test(clima);
+  // A town is shown only with something current: today's forecast card, or "Ahora" (0040). Never an empty section.
+  check(places.filter((p) => /^<section id="t\d+"/.test(p)).every((p) => p.includes('class="card now') || p.includes('class="ahora card"')),
+    `${label}: every town shown has today's card or its weather now`);
+  const leamingtonCard = /<div class="card here[^"]*"[^>]*><b class="nm">Leamington<\/b>([\s\S]*?)<\/div><\/div>/.exec(clima)?.[1] ?? "";
+  const leamington = leamingtonCard.includes('class="tp"');
   check(home.includes('data-line="local"') === leamington, `${label}: "Leamington hoy" is on home exactly when Clima has Leamington's forecast`);
+
+  // "Ahora" on both pages, and on home exactly where Clima has it.
+  ahora(clima, `${label} /clima`, { time: true });
+  ahora(home, `${label} /`);
+  check(home.includes('data-line="leamington-now"') === leamingtonCard.includes('class="ahora in"'),
+    `${label}: Leamington's "Ahora" is on home exactly when Clima has it`);
+  const townNow = [...clima.matchAll(/<section id="t(\d+)"[^>]*>([\s\S]*?)<\/section>/g)]
+    .map((m) => ({ id: m[1], home: m[2].includes('class="chip"'), now: m[2].includes('class="ahora card"') }));
+  const homeTown = townNow.find((x) => x.home);
+  check(!homeTown || home.includes('data-line="home-now"') === homeTown.now, `${label}: the home town's "Ahora" is on home exactly when Clima has it`);
+  const watchNow = [...home.matchAll(/<a class="town" href="\/clima#t(\d+)">([\s\S]*?)<\/a>/g)].map((m) => ({ id: m[1], now: m[2].includes('data-line="watch-now"') }));
+  check(watchNow.every((w) => w.now === Boolean(townNow.find((x) => x.id === w.id)?.now)), `${label}: each watched town's "Ahora" is on home exactly when Clima has it`);
+  check(/<script>[^<]*data-until/.test(clima), `${label}: Clima drops anything past its data-until on an open or restored page`);
   await images(futbol, `${label} /futbol (richer)`);
   await images(clima, `${label} /clima (richer)`);
 }
@@ -200,6 +301,9 @@ async function richer(cookie, label) {
 // Signed out.
 const anon = await send("/clima");
 check(anon.status === 307 && anon.location.includes("/login"), "signed out, a section redirects to /login", `${anon.status} ${anon.location}`);
+const signin = await send("/login");
+check(signin.status === 200, "/login 200");
+await images(signin.text, "/login");
 const health = await send("/health");
 check(health.status === 200 && JSON.parse(health.text).status === "ok", "/health reports ok", health.text);
 
@@ -226,11 +330,39 @@ for (const path of ["/crest/999999999999", "/crest/abc", "/photo/999999999999", 
 const clima = await page("/clima", cookie);
 check(/Revisamos los avisos|We checked .* warnings|No hemos podido revisar|We have not been able to check|todavía no recibe|does not receive/.test(clima),
   "/clima says when warnings were checked, that it could not, or that they are not received");
-check(/<nav class="tabs"/.test(clima) && (clima.match(/<a [^>]*href="\/(futbol|clima|mas)?"/g) ?? []).length >= 4, "/clima has the 4-item tab bar");
+tabs(clima, "/clima", "/clima");
 
-// Search is accent-insensitive and partial.
-const search = await send("/setup/municipality?edit=1&q=MONTEGO", { cookie });
-check(/name="municipality_id"/.test(search.text), "municipality search finds a partial, differently-cased name");
+// Search is accent-insensitive and partial, in the signed-in client's own country
+// (Más names it by flag: "CAD → 🇭🇳").
+const SEARCH = { "🇯🇲": "MONTEGO", "🇭🇳": "CEIBA", "🇲🇽": "URUAPAN", "🇬🇹": "HUEHUE" };
+const flag = /CAD → (🇯🇲|🇭🇳|🇲🇽|🇬🇹)/.exec((await send("/mas", { cookie })).text)?.[1];
+check(Boolean(flag), "Más names the client's country for the search check", String(flag));
+const search = await send(`/setup/municipality?edit=1&q=${encodeURIComponent(SEARCH[flag] ?? "MONTEGO")}`, { cookie });
+check(/name="municipality_id"/.test(search.text), `municipality search finds a partial, differently-cased name (${SEARCH[flag]})`);
+
+// Letra grande (0040): a saved size changes the next page's <html>; foreign
+// origins and unknown values are refused and change nothing.
+{
+  const html = async (path = "/mas") => (await send(path, { cookie })).text;
+  const isBig = (text) => /<html[^>]*\bclass="big"/.test(text);
+  const large = await send("/api/text-size", { method: "POST", cookie, form: { size: "large" } });
+  check(large.status === 303 && large.location.startsWith("/mas"), "choosing Grande saves and returns to Más", `${large.status} ${large.location}`);
+  const masBig = await html();
+  check(isBig(masBig), 'after Grande, the next page has <html class="big">');
+  check(isBig(await html("/")) && isBig(await html("/clima")), "Grande applies on home and Clima too");
+  check(/value="large" class="on" aria-pressed="true"/.test(masBig) && /value="normal" class="secondary" aria-pressed="false"/.test(masBig),
+    "Más marks Grande as the current size");
+  const foreign = await send("/api/text-size", { method: "POST", cookie, origin: "https://evil.example", form: { size: "normal" } });
+  check(foreign.status === 403 && isBig(await html()), "a cross-origin text-size post is refused and changes nothing", String(foreign.status));
+  const bad = await send("/api/text-size", { method: "POST", cookie, form: { size: "huge" } });
+  check(bad.status === 400 && isBig(await html()), "an unknown text size is refused and changes nothing", String(bad.status));
+  const anonSize = await send("/api/text-size", { method: "POST", form: { size: "large" } });
+  check(anonSize.status === 303 && anonSize.location === "/login", "a text-size post without a session goes to sign-in", anonSize.location);
+  const normal = await send("/api/text-size", { method: "POST", cookie, form: { size: "normal" } });
+  const masNormal = await html();
+  check(normal.status === 303 && !isBig(masNormal) && !isBig(await html("/")), 'after Normal, <html class="big"> is gone');
+  check(/value="normal" class="on" aria-pressed="true"/.test(masNormal), "Más marks Normal as the current size");
+}
 
 // Push API guards.
 check((await send("/api/push", { method: "POST", cookie, json: { action: "subscribe", subscription: { endpoint: "http://x" } } })).status === 400,

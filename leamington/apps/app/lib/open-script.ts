@@ -27,3 +27,12 @@ fetch("/api/open",{method:"POST",headers:{"content-type":"application/json"},bod
 .then(function(r){if(r.status<500)put("lc_q",[])}).catch(function(){});
 if("serviceWorker" in navigator)navigator.serviceWorker.register("/sw.js");
 })();`;
+
+/**
+ * Drops any element whose data-until has passed: at load, when a page comes
+ * back from the browser's back/forward cache, and when the tab is shown again.
+ * Pages without OPEN_SCRIPT (Clima) inline it so an "Ahora" never outlives its
+ * validity on an open or restored page; home adds it for the same reasons.
+ */
+export const EXPIRE_SCRIPT = `(function(){function x(){var n=Date.now();Array.prototype.forEach.call(document.querySelectorAll("[data-until]"),function(e){if(Date.parse(e.getAttribute("data-until"))<=n&&e.parentNode)e.parentNode.removeChild(e)})}
+x();addEventListener("pageshow",x);document.addEventListener("visibilitychange",function(){if(!document.hidden)x()})})();`;

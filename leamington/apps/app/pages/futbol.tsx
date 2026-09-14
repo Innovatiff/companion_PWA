@@ -13,7 +13,7 @@
  */
 import Head from "next/head";
 import type { GetServerSideProps } from "next";
-import { TabBar } from "@leamington/shared/src/ui/TabBar.tsx";
+import { TabBar } from "../lib/frame";
 import { formatTime12, formatWeekdayDate, localDate } from "@leamington/shared/src/format.ts";
 import { db } from "../lib/db";
 import { loadClient, recordView } from "../lib/client";

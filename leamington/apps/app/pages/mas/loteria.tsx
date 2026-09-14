@@ -5,12 +5,12 @@
  */
 import Head from "next/head";
 import type { GetServerSideProps } from "next";
-import { TabBar } from "@leamington/shared/src/ui/TabBar.tsx";
 import { formatDate, formatTime12, formatWeekdayDate, localDate } from "@leamington/shared/src/format.ts";
 import { db } from "../../lib/db";
 import { loadClient, recordView } from "../../lib/client";
 import { t } from "../../lib/t";
-import { Balls, Icon, drawTime } from "../../lib/ui";
+import { PageHead, TabBar } from "../../lib/frame";
+import { Balls, Pic, drawTime } from "../../lib/ui";
 
 export const config = { unstable_runtimeJS: false };
 
@@ -46,18 +46,14 @@ export default function Loteria({ lang, tz, games }: Props) {
         <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
       </Head>
       <main>
-        <p><a href="/mas">← {t(lang, "Más", "More")}</a></p>
-        <h1>{t(lang, "Lotería", "Lottery")}</h1>
-        <p className="inf">
-          <span className="i"><Icon name="info" /></span>
-          <small>{t(lang, "Resultados oficiales de los últimos dos días.", "Official results from the last two days.")}</small>
-        </p>
+        <PageHead lang={lang} title={t(lang, "Lotería", "Lottery")} art="lottery" back />
+        <p className="step">{t(lang, "Resultados oficiales · últimos 2 días", "Official results · last 2 days")}</p>
         {games.map((g) => (
           <section key={g.game}>
             <h2>{g.game}</h2>
             {g.draws.map((d) => (
               <div className="tile lottery" key={d.draw_date + (d.draw_time ?? "")}>
-                <span className="ico"><Icon name="star" /></span>
+                <Pic name="lottery" lazy />
                 <span>
                   <small>{formatWeekdayDate(d.draw_date, lang)}{d.draw_time ? ` · ${drawTime(d.draw_time)}` : ""}</small>
                   <Balls numbers={d.numbers} />

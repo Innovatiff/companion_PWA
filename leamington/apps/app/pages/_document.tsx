@@ -4,22 +4,24 @@ import { APP_CSS } from "@leamington/shared/src/ui/css.ts";
 // Inline, so a cold load is one HTML response (docs/DESIGN.md).
 const CSS = APP_CSS + "input.codein{font-size:1.5rem;letter-spacing:.12em;text-transform:uppercase}";
 
-type Props = DocumentInitialProps & { lang: string };
+type Props = DocumentInitialProps & { lang: string; big: boolean };
 
 export default class AppDocument extends Document<Props> {
   static async getInitialProps(ctx: DocumentContext): Promise<Props> {
     const initial = await Document.getInitialProps(ctx);
     // Pages set req.appLang in getServerSideProps once the user's language is known.
-    const lang = (ctx.req as { appLang?: string } | undefined)?.appLang === "en" ? "en" : "es";
-    return { ...initial, lang };
+    const req = ctx.req as { appLang?: string; appTextSize?: string } | undefined;
+    const lang = req?.appLang === "en" ? "en" : "es";
+    // Letra grande (clients.text_size = 'large', coming): pages set req.appTextSize.
+    return { ...initial, lang, big: req?.appTextSize === "large" };
   }
 
   render() {
     return (
-      <Html lang={this.props.lang}>
+      <Html lang={this.props.lang} className={this.props.big ? "big" : undefined}>
         <Head>
           <link rel="manifest" href="/manifest.webmanifest" />
-          <meta name="theme-color" content="#10231c" />
+          <meta name="theme-color" content="#eef0fb" />
           {/* No favicon request: every byte on a cold load counts. */}
           <link rel="icon" href="data:," />
           <style dangerouslySetInnerHTML={{ __html: CSS }} />

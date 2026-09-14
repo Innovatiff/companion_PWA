@@ -18,12 +18,14 @@
  */
 import Head from "next/head";
 import type { GetServerSideProps } from "next";
-import { TabBar } from "@leamington/shared/src/ui/TabBar.tsx";
 import { formatDate, formatTime12, formatWeekdayDate, localDate } from "@leamington/shared/src/format.ts";
 import { db } from "../lib/db";
 import { loadClient, recordView } from "../lib/client";
 import { t } from "../lib/t";
-import { Art, Credit, FLAG, Icon, MOON, TownPhoto, moonPhase, sunTimes, type Photo } from "../lib/ui";
+import { PageHead, TabBar } from "../lib/frame";
+import { Art, Credit, FLAG, Icon, MOON, Pic, Ring, TownPhoto, dayArt, moonPhase, skyPhase, sunTimes, type Photo } from "../lib/ui";
+import { AhoraCard, nowLive, type Now } from "../lib/now";
+import { EXPIRE_SCRIPT } from "../lib/open-script";
 import { CLIMA_CSS } from "../lib/page-css";
 
 export const config = { unstable_runtimeJS: false };
@@ -38,11 +40,12 @@ type Day = {
   date: string; temp: string; temp_max?: number; low: number | null; rain?: boolean;
   rain_prob?: number | null; rain_mm?: number | null; text: string;
 };
+// "now": the weather right now (0040), or null.
 type Town = {
-  id: number; name: string; admin_region: string; is_home: boolean; days: Day[];
+  id: number; name: string; admin_region: string; is_home: boolean; days: Day[]; now?: Now | null;
   lat?: number | null; lng?: number | null; timezone?: string; photo?: boolean;
 };
-type Local = { id: number; key: string; name: string; region: string; lat: number | null; lng: number | null; timezone: string; days: Day[] };
+type Local = { id: number; key: string; name: string; region: string; lat: number | null; lng: number | null; timezone: string; days: Day[]; now?: Now | null };
 type Weather = {
   language: "es" | "en"; timezone: string; has_home: boolean; towns: Town[]; local?: Local[];
   alerts_state: "current" | "stale" | "not_monitored"; alerts_checked_at: string | null;
@@ -91,6 +94,7 @@ export default function Clima({ w, country, today, now, photos }: Props) {
   const lang = w.language;
   const tz = w.timezone;
   const at = new Date(now);
+  const nowMs = at.getTime();
   const pick = (pair: [string, string] | undefined, fallback: string) => (pair ? pair[lang === "en" ? 1 : 0] : fallback);
   const moment = (iso: string) => {
     const day = localDate(iso, tz);
@@ -132,17 +136,21 @@ export default function Clima({ w, country, today, now, photos }: Props) {
     <p><a href={w.agency_url} rel="noopener">{t(lang, `Ver avisos de ${w.agency}`, `See ${w.agency} warnings`)}</a></p>
   );
 
-  // Rain chance as words and a bar: only when two providers report it.
+  // Rain chance as a thin bar: only when two providers report it.
   const rainBar = (d: Day) => d.rain_prob != null && (
     <span className="rp">
-      <small>{t(lang, "Probabilidad de lluvia", "Chance of rain")} <b>{`${d.rain_prob}%`}</b>{d.rain_mm != null ? ` · ${d.rain_mm} mm` : ""}</small>
+      <small>{t(lang, "Lluvia", "Rain")} <b>{`${d.rain_prob}%`}</b>{d.rain_mm != null ? ` · ${d.rain_mm} mm` : ""}</small>
       <span className="bar"><i style={{ width: `${Math.min(100, Math.max(0, d.rain_prob))}%` }} /></span>
     </span>
   );
-  // The big number is the day's high, not the temperature right now: say so.
-  const lowRain = (d: Day) => [t(lang, "máxima", "high"), d.low != null ? `${t(lang, "mín", "low")} ${d.low}°` : null,
-    d.rain ? t(lang, "Lluvia", "Rain") : null]
-    .filter(Boolean).join(" · ");
+  // Today's forecast as secondary chips: the high and low with arrows, so it never reads as the temperature now.
+  const highLow = (d: Day) => (
+    <span className="hl">
+      <b className="tp">{`↑${d.temp}`}</b>
+      {d.low != null && <b className="lo">{`↓${d.low}°`}</b>}
+      {d.rain && <b className="rn">{t(lang, "Lluvia", "Rain")}</b>}
+    </span>
+  );
   // Sunrise and sunset, computed; only with coordinates.
   const sky = (lat: number | null | undefined, lng: number | null | undefined, placeTz: string, date: string, extra?: string, small = false) => {
     if (lat == null || lng == null) return null;
@@ -169,7 +177,7 @@ export default function Clima({ w, country, today, now, photos }: Props) {
           return (
             <li key={d.date}>
               <span>{dayName(d.date, placeToday, true)}</span>
-              <span className="i"><Icon name={d.rain ? "rain" : "sun"} /></span>
+              <Art name={dayArt(d)} size={30} lazy />
               <small className="pr">{d.rain_prob != null ? `💧${d.rain_prob}%` : ""}</small>
               <span className="lo">{d.low != null ? `${d.low}°` : ""}</span>
               <span className="rng">
@@ -185,9 +193,15 @@ export default function Clima({ w, country, today, now, photos }: Props) {
     );
   };
 
-  const locals = (w.local ?? []).filter((p) => p.days.length > 0);
-  const towns = [...w.towns].filter((town) => town.days.length > 0).sort((a, b) => Number(b.is_home) - Number(a.is_home));
+  const locals = (w.local ?? []).filter((p) => p.days.length > 0 || nowLive(p.now, nowMs));
+  const towns = [...w.towns].filter((town) => town.days.length > 0 || nowLive(town.now, nowMs)).sort((a, b) => Number(b.is_home) - Number(a.is_home));
   const phase = moonPhase(at);
+  // Jump pills when the page is long enough to need them.
+  const jumps: [string, string][] = [
+    ["#avisos", t(lang, "Avisos", "Warnings")],
+    ...(locals.length ? [["#aqui", t(lang, "Canadá", "Canada")] as [string, string]] : []),
+    ...towns.map((town) => [`#t${town.id}`, town.name] as [string, string]),
+  ];
 
   return (
     <>
@@ -197,51 +211,58 @@ export default function Clima({ w, country, today, now, photos }: Props) {
         <style dangerouslySetInnerHTML={{ __html: CLIMA_CSS }} />
       </Head>
       <main>
-        <h1>{t(lang, "Clima", "Weather")}</h1>
+        <PageHead lang={lang} title={t(lang, "Clima", "Weather")} art={skyPhase(at) === "night" ? "partly-night" : "partly-day"} />
+        {jumps.length > 2 && (
+          <nav className="seg" aria-label={t(lang, "En esta página", "On this page")}>
+            {jumps.map(([href, label]) => <a key={href} href={href}>{label}</a>)}
+          </nav>
+        )}
 
-        <h2>{t(lang, "Avisos oficiales", "Official warnings")}</h2>
-        {w.alerts_state === "current" && (
-          <>
-            {w.alerts_here?.map(card)}
-            <div className="tile calm">
-              <span className="ico"><Icon name="check" /></span>
-              <small>
-                {t(lang, `Revisamos los avisos de ${w.agency} a las ${moment(w.alerts_checked_at!)}.`,
-                         `We checked ${w.agency} warnings at ${moment(w.alerts_checked_at!)}.`)}
-              </small>
+        <div id="avisos">
+          <h2>{t(lang, "Avisos oficiales", "Official warnings")}</h2>
+          {w.alerts_state === "current" && (
+            <>
+              {w.alerts_here?.map(card)}
+              <div className="tile calm">
+                <Pic name="clock" />
+                <small>
+                  {t(lang, `Revisamos los avisos de ${w.agency} a las ${moment(w.alerts_checked_at!)}.`,
+                           `We checked ${w.agency} warnings at ${moment(w.alerts_checked_at!)}.`)}
+                </small>
+              </div>
+              {w.alerts_elsewhere && w.alerts_elsewhere.length > 0 && (
+                <details>
+                  <summary>{t(lang, `En otras partes de ${pick(COUNTRY[country], country)}`, `Elsewhere in ${pick(COUNTRY[country], country)}`)} ({w.alerts_elsewhere.length})</summary>
+                  {w.alerts_elsewhere.map(card)}
+                </details>
+              )}
+            </>
+          )}
+          {w.alerts_state === "stale" && (
+            <div className="tile stale">
+              <Pic name="warning" />
+              <span>
+                <p>
+                  {w.alerts_checked_at
+                    ? t(lang, `No hemos podido revisar los avisos de ${w.agency} desde las ${moment(w.alerts_checked_at)}.`,
+                              `We have not been able to check ${w.agency} warnings since ${moment(w.alerts_checked_at)}.`)
+                    : t(lang, `No hemos podido revisar los avisos de ${w.agency}.`, `We have not been able to check ${w.agency} warnings.`)}
+                </p>
+                {agencyLink}
+              </span>
             </div>
-            {w.alerts_elsewhere && w.alerts_elsewhere.length > 0 && (
-              <details>
-                <summary>{t(lang, `En otras partes de ${pick(COUNTRY[country], country)}`, `Elsewhere in ${pick(COUNTRY[country], country)}`)} ({w.alerts_elsewhere.length})</summary>
-                {w.alerts_elsewhere.map(card)}
-              </details>
-            )}
-          </>
-        )}
-        {w.alerts_state === "stale" && (
-          <section className="tile stale">
-            <span className="ico"><Icon name="alert" /></span>
-            <span>
-              <p>
-                {w.alerts_checked_at
-                  ? t(lang, `No hemos podido revisar los avisos de ${w.agency} desde las ${moment(w.alerts_checked_at)}.`,
-                            `We have not been able to check ${w.agency} warnings since ${moment(w.alerts_checked_at)}.`)
-                  : t(lang, `No hemos podido revisar los avisos de ${w.agency}.`, `We have not been able to check ${w.agency} warnings.`)}
-              </p>
-              {agencyLink}
-            </span>
-          </section>
-        )}
-        {w.alerts_state === "not_monitored" && (
-          <section className="tile">
-            <span className="ico"><Icon name="info" /></span>
-            <span>
-              <p>{t(lang, `Hoy todavía no recibe los avisos de ${w.agency ?? "tu país"}. Consúltalos en su página.`,
-                          `Hoy does not receive ${w.agency ?? "your country's"} warnings yet. Check their page.`)}</p>
-              {agencyLink}
-            </span>
-          </section>
-        )}
+          )}
+          {w.alerts_state === "not_monitored" && (
+            <div className="tile">
+              <Pic name="bell" />
+              <span>
+                <p>{t(lang, `Hoy todavía no recibe los avisos de ${w.agency ?? "tu país"}. Consúltalos en su página.`,
+                            `Hoy does not receive ${w.agency ?? "your country's"} warnings yet. Check their page.`)}</p>
+                {agencyLink}
+              </span>
+            </div>
+          )}
+        </div>
 
         {locals.length > 0 && (
           <section id="aqui">
@@ -249,18 +270,22 @@ export default function Clima({ w, country, today, now, photos }: Props) {
             <div className={locals.length > 1 ? "pair" : undefined}>
               {locals.map((p) => {
                 const placeToday = localDate(at, p.timezone);
-                const d = p.days[0];
+                const d = p.days[0] as Day | undefined;
                 return (
-                  <div key={p.key} className={`card here ${d.rain ? "rain" : "sun"}`} data-lat={p.lat ?? undefined}>
+                  <div key={p.key} className={`card here ${d?.rain ? "rain" : "sun"}`} data-lat={p.lat ?? undefined}>
                     <b className="nm">{p.name}</b>
-                    <small>{`${dayName(d.date, placeToday)} · ${p.region}`}</small>
-                    <span className="hn"><Art name={d.rain ? "rainy" : "sunny"} size={44} /><b className="tp">{d.temp}</b></span>
-                    {lowRain(d) && <small>{lowRain(d)}</small>}
-                    {rainBar(d)}
+                    <small>{p.region}</small>
+                    {nowLive(p.now, nowMs) && <AhoraCard n={p.now} lang={lang} tz={p.timezone} inside />}
+                    {d && (
+                      <>
+                        <span className="hn"><Art name={dayArt(d)} size={30} lazy /><small>{dayName(d.date, placeToday)}</small>{highLow(d)}</span>
+                        {rainBar(d)}
+                      </>
+                    )}
                     {p.days.length > 1 && (
                       <ul className="mini">
                         {p.days.slice(1).map((x) => (
-                          <li key={x.date}><small>{dayName(x.date, placeToday, true)}</small><span className="i"><Icon name={x.rain ? "rain" : "sun"} /></span><b>{x.temp}</b></li>
+                          <li key={x.date}><small>{dayName(x.date, placeToday, true)}</small><Art name={dayArt(x)} size={24} lazy /><b>{x.temp}</b></li>
                         ))}
                       </ul>
                     )}
@@ -279,20 +304,23 @@ export default function Clima({ w, country, today, now, photos }: Props) {
           const photo = photos.find((p) => p.municipality_id === town.id);
           const placeTz = town.timezone ?? tz;
           const placeToday = localDate(at, placeTz);
-          const d = town.days[0];
+          const d = town.days[0] as Day | undefined;
           const title = <h2>{town.name}{town.is_home && <span className="chip">{t(lang, "Tu municipio", "Your town")}</span>}</h2>;
           return (
             <section key={town.id} id={`t${town.id}`} data-lat={town.lat ?? undefined}>
               {photo ? <div className="townhead"><TownPhoto p={photo} />{title}</div> : <div className="townhead plain">{title}</div>}
-              <div className={`card now ${d.rain ? "rain" : "sun"}`}>
-                <Art name={d.rain ? "rainy" : "sunny"} size={92} />
-                <span>
-                  <small>{`${dayName(d.date, placeToday)} · ${town.admin_region}`}</small>
-                  <b className="tp">{d.temp}</b>
-                  {lowRain(d) && <small>{lowRain(d)}</small>}
-                  {rainBar(d)}
-                </span>
-              </div>
+              {nowLive(town.now, nowMs) && <AhoraCard n={town.now} lang={lang} tz={placeTz} />}
+              {d && (
+                <div className={`card now ${d.rain ? "rain" : "sun"}`}>
+                  <Art name={dayArt(d)} size={52} lazy />
+                  <span>
+                    <small>{`${dayName(d.date, placeToday)} · ${town.admin_region}`}</small>
+                    {highLow(d)}
+                    {d.rain_prob != null && d.rain_mm != null && <small>{`${d.rain_mm} mm`}</small>}
+                  </span>
+                  {d.rain_prob != null && <Ring pct={d.rain_prob} unit={t(lang, "lluvia", "rain")} tone="rain" />}
+                </div>
+              )}
               {sky(town.lat, town.lng, placeTz, placeToday, town.is_home ? `${MOON_ICON[phase]} ${MOON[lang][phase]}` : undefined)}
               {town.days.length > 1 && strip(town.days, placeToday)}
               {photo && <Credit p={photo} lang={lang} />}
@@ -321,6 +349,8 @@ export default function Clima({ w, country, today, now, photos }: Props) {
         )}
       </main>
       <TabBar current="clima" lang={lang} />
+      {/* "Ahora" carries its own expiry: an open or restored page drops it once past. */}
+      <script dangerouslySetInnerHTML={{ __html: EXPIRE_SCRIPT }} />
     </>
   );
 }

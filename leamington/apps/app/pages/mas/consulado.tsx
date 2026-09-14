@@ -5,12 +5,12 @@
  */
 import Head from "next/head";
 import type { GetServerSideProps } from "next";
-import { TabBar } from "@leamington/shared/src/ui/TabBar.tsx";
 import { formatDate } from "@leamington/shared/src/format.ts";
 import { db } from "../../lib/db";
 import { loadClient, recordView } from "../../lib/client";
 import { t } from "../../lib/t";
-import { FLAG, Icon, tel } from "../../lib/ui";
+import { PageHead, TabBar } from "../../lib/frame";
+import { FLAG, Icon, Pic, tel } from "../../lib/ui";
 
 export const config = { unstable_runtimeJS: false };
 
@@ -42,20 +42,19 @@ export default function Consulado({ lang, country, consulates }: Props) {
         <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
       </Head>
       <main>
-        <p><a href="/mas">← {t(lang, "Más", "More")}</a></p>
-        <h1>{t(lang, "Consulado", "Consulate")}</h1>
+        <PageHead lang={lang} title={t(lang, "Consulado", "Consulate")} art="consulate" back />
         {consulates.map((c) => (
           <section key={c.id}>
             <div className="card">
               <div className="dialrow">
-                <span className="ico"><Icon name="building" /></span>
+                <Pic name="pin" lazy />
                 <span>
                   <small>{FLAG[country]} {t(lang, "Consulado en", "Consulate in")}</small>
                   <p className="line">{c.city}</p>
                 </span>
               </div>
               {c.address && <p className="inf"><span className="i"><Icon name="pin" /></span><span>{c.address}</span></p>}
-              {c.hours && <p className="inf"><span className="i"><Icon name="clock" /></span><span><small>{t(lang, "Horario", "Hours")}</small><br />{c.hours}</span></p>}
+              {c.hours && <p className="inf"><span className="i"><Icon name="clock" /></span><span>{c.hours}</span></p>}
               {c.phone && <p><a className="dial" href={tel(c.phone)}><Icon name="phone" />{c.phone}</a></p>}
               {c.email && <p className="inf"><span className="i"><Icon name="mail" /></span><a href={`mailto:${c.email}`}>{c.email}</a></p>}
               {c.booking_url && <a className="button secondary" href={c.booking_url} rel="noopener">{t(lang, "Pedir cita", "Book an appointment")}</a>}
@@ -70,7 +69,7 @@ export default function Consulado({ lang, country, consulates }: Props) {
                 <ul className="rows">
                   {c.services.map((s) => (
                     <li key={s.name}>
-                      {s.name}{s.cost && <small> · {s.cost}</small>}
+                      <b>{s.name}</b>{s.cost && <small> · {s.cost}</small>}
                       {s.documents && s.documents.length > 0 && <><br /><small>{s.documents.join(" · ")}</small></>}
                     </li>
                   ))}

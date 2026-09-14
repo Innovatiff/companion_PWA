@@ -3,7 +3,8 @@
  * from our own domain (or the team's initials), lottery balls, date blocks and
  * flags. No client JS, no third-party assets, nothing downloaded but crests.
  */
-import type { Lang } from "@leamington/shared/src/format.ts";
+import type { CSSProperties } from "react";
+import { localDate, type Lang } from "@leamington/shared/src/format.ts";
 
 // Stroke icons on a 24px grid, drawn in currentColor.
 export const ICON = {
@@ -27,6 +28,9 @@ export const ICON = {
   key: '<circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M16 7l3 3"/>',
   user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
   check: '<path d="m5 12 5 5 9-10"/>',
+  drop: '<path d="M12 3.5s6 6.3 6 10.7a6 6 0 0 1-12 0C6 9.8 12 3.5 12 3.5z"/>',
+  wind: '<path d="M3 9h11a3 3 0 1 0-3-3M3 13h15a3 3 0 1 1-3 3M3 17h6"/>',
+  thermo: '<path d="M10 14.5V5a2 2 0 0 1 4 0v9.5a4 4 0 1 1-4 0z"/><path d="M12 11v5"/>',
 } as const;
 export type IconName = keyof typeof ICON;
 
@@ -34,29 +38,63 @@ export function Icon({ name }: { name: IconName }) {
   return <svg viewBox="0 0 24 24" aria-hidden="true" dangerouslySetInnerHTML={{ __html: ICON[name] }} />;
 }
 
-// Coloured art. Each is well under 600 bytes.
-const ART = {
-  morning: '<circle cx="32" cy="32" r="12" fill="#ffd166"/><path d="M32 8v7M32 49v7M8 32h7M49 32h7M15 15l5 5M44 44l5 5M15 49l5-5M44 20l5-5" stroke="#ffd166" stroke-width="4" stroke-linecap="round"/>',
-  afternoon: '<circle cx="25" cy="24" r="11" fill="#ffd166"/><path d="M25 5v5M6 24h5M11.5 10.5l3.5 3.5M38.5 10.5 35 14" stroke="#ffd166" stroke-width="4" stroke-linecap="round"/><path d="M22 53h26a9 9 0 0 0 1.5-17.9A13 13 0 0 0 25 38a7.5 7.5 0 0 0-3 15z" fill="#fff"/>',
-  night: '<path d="M38 9a21 21 0 1 0 17 31A17 17 0 0 1 38 9z" fill="#ffe8a3"/><path d="M50 12l1.2 3 3 1.2-3 1.2L50 20.5l-1.2-3-3-1.2 3-1.2zM16 10l.9 2.1 2.1.9-2.1.9L16 16l-.9-2.1L13 13l2.1-.9z" fill="#fff"/><circle cx="56" cy="30" r="1.6" fill="#fff"/>',
-  sunny: '<circle cx="24" cy="24" r="9" fill="#fdb813"/><path d="M24 5v5M24 38v5M5 24h5M38 24h5M10.6 10.6l3.5 3.5M33.9 33.9l3.5 3.5M10.6 37.4l3.5-3.5M33.9 14.1l3.5-3.5" stroke="#fdb813" stroke-width="3.5" stroke-linecap="round"/>',
-  rainy: '<path d="M13 31h22a7.5 7.5 0 0 0 1-14.9A11 11 0 0 0 15 19a6 6 0 0 0-2 12z" fill="#a9c1ee"/><path d="M17 36l-2 5M25 36l-2 5M33 36l-2 5" stroke="#2f6fde" stroke-width="3" stroke-linecap="round"/>',
-  cloudy: '<circle cx="18" cy="18" r="7" fill="#fdb813"/><path d="M15 36h20a7 7 0 0 0 1-13.9A10 10 0 0 0 17 25a5.5 5.5 0 0 0-2 11z" fill="#c3d2ee"/>',
-} as const;
+// ---------------------------------------------------------------------------
+// Illustrations: small animated SVG files in public/art, each under 1.5 KB
+// gzipped, served with a 30-day immutable cache. Their motion lives inside each
+// file and stops under prefers-reduced-motion. Decorative: alt="" always, the
+// words beside them carry the meaning. Bump ART_V when any file changes.
+// ---------------------------------------------------------------------------
+export const ART_V = 1;
+export const ART_NAMES = [
+  "sun", "moon", "partly-day", "partly-night", "cloud", "fog", "drizzle", "rain", "storm", "snow",
+  "football", "money", "calendar", "school", "consulate", "phone", "bus", "lottery", "bell", "crown",
+  "plane", "warning", "settings", "clock", "pin",
+] as const;
+export type ArtName = (typeof ART_NAMES)[number];
 
-export function Art({ name, size }: { name: keyof typeof ART; size: number }) {
-  const box = name === "morning" || name === "afternoon" || name === "night" ? 64 : 48;
+export function Art({ name, size, lazy = false, className }: { name: ArtName; size: number; lazy?: boolean; className?: string }) {
   return (
-    <svg className="art" viewBox={`0 0 ${box} ${box}`} width={size} height={size} aria-hidden="true"
-         dangerouslySetInnerHTML={{ __html: ART[name] }} />
+    <img className={className ? `art ${className}` : "art"} src={`/art/${name}.svg?v=${ART_V}`} width={size} height={size} alt=""
+         loading={lazy ? "lazy" : undefined} decoding="async" />
   );
 }
 
-/** Which greeting art goes with the greeting's own words. */
-export function greetingArt(text: string): "morning" | "afternoon" | "night" {
-  if (/Buenos días|Good morning/i.test(text)) return "morning";
-  if (/Buenas tardes|Good afternoon/i.test(text)) return "afternoon";
-  return "night";
+/** A picture on a rounded lavender tile, the row's lead. */
+export function Pic({ name, lazy }: { name: ArtName; lazy?: boolean }) {
+  return <span className="pic"><Art name={name} size={40} lazy={lazy} /></span>;
+}
+
+/**
+ * A forecast day's picture. The forecast says only whether rain is expected, so
+ * a day without rain gets the modest partly-cloudy picture, never a promise of
+ * sun. Current conditions (coming) will pick the exact sky.
+ */
+export const dayArt = (d: { rain?: boolean | null }): ArtName => (d.rain ? "rain" : "partly-day");
+
+/**
+ * A whole number that counts up from zero as the page opens (CSS @property,
+ * no JS). The number itself is in the text for screen readers and copies; the
+ * animated copy is decorative. Anything else renders as the plain value.
+ */
+export function Num({ value, className }: { value: string; className?: string }) {
+  const m = /^(-?\d{1,4})(°?)$/.exec(value.trim());
+  if (!m) return <b className={className}>{value}</b>;
+  return (
+    <b className={className}>
+      <span className="cu" style={{ "--n": Number(m[1]) } as CSSProperties} aria-hidden="true">{m[2]}</span>
+      <span className="sr">{value}</span>
+    </b>
+  );
+}
+
+/** A thick ring filled to a percentage from our data, with the value and a unit inside. */
+export function Ring({ pct, unit, tone }: { pct: number; unit: string; tone?: "rain" | "brand" }) {
+  const p = Math.min(100, Math.max(0, Math.round(pct)));
+  return (
+    <span className={`ring${tone === "rain" ? " rn" : ""}`} style={{ "--p": p } as CSSProperties}>
+      <span><b>{`${p}%`}</b><small>{unit}</small></span>
+    </span>
+  );
 }
 
 // A team's initials, e.g. "Montego Bay United" -> "MBU", "Motagua" -> "MOT".
@@ -132,14 +170,18 @@ export function TownPhoto({ p, lazy = true, className }: { p: Photo; lazy?: bool
   );
 }
 
-/** "Foto: {author} · {license}", linked to the file's page and the license. */
-export function Credit({ p, lang, place }: { p: Photo; lang: Lang; place?: string }) {
+/**
+ * "Foto: {author} · {license}", linked to the file's page and the license.
+ * `licenseFirst` ("CC BY-SA 4.0 · Foto: {author}") keeps the license visible
+ * where the line is clamped to one line.
+ */
+export function Credit({ p, lang, place, licenseFirst }: { p: Photo; lang: Lang; place?: string; licenseFirst?: boolean }) {
+  const license = p.license_url ? <a href={p.license_url} rel="noopener">{p.license}</a> : p.license;
+  const author = <a href={p.source_page_url} rel="noopener">{p.author}</a>;
+  const word = `${place ? `${place}. ` : ""}${lang === "en" ? "Photo" : "Foto"}: `;
   return (
     <small className="credit" data-photo={p.municipality_id}>
-      {`${place ? `${place}. ` : ""}${lang === "en" ? "Photo" : "Foto"}: `}
-      <a href={p.source_page_url} rel="noopener">{p.author}</a>
-      {" · "}
-      {p.license_url ? <a href={p.license_url} rel="noopener">{p.license}</a> : p.license}
+      {licenseFirst ? <>{license}{` · ${word}`}{author}</> : <>{word}{author}{" · "}{license}</>}
     </small>
   );
 }
@@ -190,6 +232,26 @@ export function moonPhase(at: Date): number {
   const synodic = 29.530588853;
   const age = ((at.getTime() / 86_400_000 + 2440587.5 - 2451550.1) % synodic + synodic) % synodic;
   return Math.floor((age / synodic) * 8 + 0.5) % 8;
+}
+
+/** Leamington, Ontario: where the members are. */
+export const LEAMINGTON = { lat: 42.0531, lng: -82.5998, timezone: "America/Toronto" } as const;
+
+export const SKY_PHASES = ["dawn", "day", "dusk", "night"] as const;
+export type SkyPhase = (typeof SKY_PHASES)[number];
+
+/**
+ * The sky at a place right now, from sunrise and sunset (astronomy, not a
+ * forecast): dawn and dusk are the 45 minutes either side of sunrise and sunset.
+ */
+export function skyPhase(at: Date, place: { lat: number; lng: number; timezone: string } = LEAMINGTON): SkyPhase {
+  const s = sunTimes(place.lat, place.lng, localDate(at, place.timezone));
+  if (!s) return "day";
+  const t = at.getTime();
+  const edge = 45 * 60_000;
+  if (Math.abs(t - s.rise.getTime()) <= edge) return "dawn";
+  if (Math.abs(t - s.set.getTime()) <= edge) return "dusk";
+  return t > s.rise.getTime() && t < s.set.getTime() ? "day" : "night";
 }
 
 export const MOON: Record<Lang, string[]> = {

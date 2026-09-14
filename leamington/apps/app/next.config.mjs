@@ -44,6 +44,14 @@ export default {
         ],
       },
       {
+        // Illustrations: pages link them with ?v=, so a change is a new URL.
+        source: "/art/:file*",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=2592000, immutable" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+        ],
+      },
+      {
         source: "/icon-:size.png",
         headers: [{ key: "Cache-Control", value: "public, max-age=604800" }],
       },

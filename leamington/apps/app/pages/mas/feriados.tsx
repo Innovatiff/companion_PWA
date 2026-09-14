@@ -4,11 +4,11 @@
  */
 import Head from "next/head";
 import type { GetServerSideProps } from "next";
-import { TabBar } from "@leamington/shared/src/ui/TabBar.tsx";
 import { formatDate, formatWeekdayDate, localDate } from "@leamington/shared/src/format.ts";
 import { db } from "../../lib/db";
 import { loadClient, recordView } from "../../lib/client";
 import { t } from "../../lib/t";
+import { PageHead, TabBar } from "../../lib/frame";
 import { DateBlock, FLAG, daysBetween } from "../../lib/ui";
 
 export const config = { unstable_runtimeJS: false };
@@ -48,18 +48,16 @@ export default function Feriados({ lang, country, today, holidays }: Props) {
         <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
       </Head>
       <main>
-        <p><a href="/mas">← {t(lang, "Más", "More")}</a></p>
-        <h1>{t(lang, "Feriados", "Public holidays")}</h1>
+        <PageHead lang={lang} title={t(lang, "Feriados", "Public holidays")} art="calendar" back />
         {holidays.length > 0 && <p className="step">{FLAG[country]} {COUNTRY[country]?.[lang === "en" ? 1 : 0]}</p>}
         {holidays.map((h, i) => {
           const weekday = formatWeekdayDate(h.holiday_date, lang).split(" ")[0];
           return (
-            <div className="tile" key={h.holiday_date + h.name}>
+            <div className={i === 0 ? "tile holiday" : "tile"} key={h.holiday_date + h.name}>
               <DateBlock date={h.holiday_date} lang={lang} />
               <span>
-                <small>{weekday}</small>
+                <small>{weekday}{i === 0 && <> <span className="chip">{soon(h.holiday_date)}</span></>}</small>
                 <p className="line">{h.name}</p>
-                {i === 0 && <span className="chip">{soon(h.holiday_date)}</span>}
                 <small>
                   {t(lang, "Verificado", "Verified")}: {formatDate(h.verified_at, lang)}
                   {h.source_url && <>{" · "}<a href={h.source_url} rel="noopener">{t(lang, "Fuente", "Source")}</a></>}

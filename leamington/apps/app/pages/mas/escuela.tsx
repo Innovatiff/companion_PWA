@@ -4,11 +4,12 @@
  */
 import Head from "next/head";
 import type { GetServerSideProps } from "next";
-import { TabBar } from "@leamington/shared/src/ui/TabBar.tsx";
 import { formatDate } from "@leamington/shared/src/format.ts";
 import { db } from "../../lib/db";
 import { loadClient, recordView } from "../../lib/client";
 import { t } from "../../lib/t";
+import { PageHead, TabBar } from "../../lib/frame";
+import { DateBlock } from "../../lib/ui";
 
 export const config = { unstable_runtimeJS: false };
 
@@ -42,17 +43,19 @@ export default function Escuela({ lang, events }: Props) {
         <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
       </Head>
       <main>
-        <p><a href="/mas">← {t(lang, "Más", "More")}</a></p>
-        <h1>{t(lang, "Calendario escolar", "School calendar")}</h1>
+        <PageHead lang={lang} title={t(lang, "Escuela", "School")} art="school" back />
         {events.length > 0 && <p className="step">{t(lang, "Calendario nacional", "National calendar")} · {events[0].school_year}</p>}
         <ul className="rows">
           {events.map((e) => (
-            <li key={e.event_name + e.start_date}>
-              <small>{range(e)}</small><br />{e.event_name}<br />
-              <small>
-                {t(lang, "Verificado", "Verified")}: {formatDate(e.verified_at, lang)}
-                {e.source_url && <>{" · "}<a href={e.source_url} rel="noopener">{t(lang, "Fuente", "Source")}</a></>}
-              </small>
+            <li className="ev school" key={e.event_name + e.start_date}>
+              <DateBlock date={e.start_date} lang={lang} />
+              <span>
+                <b>{e.event_name}</b><br /><small>{range(e)}</small><br />
+                <small>
+                  {t(lang, "Verificado", "Verified")}: {formatDate(e.verified_at, lang)}
+                  {e.source_url && <>{" · "}<a href={e.source_url} rel="noopener">{t(lang, "Fuente", "Source")}</a></>}
+                </small>
+              </span>
             </li>
           ))}
         </ul>

@@ -4,12 +4,12 @@
  */
 import Head from "next/head";
 import type { GetServerSideProps } from "next";
-import { TabBar } from "@leamington/shared/src/ui/TabBar.tsx";
 import { formatDate } from "@leamington/shared/src/format.ts";
 import { db } from "../../lib/db";
 import { loadClient, recordView } from "../../lib/client";
 import { t } from "../../lib/t";
-import { FLAG, Icon, tel } from "../../lib/ui";
+import { PageHead, TabBar } from "../../lib/frame";
+import { FLAG, Pic, tel } from "../../lib/ui";
 
 export const config = { unstable_runtimeJS: false };
 
@@ -41,8 +41,7 @@ export default function Emergencias({ lang, country, contacts }: Props) {
         <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
       </Head>
       <main>
-        <p><a href="/mas">← {t(lang, "Más", "More")}</a></p>
-        <h1>{t(lang, "Emergencias", "Emergencies")}</h1>
+        <PageHead lang={lang} title={t(lang, "Emergencias", "Emergencies")} art="phone" back />
         {["CA", country].map((c) => {
           const list = contacts.filter((r) => r.country === c);
           return list.length === 0 ? null : (
@@ -51,7 +50,7 @@ export default function Emergencias({ lang, country, contacts }: Props) {
               {list.map((r) => (
                 <div key={r.id} className={`card${r.country === "CA" && r.number === "911" ? " sos" : ""}`}>
                   <a className="dialrow" href={tel(r.number)}>
-                    <span className="ico"><Icon name="phone" /></span>
+                    <Pic name="phone" lazy />
                     <span>
                       <small>{r.label}</small>
                       <span className="num">{r.number}</span>

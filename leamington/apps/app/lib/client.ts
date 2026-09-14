@@ -16,6 +16,8 @@ export type Client = {
   hasKids: boolean;
   municipality: string | null;
   firstName: string;
+  /** Letra grande (0040): 'large' puts class="big" on <html>. */
+  textSize: "normal" | "large";
 };
 
 /** Whether a paid period covers today, and what the expiry screen shows (0029). */
@@ -41,7 +43,7 @@ export async function loadClient(ctx: GetServerSidePropsContext, { allowUnpaid =
   const id = readSession(cookieValue(ctx.req.headers.cookie));
   if (!id) return { redirect: { destination: "/login", permanent: false } };
   const { rows } = await db().query(
-    `select id, language, country, timezone, has_kids, municipality, split_part(full_name, ' ', 1) as first_name,
+    `select id, language, country, timezone, has_kids, municipality, split_part(full_name, ' ', 1) as first_name, text_size,
             app.client_access(id) as access
        from clients where id = $1 and active`, [id]);
   const r = rows[0];
@@ -50,11 +52,12 @@ export async function loadClient(ctx: GetServerSidePropsContext, { allowUnpaid =
     return { redirect: { destination: "/login?e=inactive", permanent: false } };
   }
   if (!r.access.paid && !allowUnpaid) return { redirect: { destination: "/", permanent: false } };
-  (ctx.req as { appLang?: string }).appLang = r.language;
+  (ctx.req as { appLang?: string; appTextSize?: string }).appLang = r.language;
+  (ctx.req as { appTextSize?: string }).appTextSize = r.text_size;
   return {
     client: {
       id: r.id, language: r.language, country: r.country, timezone: r.timezone, hasKids: r.has_kids,
-      municipality: r.municipality, firstName: r.first_name,
+      municipality: r.municipality, firstName: r.first_name, textSize: r.text_size === "large" ? "large" : "normal",
     },
     access: r.access,
   };
