@@ -103,7 +103,13 @@ export async function signOut(req: IncomingMessage, role: PortalRole): Promise<s
  */
 export function sameOrigin(req: IncomingMessage): boolean {
   const origin = req.headers.origin;
+  const fetchSite = req.headers["sec-fetch-site"];
+  // A browser that says the request is cross-site is refused whatever else it sends.
+  if (fetchSite === "cross-site" || fetchSite === "same-site") return false;
   if (!origin) return true;
+  // Under a strict referrer policy browsers send "Origin: null" even from our own
+  // page; Sec-Fetch-Site then tells us where the form was.
+  if (origin === "null") return fetchSite === "same-origin";
   const host = (req.headers["x-forwarded-host"] as string | undefined)?.split(",")[0].trim() || req.headers.host;
   try {
     return new URL(origin).host === host;

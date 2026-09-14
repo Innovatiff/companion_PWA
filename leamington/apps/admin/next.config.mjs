@@ -23,7 +23,7 @@ export default {
         source: "/:path*",
         headers: [
           // Setup links carry a one-time token in the URL: never leak it in a Referer.
-          { key: "Referrer-Policy", value: "no-referrer" },
+          { key: "Referrer-Policy", value: "same-origin" },
           { key: "X-Frame-Options", value: "DENY" },
         ],
       },
