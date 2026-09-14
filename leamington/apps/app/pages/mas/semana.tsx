@@ -5,6 +5,12 @@
  * something real: badges earned, holidays ahead, the latest official lottery
  * results, their team's results, and Leamington's forecast highest and lowest
  * (labelled a forecast). Everything carries a day's validity.
+ *
+ * Early in the week: with fewer than 3 stored rate days this week (or none), the
+ * rate card is the last 7 stored days instead (app.fx_history), titled as such
+ * and never as this week. With no official result this week, the latest result
+ * of each game from the lotería page (app.lottery_page), only for games whose
+ * results are current (app.lottery_game_current). No data: no part.
  */
 import Head from "next/head";
 import type { GetServerSideProps } from "next";
@@ -16,7 +22,8 @@ import { OfflineBar, PageHead, TabBar } from "../../lib/frame";
 import { EXPIRE_SCRIPT } from "../../lib/open-script";
 import { Art, Balls, Crest, DateBlock, FLAG, drawTime, localDayEnd } from "../../lib/ui";
 import { badgeName } from "../../lib/member";
-import { RateChart, num, rateText, shortDate, type FxHistory, type WeekPoint } from "../../lib/money";
+import { RateChart, WeekCircles, num, rateText, shortDate, type FxHistory, type WeekPoint } from "../../lib/money";
+import { ExtraBalls, type Extras } from "../../lib/lottery";
 import { SEMANA_CSS } from "../../lib/page-css";
 
 export const config = { unstable_runtimeJS: false };
@@ -36,7 +43,11 @@ type Week = {
   weather: { place: string; label: string; from: string; to: string; days: number; highest: { date: string; temp_max: number }; lowest: { date: string; temp_max: number } } | null;
   generated_at: string;
 };
-type Props = { lang: "es" | "en"; w: Week; tz: string; country: string };
+type LatestDraw = { game: string; operator: string; draw_date: string; draw_time: string | null; numbers: string[]; extras: Extras; verified_at: string; source_url: string };
+type Props = { lang: "es" | "en"; w: Week; tz: string; country: string; fx7: FxHistory | null; lotLatest: LatestDraw[] | null };
+
+/** The week's own rate card needs at least 3 stored days this week. */
+const weekRate = (w: Week) => (w.rate && w.rate.points.length >= 3 ? w.rate : null);
 
 export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
   const loaded = await loadClient(ctx);
@@ -44,11 +55,26 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
   const { client } = loaded;
   const { rows } = await db().query("select app.week_summary($1) as w", [client.id]);
   const w = rows[0]?.w as Week;
+  const [fxRow, lotRow] = await Promise.all([
+    weekRate(w) ? null : db().query("select app.fx_history($1, 7) as h", [client.id]),
+    w.lottery ? null : db().query(
+      `select app.lottery_page(c.id) as l,
+              coalesce((select jsonb_agg(g.name) from lottery_games g
+                         where g.country = c.country and g.active and app.lottery_game_current(g.id, now()) is false), '[]'::jsonb) as stale
+         from clients c where c.id = $1`, [client.id]),
+  ]);
+  const fx = (fxRow?.rows[0]?.h ?? null) as FxHistory | null;
+  const fx7 = fx?.latest && fx.points.length > 0 ? fx : null;
+  const stale = new Set<string>(lotRow?.rows[0]?.stale ?? []);
+  const lotLatest = lotRow
+    ? ((lotRow.rows[0]?.l?.games ?? []) as { game: string; operator: string; draws: Omit<LatestDraw, "game" | "operator">[] }[])
+        .filter((g) => g.draws.length > 0 && !stale.has(g.game)).map((g) => ({ game: g.game, operator: g.operator, ...g.draws[0] }))
+    : null;
   await recordView(client.id, "semana", {
-    opened: w.opened?.days ?? null, rate: Boolean(w.rate), team: Boolean(w.team), lottery: w.lottery?.length ?? null,
-    holidays: w.holidays_ahead?.length ?? null, badges: w.badges?.length ?? null, weather: Boolean(w.weather),
+    opened: w.opened?.days ?? null, rate: Boolean(weekRate(w)), rate7: Boolean(fx7), team: Boolean(w.team), lottery: w.lottery?.length ?? null,
+    lottery_latest: lotLatest?.length ?? null, holidays: w.holidays_ahead?.length ?? null, badges: w.badges?.length ?? null, weather: Boolean(w.weather),
   });
-  return { props: { lang: client.language, w, tz: client.timezone, country: client.country } };
+  return { props: { lang: client.language, w, tz: client.timezone, country: client.country, fx7, lotLatest } };
 };
 
 const WEEKDAYS = { es: ["Lu", "Ma", "Mi", "Ju", "Vi", "Sá", "Do"], en: ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"] };
@@ -75,9 +101,10 @@ export function OpenedCircles({ weekdays, lang }: { weekdays: (boolean | null)[]
   );
 }
 
-export default function Semana({ lang, w, tz, country }: Props) {
+export default function Semana({ lang, w, tz, country, fx7, lotLatest }: Props) {
   const until = localDayEnd(new Date(w.generated_at), tz);
-  const rate = w.rate;
+  const rate = weekRate(w);
+  const from7 = fx7?.points[0]?.date;
   const chart = rate ? ({ currency: rate.currency, days: 7, note: rate.note, current: rate.current, latest: { ...rate.latest, stale: !rate.current },
     valid_until: null, points: rate.points, high: rate.high, low: rate.low, change_pct: rate.change_pct, days_up: null, days_down: null,
     week: rate.points, language: lang } as FxHistory) : null;
@@ -114,6 +141,29 @@ export default function Semana({ lang, w, tz, country }: Props) {
             {rate.change_pct != null && rate.last_week && (
               <span className="chg" data-pct={rate.change_pct}>
                 {`${rate.change_pct > 0 ? "+" : ""}${num(rate.change_pct, 2, lang)}% ${t(lang, `desde el ${shortDate(rate.last_week.date, lang)}`, `since ${shortDate(rate.last_week.date, lang)}`)}`}
+              </span>
+            )}
+          </section>
+        )}
+
+        {!rate && fx7?.latest && from7 && (
+          <section className="card" data-part="rate7" data-line="rate" data-until={until}>
+            <div className="ch"><Art name="money" size={40} lazy /><h2>{t(lang, "Tasa · últimos 7 días", "Rate · last 7 days")}</h2></div>
+            <small className="rng" data-from={from7} data-to={fx7.latest.date}>
+              {t(lang, `Del ${shortDate(from7, lang)} al ${shortDate(fx7.latest.date, lang)} · tasa de referencia`, `${shortDate(from7, lang)} to ${shortDate(fx7.latest.date, lang)} · reference rate`)}
+            </small>
+            <p className="rt"><b>{rateText(fx7.latest.rate)}</b><span>{fx7.currency}</span><small>{shortDate(fx7.latest.date, lang)}</small></p>
+            {fx7.latest.stale && <p className="stale">{t(lang, `Es la tasa de referencia del ${formatDate(fx7.latest.date, lang)}. No es la de hoy.`, `This is the reference rate of ${formatDate(fx7.latest.date, lang)}. It is not today's.`)}</p>}
+            <WeekCircles week={fx7.week.filter((p) => p.date >= from7)} lang={lang} />
+            {fx7.high && fx7.low && (
+              <p className="hilo">
+                <span className="hi" data-d={fx7.high.date}><small>{t(lang, "Más alta", "Highest")}</small><b>{rateText(fx7.high.rate)}</b><small>{shortDate(fx7.high.date, lang)}</small></span>
+                <span className="lo" data-d={fx7.low.date}><small>{t(lang, "Más baja", "Lowest")}</small><b>{rateText(fx7.low.rate)}</b><small>{shortDate(fx7.low.date, lang)}</small></span>
+              </p>
+            )}
+            {fx7.change_pct != null && (
+              <span className="chg" data-pct={fx7.change_pct}>
+                {`${fx7.change_pct > 0 ? "+" : ""}${num(fx7.change_pct, 2, lang)}% ${t(lang, `desde el ${shortDate(from7, lang)}`, `since ${shortDate(from7, lang)}`)}`}
               </span>
             )}
           </section>
@@ -158,6 +208,24 @@ export default function Semana({ lang, w, tz, country }: Props) {
                 <span>
                   <small>{`${l.game} · ${formatDate(l.draw_date, lang)}${l.draw_time ? ` · ${drawTime(l.draw_time)}` : ""}`}</small>
                   <Balls numbers={l.numbers} />
+                  <small>
+                    {`${t(lang, "Verificado", "Verified")}: ${formatDate(localDate(l.verified_at, tz), lang)}, ${formatTime12(l.verified_at, tz)} · `}
+                    <a href={l.source_url} rel="noopener">{l.operator}</a>
+                  </small>
+                </span>
+              </div>
+            ))}
+          </section>
+        )}
+
+        {!w.lottery && lotLatest && lotLatest.length > 0 && (
+          <section data-part="lottery-latest" data-line="lottery" data-until={until}>
+            <h2>{t(lang, "Lotería · últimos resultados", "Lottery · latest results")}</h2>
+            {lotLatest.map((l) => (
+              <div key={l.game} className="tile lottery" data-game={l.game} data-draw={`${l.draw_date} ${l.draw_time ?? ""}`.trim()}>
+                <span>
+                  <small>{`${l.game} · ${formatDate(l.draw_date, lang)}${l.draw_time ? ` · ${drawTime(l.draw_time)}` : ""}`}</small>
+                  <span className="brow"><Balls numbers={l.numbers} /><ExtraBalls x={l.extras} /></span>
                   <small>
                     {`${t(lang, "Verificado", "Verified")}: ${formatDate(localDate(l.verified_at, tz), lang)}, ${formatTime12(l.verified_at, tz)} · `}
                     <a href={l.source_url} rel="noopener">{l.operator}</a>

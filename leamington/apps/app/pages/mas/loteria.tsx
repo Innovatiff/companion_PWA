@@ -9,7 +9,10 @@
  *   which, never "ganaste". A game whose results are not up to date is not
  *   compared; a refusal (wrong count or range) says what the game takes.
  *
- *   Below, as before: the official results of the last two days.
+ *   Below: the official results of the last two days, the latest draw of each
+ *   game as its card (with its source and verified time) and the earlier ones
+ *   under "Sorteos anteriores", one short row each with its own verified time.
+ *   Extra result fields show only with the operator's own label (lib/lottery).
  */
 import Head from "next/head";
 import type { GetServerSideProps } from "next";
@@ -19,7 +22,8 @@ import { loadClient, recordView } from "../../lib/client";
 import { t } from "../../lib/t";
 import { PageHead, TabBar } from "../../lib/frame";
 import { Balls, Pic, drawTime } from "../../lib/ui";
-import { DrawCheck, inputsFor, refusalText, shown, type Check, type CheckableGame } from "../../lib/lottery";
+import { shortDate } from "../../lib/money";
+import { DrawCheck, ExtraBalls, drawRef, inputsFor, refusalText, shown, type Check, type CheckableGame } from "../../lib/lottery";
 import { LOTERIA_CSS } from "../../lib/page-css";
 
 export const config = { unstable_runtimeJS: false };
@@ -64,13 +68,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
   };
 };
 
-function extras(value: Record<string, unknown> | null): string {
-  if (!value) return "";
-  return Object.entries(value)
-    .filter(([, v]) => v != null && typeof v !== "object")
-    .map(([k, v]) => `${k}: ${v}`)
-    .join(" · ");
-}
+const drawKey = (d: Draw) => `${d.draw_date} ${d.draw_time ?? ""}`.trim();
 
 export default function Loteria({ lang, tz, games, checkable, checkFor, entered, check, bad }: Props) {
   return (
@@ -131,25 +129,39 @@ export default function Loteria({ lang, tz, games, checkable, checkFor, entered,
         })}
 
         {games.length > 0 && <div className="sh"><h2>{t(lang, "Resultados oficiales · últimos 2 días", "Official results · last 2 days")}</h2></div>}
-        {games.map((g) => (
-          <section key={g.game}>
-            <h2>{g.game}</h2>
-            {g.draws.map((d) => (
-              <div className="tile lottery" key={d.draw_date + (d.draw_time ?? "")}>
+        {games.map((g) => {
+          const [latest, ...earlier] = g.draws;
+          const ref = drawRef(latest.extras, lang);
+          return (
+            <section key={g.game} className="res" data-results={g.game}>
+              <h2>{g.game}</h2>
+              <div className="tile lottery" data-draw={drawKey(latest)}>
                 <Pic name="lottery" lazy />
                 <span>
-                  <small>{formatWeekdayDate(d.draw_date, lang)}{d.draw_time ? ` · ${drawTime(d.draw_time)}` : ""}</small>
-                  <Balls numbers={d.numbers} />
-                  {extras(d.extras) && <small>{extras(d.extras)}</small>}
+                  <small>{`${formatWeekdayDate(latest.draw_date, lang)}${latest.draw_time ? ` · ${drawTime(latest.draw_time)}` : ""}${ref ? ` · ${ref}` : ""}`}</small>
+                  <span className="brow"><Balls numbers={latest.numbers} /><ExtraBalls x={latest.extras} /></span>
                   <small>
-                    {t(lang, "Verificado", "Verified")}: {formatDate(localDate(d.verified_at, tz), lang)}, {formatTime12(d.verified_at, tz)}
-                    {" · "}<a href={d.source_url} rel="noopener">{g.operator}</a>
+                    {`${t(lang, "Verificado", "Verified")}: ${formatDate(localDate(latest.verified_at, tz), lang)}, ${formatTime12(latest.verified_at, tz)} · `}
+                    <a href={latest.source_url} rel="noopener">{g.operator}</a>
                   </small>
                 </span>
               </div>
-            ))}
-          </section>
-        ))}
+              {earlier.length > 0 && (
+                <details className="prev">
+                  <summary>{t(lang, `Sorteos anteriores (${earlier.length})`, `Earlier draws (${earlier.length})`)}</summary>
+                  <ul>
+                    {earlier.map((d) => (
+                      <li key={drawKey(d)} data-draw={drawKey(d)}>
+                        <span className="brow"><Balls numbers={d.numbers} /><ExtraBalls x={d.extras} /></span>
+                        <small>{`${shortDate(d.draw_date, lang)}${d.draw_time ? ` · ${drawTime(d.draw_time)}` : ""} · ${t(lang, "Verificado", "Verified")}: ${shortDate(localDate(d.verified_at, tz), lang)}, ${formatTime12(d.verified_at, tz)}`}</small>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+            </section>
+          );
+        })}
       </main>
       <TabBar current="mas" lang={lang} />
     </>

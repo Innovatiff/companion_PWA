@@ -174,7 +174,10 @@ export const AQUI_CSS = AHORA +
   "html.big .gv b{font-size:2.3rem}html.big .hgrid{grid-template-columns:repeat(var(--n),minmax(3rem,1fr));min-width:calc(var(--n)*3rem)}";
 
 // Lotería (0045): the number check's forms and draws; official balls drop in.
-export const LOTERIA_CSS =
+// Extra result balls ("Más 1", "Adicional", "Bonus Ball"), shared by Lotería and Tu semana.
+const XBALL = ".brow{display:flex;flex-wrap:wrap;align-items:center;gap:0 .8rem}.xb{display:inline-flex;align-items:center;gap:.35rem}.xb small{font-weight:750;color:var(--muted)}.xb .balls b{width:2.1rem;height:2.1rem;font-size:.88rem}";
+
+export const LOTERIA_CSS = XBALL +
   ".ch{display:flex;align-items:center;gap:.7rem}.ch small{display:block}.gname{font-size:1.1rem}" +
   ".picks{display:flex;flex-wrap:wrap;gap:.4rem;margin:.8rem 0 .35rem}.picks input{width:3.2rem;min-height:52px;padding:.4rem;text-align:center;font-size:1.25rem;font-weight:800}" +
   ".picks.wide input{width:8.5rem;letter-spacing:.2em}.picks button{width:auto;margin:0;padding:.8rem 1.15rem}" +
@@ -184,10 +187,12 @@ export const LOTERIA_CSS =
   ".balls b:nth-child(4){animation-delay:.21s}.balls b:nth-child(5){animation-delay:.28s}.balls b:nth-child(6){animation-delay:.35s}@keyframes drop{from{opacity:0;transform:translateY(-18px)}}" +
   ".balls b.hit{position:relative;box-shadow:0 0 0 3px var(--card),0 0 0 6px var(--brand)}" +
   ".balls b i{position:absolute;top:-.4rem;right:-.4rem;display:grid;place-items:center;width:1.15rem;height:1.15rem;border-radius:50%;background:var(--brand);color:#fff;font-size:.62rem;font-style:normal}" +
-  ".pos,.anyo{display:block;font-weight:700;color:var(--brand-ink)}";
+  ".pos,.anyo{display:block;font-weight:700;color:var(--brand-ink)}" +
+  ".res .tile{margin-bottom:.5rem}.prev{margin:0 0 .9rem;border-radius:18px;background:var(--card);box-shadow:var(--shadow)}.prev summary{display:flex;align-items:center;min-height:48px;padding:0 1rem;font-weight:700;cursor:pointer}" +
+  ".prev ul{list-style:none;margin:0;padding:0 1rem .4rem}.prev li{padding:.5rem 0;border-top:1px solid var(--line)}.prev .balls{margin:0}.prev .balls b{width:2.1rem;height:2.1rem;font-size:.88rem}.prev small{display:block;margin-top:.2rem}";
 
 // Tu semana (0045): the opened-days circles, the rate's week, the week's parts.
-export const SEMANA_CSS =
+export const SEMANA_CSS = XBALL +
   ".ch{display:flex;align-items:center;gap:.7rem}.ch h2{margin:0}.wtitle{margin:-.4rem .2rem 1rem;font-weight:750;color:var(--muted)}" +
   ".wkc{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:.25rem;list-style:none;padding:0;margin:.2rem 0 .55rem;text-align:center}.wkc small{display:block;font-weight:650;margin-bottom:.25rem}" +
   ".wkc .o{display:grid;place-items:center;width:2.5rem;max-width:100%;aspect-ratio:1;margin:0 auto;border-radius:50%;border:2px solid var(--brand);color:var(--brand-ink);font-weight:800;animation:pop .45s cubic-bezier(.3,1.5,.5,1) both}" +
@@ -202,7 +207,8 @@ export const SEMANA_CSS =
   ".chg{display:inline-block;margin-top:.5rem;padding:.25rem .8rem;border-radius:999px;background:var(--tile);color:var(--brand-ink);font-weight:750;font-size:.86rem}" +
   ".bw{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.5rem;list-style:none;padding:0;margin:.4rem 0 0;text-align:center}.bw li{display:flex;flex-direction:column;align-items:center}.bw .art{animation:pop .5s cubic-bezier(.3,1.5,.5,1) both}" +
   ".res2{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:.5rem;margin:.5rem 0;font-weight:650;font-size:.92rem}" +
-  ".res2>span{display:flex;align-items:center;gap:.4rem;min-width:0}.res2>span:last-child{justify-content:flex-end;text-align:right}.res2 .sc{font-size:1.2rem;font-weight:800}.res2 .rd{grid-column:1/-1;color:var(--muted);font-weight:600}.nx2{margin:.6rem 0 0}";
+  ".res2>span{display:flex;align-items:center;gap:.4rem;min-width:0}.res2>span:last-child{justify-content:flex-end;text-align:right}.res2 .sc{font-size:1.2rem;font-weight:800}.res2 .rd{grid-column:1/-1;color:var(--muted);font-weight:600}.nx2{margin:.6rem 0 0}" +
+  ".rng{display:block;margin-top:.35rem;font-weight:650}.wcap{display:block;font-weight:650}";
 
 export const LOGIN_CSS = ".brandmark{font-weight:800;font-size:2.5rem;color:#fff;letter-spacing:-.03em;margin:0;line-height:1}.steps{list-style:none;padding:0;margin:.5rem 0}.steps li{display:flex;gap:.75rem;align-items:flex-start;margin:.8rem 0}.steps .n{display:grid;place-items:center;flex:none;width:2rem;height:2rem;border-radius:50%;background:var(--brand);color:#fff;font-weight:800;font-size:.9rem}" +
   ".feat{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.5rem;list-style:none;padding:0;margin:0 0 1rem}" +

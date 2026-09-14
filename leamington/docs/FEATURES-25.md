@@ -65,3 +65,25 @@ Round reviews may reshape any feature; each change is noted here.
 - **Vigía has no earned date:** saving watched towns rewrites their rows, so the date would be the last save, not when it was earned.
 - **Temporada is decided for the current season only**, because only one arrival and one departure are stored.
 - **Carried into round 3:** the welcome photo credit is clamped to two lines, and home's "Ahora" rows share one layout at 360 and 390 px.
+
+### Round 3 (2026-09-14)
+- **The reminder ranks below match day and above the 30-day high** in the one-a-day engagement queue, because the member asked for it (OPEN-DECISIONS 3.23). It fires once.
+- **MXN has no weekend days**, since its source publishes business days only. Charts show real stored days and never fill a gap.
+- **Carried into round 4:** Feriados listed two years in one scroll, so it now shows the next eight with the rest folded. Tasa at 3 meses was near its byte budget, so its day table is gone; the line with its high and low shows that window.
+
+### Round 4 (2026-09-14)
+- **The detail moved to its own page,** "Hoy en Leamington" (/clima/aqui), so Clima stays within budget.
+- **An hour whose providers disagree shows its rain and sky but no temperature.** A missing workday flag never reads as "no risk", and the heat chip appears only from "Precaución" up.
+- **The morning number is labelled "6–7am"**, since the 7am hour is used when 6am has no data.
+
+### Round 5 (2026-09-14)
+- **Quiniela Hoy became Tu semana** (feature 22).
+- **Lottery checks show matches only,** never prizes, and nothing is compared while a game's results are stale. Each game's format comes from its operator's rules page.
+- **Offline copies hide every expired block** (Ahora, hourly cells, air, clocks) and are cleared when another code signs in.
+- **Gallery candidates were reviewed by eye.** Historic images, businesses, panoramas and generic buildings are filtered out.
+- **Uruapan showed "Ahora 14–23°" during a rain shower. This is real disagreement, not an error.** All three providers place the town correctly (1,617 m). Open-Meteo's model said 23° under cloud, while WeatherAPI (13.9°) and OpenWeather (19.9°) reported light rain. No two agree within 2°, so the range stands rather than a false single number.
+- **Polish from production review:**
+  - Lotería printed a raw "mas1" label; it now shows "Más 1".
+  - Lotería shows the latest draw per game and folds the earlier ones.
+  - Tu semana falls back to "últimos 7 días" early in the week.
+  - Dark-mode chips are restyled.

@@ -32,6 +32,43 @@ export const inputsFor = (g: CheckableGame) => (g.match === "digits" ? g.pick_ma
 /** A number as the operator prints it: Santa Lucía's 5-digit tickets keep their leading zeros. */
 export const shown = (n: number | string, g: { max: number }) => (g.max >= 1000 ? String(n).padStart(String(g.max).length, "0") : String(n));
 
+/**
+ * Extra result fields (lottery_results.extras), named as each operator names
+ * them (keys from services/ingest/src/feeds/lottery): Loto Honduras's "Más 1"
+ * (mas1), Pronósticos' "Adicional" (Melate) and Supreme Ventures' "Bonus Ball"
+ * (Lotto) are balls; the operator's own draw number (concurso, sorteo,
+ * drawNumber) is a reference. Flags that belong to prize rules (megaBall,
+ * multiplicador, reintegros), "tipo" and any key we do not know are not shown:
+ * a raw key is never printed.
+ */
+export type Extras = Record<string, unknown> | null | undefined;
+const EXTRA_BALLS: [string, string][] = [["mas1", "Más 1"], ["adicional", "Adicional"], ["bonusBall", "Bonus Ball"]];
+const DRAW_REFS: [string, string, string][] = [["concurso", "Concurso", "Draw"], ["sorteo", "Sorteo", "Draw"], ["drawNumber", "Sorteo", "Draw"]];
+const digitsOf = (v: unknown, max: number) =>
+  (typeof v === "string" || typeof v === "number") && new RegExp(`^\\d{1,${max}}$`).test(String(v)) ? String(v) : null;
+
+/** The known extra balls of a result, each with the operator's label. */
+export function ExtraBalls({ x }: { x: Extras }) {
+  const list = EXTRA_BALLS.map(([k, label]) => ({ k, label, v: digitsOf(x?.[k], 2) })).filter((e) => e.v != null);
+  if (list.length === 0) return null;
+  return (
+    <>
+      {list.map((e) => (
+        <span key={e.k} className="xb" data-extra={e.k}><small>{e.label}</small><span className="balls"><b>{e.v}</b></span></span>
+      ))}
+    </>
+  );
+}
+
+/** "Concurso 4102" / "Draw 40112": the operator's draw number, when the result has one. */
+export function drawRef(x: Extras, lang: Lang): string | null {
+  for (const [k, es, en] of DRAW_REFS) {
+    const v = digitsOf(x?.[k], 7);
+    if (v) return t(lang, `${es} ${v}`, `${en} ${v}`);
+  }
+  return null;
+}
+
 /** A refusal in the member's words, from the refusal's own fields. */
 export function refusalText(c: Extract<Check, { error: string }>, g: CheckableGame | undefined, lang: Lang): string {
   if (c.error === "invalid_numbers" && g) {

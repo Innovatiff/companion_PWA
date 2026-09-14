@@ -370,3 +370,28 @@ select l.id, h.id, a.id, (date_trunc('day', now() at time zone 'America/Toronto'
  where l.name = 'Liga Nacional de Honduras'
 on conflict (source, source_fixture_id) do update
   set kickoff_utc = excluded.kickoff_utc, status = 'finished', home_score = 2, away_score = 0, fetched_at = now();
+
+-- LOCAL ONLY, round 5 polish. Extra result fields as each operator's feed stores
+-- them (services/ingest/src/feeds/lottery: mas1, bonusBall, drawNumber, megaBall,
+-- concurso, adicional, multiplicador), a second Cash Pot draw, and a Mexican
+-- Sunday (Melate and Tris) so a Monday's Tu semana has latest results to show.
+-- Invented, like everything above.
+update lottery_results r set extras = jsonb_build_object('mas1', (extract(day from r.draw_date)::int % 10)::text)
+  from lottery_games g
+ where g.id = r.game_id and g.country = 'HN' and g.name = 'La Diaria';
+update lottery_results r set extras = '{"drawNumber": "2871", "bonusBall": "08"}'
+  from lottery_games g
+ where g.id = r.game_id and g.country = 'JM' and g.name = 'Lotto';
+update lottery_results r set extras = '{"drawNumber": "40112", "megaBall": false}'
+  from lottery_games g
+ where g.id = r.game_id and g.country = 'JM' and g.name = 'Cash Pot';
+insert into lottery_results (game_id, draw_date, draw_time_local, numbers, extras, source_url, verified_at)
+select g.id, (now() at time zone g.timezone)::date - r.d, r.t::time, r.n::text[], r.x::jsonb,
+       coalesce(g.results_url, 'https://example.org/hoy-local-demo'), now() - interval '10 hours'
+  from lottery_games g
+  join (values ('JM', 'Cash Pot', 1, '10:30', '{17}', '{"drawNumber": "40111", "megaBall": true}'),
+               ('MX', 'Melate', 1, '21:00', '{03,14,22,35,41,52}', '{"concurso": "4102", "adicional": "09"}'),
+               ('MX', 'Tris', 1, '21:00', '{3,0,7,1,5}', '{"concurso": "33456", "multiplicador": true}')) r(country, name, d, t, n, x)
+    on g.country = r.country::country_code and g.name = r.name and g.active
+on conflict (game_id, draw_date, draw_time_local) do update
+  set numbers = excluded.numbers, extras = excluded.extras, verified_at = excluded.verified_at;

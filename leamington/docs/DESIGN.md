@@ -32,30 +32,28 @@ Hoy's budgets were raised on 2026-09-14 (from 15 KB cold and 5 KB warm) for the
 round-1 look the owner asked for: pictures, motion and bigger type cost about
 1.5 KB more CSS and markup per page, while the pictures themselves are cached files.
 
-Measured 2026-09-14 after round 5 ("Siempre contigo"; local, demo client
-DEMXHN42, the fullest home). Every warm page keeps at least 1 KB under its budget:
+Measured 2026-09-14 after the round 5 polish (local, demo client DEMXHN42, the
+fullest home). Every warm page keeps at least 1 KB under its budget:
 
 | Hoy page | Bytes |
 | --- | --- |
-| Cold: sign-in plus home (redirect, login, sign-in, home, sw.js, manifest, open ping) | 22,743 |
-| Home (warm) | 10,892 |
-| Tasa, 3 meses | 10,843 |
-| Tasa, Mes | 10,624 |
-| Clima | 10,494 |
-| Hoy en Leamington | 10,115 |
-| Tu semana | 9,292 |
-| Feriados | 8,898 |
-| Miembro | 8,782 |
-| Fútbol | 8,606 |
-| Lotería (with a number check) | 8,554 |
-| Transporte | 8,331 |
-| Lotería | 8,309 |
-| Consulado | 8,291 |
-| Más | 8,243 |
-| Emergencias | 7,994 |
-| Setup step | 7,599 |
-| Notificaciones | 7,479 |
-| Escuela | 7,303 |
+| Cold: sign-in plus home (redirect, login, sign-in, home, sw.js, manifest, open ping) | 22,610 |
+| Home (warm) | 10,706 |
+| Tasa, Mes | 10,675 |
+| Clima | 10,434 |
+| Hoy en Leamington | 10,170 |
+| Tu semana | 9,442 (MX on a Monday, with both fallbacks: 9,338) |
+| Feriados | 8,952 |
+| Miembro | 8,835 |
+| Fútbol | 8,661 |
+| Lotería | 8,628 (JM 8,605) |
+| Transporte | 8,387 |
+| Consulado | 8,346 |
+| Más | 8,297 |
+| Emergencias | 8,049 |
+| Setup step | 7,653 |
+| Notificaciones | 7,533 |
+| Escuela | 7,357 |
 | Illustrations, largest | 523 gzipped (badge-temporada.svg); first load of the 36 used: 38,438 |
 
 Our inline JavaScript: home 1,676 bytes (the open script and the expiry
@@ -65,6 +63,24 @@ budget.
 Offline copies drop what is over: every hour column and next-hours cell expires
 at the end of its hour, and the hourly line with the first hour (dots and
 labels stay in their own columns).
+
+Round 5 polish:
+
+- **Lotería results.** The latest draw of each game is its card, with its
+  source link and verified time. The earlier draws of the two days fold under
+  "Sorteos anteriores" as one short row each (balls, date and time, its own
+  verified time).
+- **Extra result fields.** A result's extra fields show only under the
+  operator's own name, as a small labelled ball: "Más 1" (Loto Honduras),
+  "Adicional" (Melate), "Bonus Ball" (Lotto). The operator's draw number shows
+  as "Concurso 4102" or "Draw 40112". Prize-rule flags (megaBall,
+  multiplicador, reintegros), "tipo" and unknown keys are not shown. A raw
+  field key is never printed.
+- **Tu semana early in the week.** With fewer than 3 stored rate days this
+  week, the rate card is "Tasa · últimos 7 días" from fx_history, with its
+  dates, circles, high and low; it is never called this week. With no official
+  result this week, "Lotería · últimos resultados" shows each current game's
+  latest result, dated and verified. With no data, the part is absent.
 
 Every page is measured with `scripts/measure.mjs` and the numbers are reported.
 

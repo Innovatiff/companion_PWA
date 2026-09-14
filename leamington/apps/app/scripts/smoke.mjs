@@ -678,6 +678,37 @@ async function round5(cookie, code, label) {
   const noNames = (html) => names.reduce((text, n) => text.split(esc(n)).join(" "), visible(html).replace(/<[^>]+>/g, " "));
   const base = (await send("/mas/loteria", { cookie })).text;
   check(!LOTTO_WORDS.test(noNames(base)), `${label} /mas/loteria: no prize, odds, "hot numbers" or buying words`, LOTTO_WORDS.exec(noNames(base))?.[0]);
+
+  // Official results: the latest draw of each game big, the earlier ones under "Sorteos anteriores";
+  // extra fields only as the operator's labelled balls; never a raw field key.
+  const lp = (await q("select app.lottery_page(id) as l from clients where code = $1", [code])).rows[0].l?.games ?? [];
+  const plain = visible(base).replace(/<style[\s\S]*?<\/style>/g, "").replace(/<title>[\s\S]*?<\/title>/g, "").replace(/<[^>]+>/g, " ");
+  const RAW_KEY = /\b[a-z]+[0-9]+\s*:|\b[a-z]+[A-Z][A-Za-z]*\s*:|\b[a-z]+_[a-z_]+\s*:|\b(mas1|megaBall|bonusBall|drawNumber|multiplicador|reintegros|adicional|concurso|sorteo|tipo)\s*:/;
+  check(!RAW_KEY.test(plain), `${label} /mas/loteria: no result shows a raw field key`, RAW_KEY.exec(plain)?.[0]);
+  const XBALLS = [["mas1", "Más 1"], ["adicional", "Adicional"], ["bonusBall", "Bonus Ball"]];
+  const drawKey = (d) => `${d.draw_date} ${d.draw_time ?? ""}`.trim();
+  check(base.split(' data-results="').length - 1 === lp.length, `${label} /mas/loteria: one results block per game with a draw in the last 2 days`, `${base.split(' data-results="').length - 1} vs ${lp.length}`);
+  for (const g of lp) {
+    const at = base.indexOf(` data-results="${esc(g.game)}"`);
+    const sec = at < 0 ? "" : base.slice(base.lastIndexOf("<section", at), base.indexOf("</section>", at));
+    const tiles = [...sec.matchAll(/<div class="tile lottery"[^>]*>/g)].map((m) => attr(m[0], "data-draw"));
+    const rows = [...sec.matchAll(/<li\b[^>]*>/g)].map((m) => attr(m[0], "data-draw"));
+    const tl = `${label} results ${g.game}`;
+    check(tiles.length === 1 && tiles[0] === drawKey(g.draws[0]), `${tl}: the latest official draw is the card`, `${tiles} vs ${drawKey(g.draws[0])}`);
+    check(rows.join() === g.draws.slice(1).map(drawKey).join() && sec.includes('<details class="prev">') === g.draws.length > 1,
+      `${tl}: the earlier draws of the 2 days, exactly, under "Sorteos anteriores"`, `${rows.length} vs ${g.draws.length - 1}`);
+    const chunks = sec.split(/(?=<div class="tile lottery"|<li\b)/).slice(1);
+    check(chunks.length === g.draws.length && chunks.every((ch, i) => g.draws[i].numbers.every((n) => ch.includes(`<b>${n}</b>`)) && /(Verificado|Verified): /.test(ch)),
+      `${tl}: every draw with its official numbers and its own verified time`);
+    check(/href="https?:\/\//.test(chunks[0] ?? "") && (!sec.includes("<details") || /<summary>(Sorteos anteriores|Earlier draws) \(\d+\)<\/summary>/.test(sec)),
+      `${tl}: the latest draw keeps its source link; the earlier draws are folded`);
+    check(chunks.every((ch, i) => {
+      const x = g.draws[i].extras ?? {};
+      const want = XBALLS.filter(([k]) => /^\d{1,2}$/.test(String(x[k] ?? "")));
+      const got = [...ch.matchAll(/data-extra="([^"]+)"/g)].map((m) => m[1]);
+      return got.join() === want.map(([k]) => k).join() && want.every(([k, l]) => ch.includes(`<small>${l}</small><span class="balls"><b>${x[k]}</b>`));
+    }), `${tl}: known extra fields as labelled balls ("Más 1", "Adicional", "Bonus Ball"), nothing else`);
+  }
   for (const g of games.slice(0, 4)) {
     const latest = (await q("select numbers from lottery_results where game_id = $1 order by draw_date desc, draw_time_local desc nulls last limit 1", [g.game_id])).rows[0]?.numbers;
     let nums;
@@ -722,16 +753,42 @@ async function round5(cookie, code, label) {
   // Tu semana: every part exactly when week_summary has it.
   const wk = (await q("select app.week_summary(id) as w from clients where code = $1", [code])).rows[0].w;
   const semana = (await send("/mas/semana", { cookie })).text;
-  for (const [part, value] of [["opened", wk.opened], ["rate", wk.rate], ["team", wk.team], ["weather", wk.weather],
+  // Early in the week: the last 7 stored rate days when the week has fewer than 3, and the latest current results when the week has none.
+  const fx7 = (await q("select app.fx_history(id, 7) as h from clients where code = $1", [code])).rows[0].h;
+  const weekRate = wk.rate && wk.rate.points.length >= 3 ? wk.rate : null;
+  const rate7 = !weekRate && fx7?.latest && fx7.points.length ? fx7 : null;
+  const notCurrent = new Set((await q("select g.name from lottery_games g join clients c on c.country = g.country where c.code = $1 and g.active and app.lottery_game_current(g.id, now()) is false", [code])).rows.map((r) => r.name));
+  const lotLatest = wk.lottery ? null : lp.filter((g) => g.draws.length && !notCurrent.has(g.game));
+  check(/Tasa · últimos 7 días|Rate · last 7 days/.test(semana) === Boolean(rate7) && !(weekRate && semana.includes('data-part="rate7"')),
+    `${label} /mas/semana: "últimos 7 días" appears only when the week has fewer than 3 rate days`, `${wk.rate?.points.length ?? 0} points this week`);
+  if (rate7) {
+    const part = semana.slice(semana.indexOf('data-part="rate7"'), semana.indexOf("</section>", semana.indexOf('data-part="rate7"')));
+    const rng = tag(part, "small", { class: "rng" });
+    const from = fx7.points[0].date;
+    check(attr(rng, "data-from") === from && attr(rng, "data-to") === fx7.latest.date && attr(tag(part, "span", { class: "hi" }), "data-d") === fx7.high.date
+      && attr(tag(part, "span", { class: "lo" }), "data-d") === fx7.low.date && part.includes(`<b>${Number(fx7.latest.rate).toFixed(2)}</b>`),
+      `${label} /mas/semana: the last-7-days card's dates, high and low are fx_history's`, `${attr(rng, "data-from")}..${attr(rng, "data-to")}`);
+    check(tagsOf(part, "li", "wc [a-z]+").map((t) => attr(t, "data-d")).join() === fx7.week.filter((p) => p.date >= from).map((p) => p.date).join(),
+      `${label} /mas/semana: the last-7-days circles are the stored days of that window`);
+  }
+  if (lotLatest?.length) {
+    const part = semana.slice(semana.indexOf('data-part="lottery-latest"'), semana.indexOf("</section>", semana.indexOf('data-part="lottery-latest"')));
+    const tiles = [...part.matchAll(/<div class="tile lottery"[^>]*>/g)].map((m) => `${attr(m[0], "data-game")}|${attr(m[0], "data-draw")}`);
+    check(/(Lotería · últimos resultados|Lottery · latest results)<\/h2>/.test(part) && tiles.join() === lotLatest.map((g) => `${esc(g.game)}|${drawKey(g.draws[0])}`).join()
+      && lotLatest.every((g) => g.draws[0].numbers.every((n) => part.includes(`<b>${n}</b>`))) && (part.match(/(Verificado|Verified): /g) ?? []).length === lotLatest.length,
+      `${label} /mas/semana: with no result this week, each current game's latest official result, dated and verified`, tiles.join());
+  }
+  for (const [part, value] of [["opened", wk.opened], ["rate", weekRate], ["rate7", rate7], ["team", wk.team], ["weather", wk.weather],
                                ["badges", wk.badges?.length ? wk.badges : null], ["holidays", wk.holidays_ahead?.length ? wk.holidays_ahead : null],
-                               ["lottery", wk.lottery?.length ? wk.lottery : null]]) {
+                               ["lottery", wk.lottery?.length ? wk.lottery : null], ["lottery-latest", lotLatest?.length ? lotLatest : null]]) {
     check(semana.includes(`data-part="${part}"`) === Boolean(value), `${label} /mas/semana: "${part}" shows exactly when the week has it`);
   }
   if (wk.opened) {
-    check(tagsOf(semana, "li", "wc [a-z]+").map((t) => attr(t, "data-open")).join() === wk.opened.weekdays.map((v) => (v === null ? "" : String(v))).join(),
+    const opened = semana.slice(semana.indexOf('data-part="opened"'), semana.indexOf("</section>", semana.indexOf('data-part="opened"')));
+    check(tagsOf(opened, "li", "wc [a-z]+").map((t) => attr(t, "data-open")).join() === wk.opened.weekdays.map((v) => (v === null ? "" : String(v))).join(),
       `${label} /mas/semana: the circles are the days opened, not opened and to come`);
   }
-  if (wk.rate) check(tagsOf(semana, "rect", "b( on)?").length === wk.rate.points.length, `${label} /mas/semana: one bar per stored rate day this week`);
+  if (weekRate) check(tagsOf(semana, "rect", "b( on)?").length === weekRate.points.length, `${label} /mas/semana: one bar per stored rate day this week`);
   if (wk.lottery) check(wk.lottery.every((l) => l.numbers.every((n) => semana.includes(`<b>${n}</b>`))), `${label} /mas/semana: the week's official numbers are shown`);
   if (wk.weather) {
     const wpart = semana.slice(semana.indexOf('data-part="weather"'));
