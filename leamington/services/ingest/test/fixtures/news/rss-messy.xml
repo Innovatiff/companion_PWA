@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Real-world shapes seen on 2026-09-14: La Prensa (escaped <img> in the description, guid not a url),
+     Excélsior (CDATA escaped a second time), Prensa Libre (empty media:content url, WordPress footer),
+     the Gleaner (http links), the Observer (description repeats the title), and broken items. -->
+<rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+<channel>
+  <title>Messy &amp; Real</title>
+  <link>https://www.laprensa.hn/</link>
+  <language>es</language>
+  <item>
+    <title><![CDATA[¿Habrá Ley Seca en SPS este 15 de septiembre? Esto se sabe]]></title>
+    <link>https://www.laprensa.hn/portada/san-pedro-sula-no-decreto-ley-seca-15-septiembre-2026-CD32026985</link>
+    <guid isPermaLink="false">8e8e9fa7-bf76-43a5-84f5-599da97c9390</guid>
+    <pubDate>Mon, 14 Sep 2026 15:23:23 GMT</pubDate>
+    <description>&lt;img src="https://www.laprensa.hn/binrepository/1_15587336_20260914091526.jpg"&gt;&lt;p&gt;&lt;b&gt;San Pedro Sula, Honduras.&lt;/b&gt; Los sampedranos conmemoran los 205 a&amp;ntilde;os de independencia &amp;#8220;con fervor&amp;#8221;.&lt;/p&gt;</description>
+  </item>
+  <item>
+    <title>&lt;![CDATA[Así terminó el medallero de los Juegos Centroamericanos 2026: México en la cima]]&gt;</title>
+    <link>https://www.excelsior.com.mx/deportes/termino-medallero-juegos-centroamericanos-2026-mexico-cima</link>
+    <pubDate>Mon, 14 Sep 2026 14:34:41 -0600</pubDate>
+    <description>&lt;![CDATA[Sumando un total de 407 preseas, México terminó en todo lo alto del medallero]]&gt;</description>
+    <media:content url="https://imagenes.excelsior.com.mx/files/og_thumbnail/uploads/2026/08/08/6a77927b0e745.png" medium="image" width="1200" height="675"/>
+  </item>
+  <item>
+    <title>China rechaza la idea de que está en una &#8220;competencia maliciosa&#8221; con EE.UU.</title>
+    <link>https://www.prensalibre.com/internacional/china-rechaza-la-idea/?utm_source=rss&#038;utm_medium=rss</link>
+    <dc:creator><![CDATA[BBC News Mundo]]></dc:creator>
+    <pubDate>Mon, 14 Sep 2026 17:09:58 +0000</pubDate>
+    <guid isPermaLink="false">https://www.prensalibre.com/?p=26095607</guid>
+    <description><![CDATA[<p>Esto se produce tras los llamamientos para que se desacelere el desarrollo de la IA.</p>
+<p>The post <a rel="nofollow" href="https://www.prensalibre.com/internacional/china/">China rechaza</a> appeared first on <a rel="nofollow" href="https://www.prensalibre.com">Prensa Libre</a>.</p>]]></description>
+    <content:encoded><![CDATA[<p>FULL ARTICLE TEXT THAT MUST NEVER BE STORED. <script>alert(1)</script></p>]]></content:encoded>
+    <media:content url="" medium="image"/>
+  </item>
+  <item>
+    <title>SECOND CHANCE</title>
+    <link>http://jamaica-gleaner.com/article/news/20260914/second-chance</link>
+    <guid>http://jamaica-gleaner.com/article/news/20260914/second-chance</guid>
+    <pubDate>Mon, 14 Sep 2026 01:07:38 -0400</pubDate>
+    <description>Justice Minister Delroy Chuck says there is no longer a backlog of expungement applications in Kingston &amp; St Andrew.</description>
+    <enclosure url="https://jamaica-gleaner.com/sites/default/files/second-chance.jpg" type="image/jpeg" length="69986"/>
+  </item>
+  <item>
+    <title>Sigh of relief</title>
+    <link>https://www.jamaicaobserver.com/2026/09/14/sigh-of-relief-20260914-0707-021920/</link>
+    <pubDate>Mon, 14 Sep 2026 05:30:00 +0000</pubDate>
+    <description>Sigh of relief</description>
+    <media:thumbnail url="https://www.jamaicaobserver.com/wp-content/uploads/sites/4/2026/09/36b4db629a6a.jpg" width="150"/>
+    <media:content url="https://www.jamaicaobserver.com/wp-content/uploads/sites/4/2026/09/36b4db629a6a-1200.jpg" type="image/jpeg" width="1200"/>
+  </item>
+  <item>
+    <title>Sin fecha</title>
+    <link>https://proceso.hn/sin-fecha/</link>
+    <description>No date: dropped.</description>
+  </item>
+  <item>
+    <title>   </title>
+    <link>https://proceso.hn/sin-titulo/</link>
+    <pubDate>Mon, 14 Sep 2026 17:00:00 +0000</pubDate>
+  </item>
+  <item>
+    <title>Sin enlace</title>
+    <pubDate>Mon, 14 Sep 2026 17:00:00 +0000</pubDate>
+    <link>javascript:alert(1)</link>
+  </item>
+  <item>
+    <title>Dos años después del asesinato de Juan López, la memoria es resistencia</title>
+    <link>https://criterio.hn/dos-anos-despues/</link>
+    <pubDate>Mon, 14 Sep 2026 15:25:15 CST</pubDate>
+    <description><![CDATA[&#160;&#160;Mientras dos de los tres presuntos autores materiales guardan arresto domiciliario en la misma colonia en la que reside la familia de Juan López, Tocoa mantiene viva la memoria de un defensor ambiental cuyo asesinato sigue sin justicia completa, y organizaciones comunitarias, iglesias y colectivos del Bajo Aguán se reúnen cada mes para exigir que se investigue a los autores intelectuales del crimen y que se garantice la protección de quienes defienden el río Guapinol y los bosques de la zona]]></description>
+  </item>
+</channel>
+</rss>

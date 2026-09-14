@@ -78,6 +78,8 @@ export async function runFeed(feed, fn) {
 }
 
 export function describeError(err) {
+  // A feed that already summarised several sources' failures (news) keeps its own words.
+  if (typeof err?.detail === "string") return err.detail;
   const code = err?.cause?.code || err?.code;
   const msg = String(err?.cause?.message || err?.message || err);
   if (err?.name === "AbortError") return "timeout";

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/" xml:lang="es">
+  <title>Atom de prueba</title>
+  <link rel="self" href="https://noticias.example/atom.xml"/>
+  <entry>
+    <title type="html">Lluvias dejan inundaciones en Zamora, Michoac&amp;aacute;n</title>
+    <link rel="alternate" type="text/html" href="https://noticias.example/2026/09/14/lluvias-zamora"/>
+    <link rel="enclosure" type="image/jpeg" href="https://noticias.example/img/big.jpg"/>
+    <id>tag:noticias.example,2026:1001</id>
+    <published>2026-09-14T12:00:00-06:00</published>
+    <updated>2026-09-14T13:00:00-06:00</updated>
+    <summary type="html">&lt;p&gt;Vecinos de &lt;strong&gt;Zamora&lt;/strong&gt; reportan calles anegadas.&lt;/p&gt;</summary>
+    <media:thumbnail url="/img/lluvias-zamora.jpg" width="640" height="360"/>
+  </entry>
+  <entry>
+    <title>Solo actualizada</title>
+    <link href="https://noticias.example/2026/09/14/solo-actualizada"/>
+    <id>tag:noticias.example,2026:1002</id>
+    <updated>2026-09-14T10:00:00Z</updated>
+    <content type="xhtml"><div xmlns="http://www.w3.org/1999/xhtml"><p>Contenido &amp; más</p></div></content>
+  </entry>
+  <entry>
+    <title>Sin enlace</title>
+    <id>tag:noticias.example,2026:1003</id>
+    <updated>2026-09-14T10:00:00Z</updated>
+  </entry>
+</feed>

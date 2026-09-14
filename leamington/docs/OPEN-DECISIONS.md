@@ -567,3 +567,123 @@ Round 3 adds the member's own rate reminder ("Avísame cuando suba").
     so `holidays.country` and its functions are unchanged.
   - The FX backfill (`scripts/backfill-fx.mjs`) never overwrites a stored rate
     and never fills a day no source published.
+
+### 3.24 Noticias: headlines, the outlet's own summary, a small picture, a link (2026-09-14)
+
+The owner asked for news of the member's country and of their municipio or
+parish, on a page of its own, with pictures.
+
+- **Copyright stance (decided):** Hoy shows each story's headline, the
+  publisher's OWN short summary from its feed (plain text, at most 300
+  characters, cut at a word with "…"), a small cached copy of the publisher's
+  picture credited "Imagen: {source}", the source name and the publish time,
+  and links to the full article on the publisher's site.
+  - Hoy never stores or shows full article text (`content:encoded` is never
+    read).
+  - Only the **publisher's own RSS/Atom feed, served from its own domain**,
+    whether or not its pages link to it (revised 2026-09-14, coordinator's
+    decision). The first version required the feed to be advertised on the
+    outlet's pages, which left 11 working feeds unused, including both big
+    Honduran papers. The rule's purpose was always no scraping and no
+    third-party aggregators, and a feed on the publisher's own domain meets
+    it. An outlet stays active only while its feed answers with fresh, dated
+    items. **Reverse:** `update news_sources set active = false where key = …`
+    (and the same in the seed).
+  - Pictures only from the item's own feed tags or the article's `og:image`
+    (one page read per new story, at most 40 per run). Never hotlinked:
+    ingest keeps a thumb (160 px, ≤ 10 KB) and a lead (480 px, ≤ 45 KB) JPEG.
+  - A story stored while a run's picture budget was spent gets its picture on a
+    later run, while its outlet still lists it (`news_items.image_checked_at`).
+    A picture that failed is not tried again.
+- **Sources (all re-verified live 2026-09-14, `seeds/news_sources.sql`):** 27
+  active, none inactive.
+  - **Mexico, national:** El Financiero, SDPnoticias, Infobae México, El
+    Universal, La Jornada.
+  - **Michoacán:** La Voz de Michoacán, Quadratín Michoacán (both Morelia).
+  - **Chiapas:** El Orbe and Diario del Sur (Tapachula); Alerta Chiapas and
+    El Heraldo de Chiapas (Tuxtla Gutiérrez).
+  - **Guatemala, national:** Prensa Libre, La Hora, Publinews, República,
+    Emisoras Unidas.
+  - **Honduras, national:** La Prensa, El Heraldo, Proceso Digital, HCH,
+    Hondudiario, Criterio.
+    - La Prensa is based in San Pedro Sula but national in scope. It has no
+      San Pedro Sula feed (`rss/san-pedro-sula` and `rss/zona-norte` are 404),
+      so mentions carry the city.
+  - **Francisco Morazán:** El Heraldo's own Tegucigalpa section feed
+    (`rss/tegucigalpa`).
+  - **Jamaica, national:** The Gleaner, Jamaica Observer (news and Western),
+    JIS.
+  - No Guatemalan regional outlet, and no Honduran one outside Tegucigalpa,
+    has a working feed.
+- **No graphic pictures** (`news/graphic.mjs`; members open Hoy every morning,
+  and crime pictures showed covered bodies):
+  - When a story's title or summary speaks of death or violence, the story is
+    kept, but its picture is never fetched and never shown.
+    `news_items.image_suppressed` holds the term that matched.
+  - Matching covers Spanish and English terms (muerto, asesinato, homicidio,
+    cadáver, sin vida, balacera, ejecutado, fosa, feminicidio, sicario, ataque
+    armado, a balazos; killed, murder, dead body, shooting, stabbed and more),
+    accent- and case-insensitive, whole words.
+  - Figurative uses are removed first: "Día de Muertos", "muertos de risa",
+    "punto muerto", "tiempo muerto", "restos del huracán", "shooting star",
+    and "ejecutado" said of work or money ("operativos ejecutados por la
+    Alcaldía").
+  - "murió" and "murieron" are not terms: in the dry run they marked
+    obituaries, history and "¿De qué murió…?". "muere" and "mueren" are
+    terms, since they are mostly current accidents.
+  - Erring toward no picture is cheap: the headline and summary still show.
+  - `news_sources.show_images = false` switches off one outlet's pictures
+    without losing its stories. It applies at once to stories already stored
+    (`app.news_page` and `app.news_image` check it). Ingest skips those
+    pictures, and switching back on backfills stories the outlet still lists.
+  - **Reverse:** `update news_sources set show_images = true where key = …`;
+    for the terms, edit `GRAPHIC_TERMS` / `NOT_GRAPHIC`. Already suppressed
+    stories keep no picture, because it was never fetched.
+- **Rules:**
+  - **Sections** (`app.news_page`):
+    - local: stories naming the hometown or a watched town, 7 days
+    - region: regional outlets of the hometown's region, 3 days
+    - national: 48 hours
+    - Each story appears once. Outlets are mixed round-robin so one busy
+      outlet cannot fill a list.
+  - **Home:** `app.news_home` gives one lead story with a picture (the
+    member's towns first) and two more headlines; `home_more.news`.
+  - **Freshness:** `updated_at` is the last run that finished `ok` or
+    `partial`. `feed_health.last_ok_at` counts only `ok`, and with 15 outlets
+    one is often down. Beyond 3 hours the stories are still returned with
+    `stale: true`, never "no news".
+  - **Failures:** a run where no outlet answered is an error, recorded
+    inconclusive.
+  - **Retention:** stories older than 30 days and unused pictures are pruned
+    each run.
+- **Local matching** (`news/mentions.mjs`, stored in `news_mentions` with
+  what matched and the rule):
+  - Only outlets of the town's country; title and summary; accent-, case- and
+    word-exact.
+  - An ambiguous name (a word, surname, saint, a name several of our towns
+    share, a famous place elsewhere) needs its region named too, or a
+    regional outlet of that region.
+  - Jamaica: the town or its parish.
+  - A dateline naming a big newsroom city does not count: Kingston,
+    Tegucigalpa, San Pedro Sula, Ciudad de México, Guatemala, Morelia. It says
+    where the story was filed, not what it is about. The dry runs found
+    "KINGSTON, Jamaica —" on nearly every Observer story (13 Kingston matches
+    became 5), "San Pedro Sula, Honduras." on La Prensa's national stories,
+    and "MORELIA, Mich., …" on Quadratín's statewide ones. Other towns'
+    datelines ("URUAPAN, Mich.", "Tapachula, Chiapas;", "MONTEGO BAY, St
+    James —") are local reporting and count.
+  - "Xelajú" is not an alias of Quetzaltenango (it was only ever the football
+    club).
+- **Pictures in pure JavaScript** (jpeg-js, pngjs; no native build in the
+  node:22-slim image):
+  - WebP and AVIF have no reliable pure-JS decoder, so those stories have no
+    picture (most of Criterio, some of HCH and Hondudiario).
+  - The Gleaner's article pages drop Node's connections, so its stories have
+    no picture yet.
+- **Reverse:**
+  - Stop reading an outlet: `update news_sources set active = false where key = …`,
+    and seed the change. Its stored stories are no longer shown.
+  - Drop pictures: skip `fetchPicture` in `news.mjs`; stories stay and pages
+    show text only.
+  - Stop the feature: remove the `news` job from `scheduler.mjs` and set
+    `feed_expectations.active = false`. The stored stories age out in 30 days.
