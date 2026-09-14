@@ -85,9 +85,10 @@ export function openWeatherDays(j, now = Date.now()) {
 
 /**
  * Only places someone actually reads: clients' homes and watched towns, plus
- * the local places where clients work (Leamington, Windsor; 0036).
+ * the local places where clients work (Leamington, Windsor; 0036). Shared with
+ * the current-conditions feed.
  */
-async function targetMunicipalities() {
+export async function targetMunicipalities() {
   const { rows } = await query(
     `select distinct m.id, m.lat, m.lng, m.name, m.country::text, 'municipality' as kind
        from municipalities m

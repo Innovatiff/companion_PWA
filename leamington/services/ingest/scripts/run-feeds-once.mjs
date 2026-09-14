@@ -14,6 +14,7 @@ import { closePool } from "../src/db.mjs";
 import { ingestStatic } from "../src/feeds/static.mjs";
 import { ingestFx } from "../src/feeds/fx.mjs";
 import { ingestForecast } from "../src/feeds/forecast.mjs";
+import { ingestCurrent } from "../src/feeds/current.mjs";
 import { ingestLottery } from "../src/feeds/lottery.mjs";
 import { ingestFixtures } from "../src/feeds/fixtures.mjs";
 
@@ -21,6 +22,7 @@ const FEEDS = {
   static: ingestStatic,
   fx: ingestFx,
   forecast: ingestForecast,
+  current: ingestCurrent,
   lottery: ingestLottery,
   fixtures: (ctx) => ingestFixtures(ctx, { offsetDays: 0 }),
 };

@@ -15,6 +15,7 @@ import { checkStaleness } from "./monitor/staleness.mjs";
 import { ingestAlerts } from "./feeds/alerts.mjs";
 import { ingestFx } from "./feeds/fx.mjs";
 import { ingestForecast } from "./feeds/forecast.mjs";
+import { ingestCurrent } from "./feeds/current.mjs";
 import { ingestLottery } from "./feeds/lottery.mjs";
 import { ingestStatic } from "./feeds/static.mjs";
 import { ingestFixtures } from "./feeds/fixtures.mjs";
@@ -28,6 +29,8 @@ export const FIXED_JOBS = [
   { feed: "alerts:JM", cron: "*/15 * * * *", tz: "UTC",              fn: ingestAlerts,   label: "Jamaica CAP alerts" },
   { feed: "fx",        cron: "15 6 * * *",   tz: "America/Toronto",  fn: ingestFx,       label: "FX daily" },
   { feed: "forecast",  cron: "0 */6 * * *",  tz: "UTC",              fn: ingestForecast, label: "Forecast (3 providers)" },
+  // OpenWeather only on the run in minutes 0-14 (its free quota; current.mjs).
+  { feed: "current",   cron: "*/30 * * * *", tz: "UTC",              fn: ingestCurrent,  label: "Current conditions (3 providers)" },
   { feed: "static",    cron: "30 5 * * 1",   tz: "America/Toronto",  fn: ingestStatic,   label: "Static records (weekly)" },
   // Football by date query: 24 + 1 + 1 = 26 API-Football requests/day.
   { feed: "fixtures",  cron: "5 * * * *",    tz: "UTC", fn: (ctx) => ingestFixtures(ctx, { offsetDays: 0 }),  label: "Football fixtures today (hourly)" },

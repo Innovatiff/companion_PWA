@@ -7,6 +7,7 @@ insert into feed_expectations (feed, label, expected_interval, grace, active) va
   ('alerts:GT',   'Guatemala weather alerts',     interval '15 minutes', interval '10 minutes', false),
   ('fx',          'FX reference rates',           interval '1 day',      interval '6 hours',    true),
   ('forecast',    'Forecast (3 providers)',       interval '6 hours',    interval '1 hour',     true),
+  ('current',     'Current conditions (3 providers)', interval '30 minutes', interval '15 minutes', true),
   ('lottery',     'Lottery draw results',         interval '1 hour',     interval '30 minutes', true),
   ('static',      'Static records',               interval '7 days',     interval '1 day',      true),
   ('fixtures',    'Football fixtures',            interval '1 hour',     interval '20 minutes', true),
