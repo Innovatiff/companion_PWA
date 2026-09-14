@@ -37,6 +37,7 @@ import { t } from "../lib/t";
 import { HomeTop, OfflineBar, TabBar } from "../lib/frame";
 import { AllaAqui, BadgesRow, SeasonCard, WelcomeScreen, type MemberCard, type Season } from "../lib/member";
 import { WeekDots, type WeekPoint } from "../lib/money";
+import { HomeNews, type NewsHome } from "../lib/news";
 import { EXPIRY_CSS } from "../lib/page-css";
 import { DstCard, HoursStrip, WorkdayCard, type Hourly, type Workday } from "../lib/workday";
 import {
@@ -77,6 +78,8 @@ type More = {
   welcomed?: boolean; home_timezone?: string | null;
   // Round 4 (0044): Leamington's working day in icons.
   workday?: Workday | null;
+  // Noticias (0047): one lead story with a picture and two headlines, or null.
+  news?: NewsHome | null;
 };
 // Today's forecast at their home town, for the high and low beside "Ahora".
 type HomeDay = { timezone: string; name: string; lat: number | null; lng: number | null; d: { temp: string; low: number | null; rain?: boolean } | null };
@@ -676,6 +679,9 @@ export default function Home(props: Props) {
             </span>
           </a>
         )}
+
+        {/* Noticias (0047): after "Útil para ti", below the weather and work cards; "hace X" is computed at render. */}
+        {h?.news && (h.news.lead || h.news.more.length > 0) && <HomeNews news={h.news} lang={lang} tz={tz} nowMs={now} />}
 
         {(plan || pushCard || school) && (
           <section data-line="reminders" data-until={dayEnd}>

@@ -69,7 +69,7 @@ async function page(path, cookie, label = path) {
   const bad = FORBIDDEN.find((re) => re.test(visible(r.text)));
   check(!bad, `${label} has no reassurance-from-silence or placeholder text`, String(bad));
   if (r.status === 200 && !path.startsWith("/setup/") && !label.includes("(expired)")) {
-    tabs(r.text, label, path === "/" ? "/" : path.startsWith("/clima") ? "/clima" : path.startsWith("/mas/tasa") ? "/mas/tasa" : path.startsWith("/mas") ? "/mas" : path);
+    tabs(r.text, label, path === "/" ? "/" : path.startsWith("/clima") ? "/clima" : path.startsWith("/mas/tasa") ? "/mas/tasa" : path.startsWith("/mas") || path.startsWith("/noticias") ? "/mas" : path);
   }
   if (r.status === 200) await images(r.text, label);
   return r.text;
@@ -97,7 +97,7 @@ const imagesChecked = new Set();
 const ART_SRC = /src="(\/art\/[a-z-]+\.svg\?v=\d+)"/;
 async function images(html, label) {
   const imgs = [...html.matchAll(/<img\b[^>]*>/g)].map((m) => m[0]);
-  check(imgs.every((i) => (/src="\/(crest|photo|league-crest)\/\d+"/.test(i) || /src="\/photo\/\d+\/[1-6]"/.test(i) || ART_SRC.test(i)) && /width="\d+"/.test(i) && /height="\d+"/.test(i) && / alt=""/.test(i)),
+  check(imgs.every((i) => (/src="\/(crest|photo|league-crest)\/\d+"/.test(i) || /src="\/photo\/\d+\/[1-6]"/.test(i) || /src="\/news-image\/\d+\/(thumb|lead)"/.test(i) || ART_SRC.test(i)) && /width="\d+"/.test(i) && /height="\d+"/.test(i) && / alt=""/.test(i)),
     `${label}: every image is a crest, a town photo or an illustration from our own domain, sized`, imgs.join(" "));
   check(imgs.filter((i) => /src="\/(crest|league-crest)\//.test(i)).every((i) => / loading="lazy"/.test(i)), `${label}: crests and league logos load lazily`);
   const photos = new Set(imgs.map((i) => /src="\/photo\/(\d+(?:\/[1-6])?)"/.exec(i)?.[1]).filter(Boolean));
@@ -619,6 +619,98 @@ async function workday(cookie, code, label) {
   }
 }
 
+// Noticias (0047): the page and the home card held to app.news_page and app.news_home.
+// Copyright stance (OPEN-DECISIONS 3.24): headline, the publisher's own summary
+// (at most 300 characters), our cached picture credited "Imagen: {source}", and
+// the full story only on the publisher's site.
+const NEWS_LIMIT = 10;
+const NO_NEWS = /no hay noticias|sin noticias|no news|no stories/i;
+async function news(cookie, code, label) {
+  if (!DB) { console.log(`SKIP ${label}: Noticias vs database (set DATABASE_URL)`); return; }
+  const np = (await q("select app.news_page(id, now(), $2) as n from clients where code = $1", [code, NEWS_LIMIT])).rows[0].n;
+  const first = await send("/noticias", { cookie });
+  const sections = ["local", "region", "national"].filter((s) => np[s].length > 0);
+  const tabs = (html) => [...html.matchAll(/<a\b[^>]*data-section="([a-z]+)"[^>]*>/g)].map((m) => m[0]);
+  check(first.status === 200 && tabs(first.text).map((t) => attr(t, "data-section")).join() === sections.join(),
+    `${label} /noticias: a tab exactly for each section with stories`, `${tabs(first.text).map((t) => attr(t, "data-section"))} vs ${sections}`);
+  if (np.local.length) {
+    const home = np.municipality?.name;
+    const want = home && np.local.every((i) => i.mentions.every((m) => m === home)) ? esc(home) : np.language === "en" ? "My towns" : "Mis pueblos";
+    const got = /<a\b[^>]*data-section="local"[^>]*>([^<]*)<\/a>/.exec(first.text)?.[1];
+    check(got === want, `${label} /noticias: the local tab names the hometown only when its stories name only the hometown, else "Mis pueblos"`, `${got} vs ${want}`);
+  }
+  check(!NO_NEWS.test(visible(first.text).replace(/<[^>]+>/g, " ")), `${label} /noticias never says there is no news`);
+  check(/puede no estar al día|may not be up to date/.test(first.text) === Boolean(np.stale), `${label} /noticias: the not-current note exactly when the news is stale`, String(np.stale));
+  check(np.sources.length > 0 && np.sources.every((x) => first.text.includes(`href="${esc(x.homepage_url)}" target="_blank" rel="noopener">${esc(x.name)}</a>`)),
+    `${label} /noticias: every source listed, linked to its homepage`);
+  if (sections.length) {
+    check(first.text.includes(`<section data-section="${sections[0]}">`), `${label} /noticias opens on the first section with stories`);
+    check((await send("/noticias?s=nope", { cookie })).text.includes(`<section data-section="${sections[0]}">`), `${label} /noticias: an unknown section opens the first with stories`);
+  }
+  for (const sec of sections) {
+    const html = sec === sections[0] ? first.text : (await send(`/noticias?s=${sec}`, { cookie })).text;
+    const tl = `${label} /noticias ${sec}`;
+    check(tabs(html).some((t) => attr(t, "data-section") === sec && / aria-current="page"/.test(t)), `${tl}: its tab is the current one`);
+    const items = np[sec];
+    const lead = items.find((i) => i.image);
+    const want = lead ? [lead, ...items.filter((i) => i !== lead)] : items;
+    const at = html.indexOf(`<section data-section="${sec}">`);
+    const cards = html.slice(at, html.indexOf("</section>", at)).split(/(?=<article )/).slice(1);
+    const open = (c) => c.slice(0, c.indexOf(">") + 1);
+    check(cards.map((c) => attr(open(c), "data-item")).join() === want.map((i) => String(i.id)).join(),
+      `${tl}: exactly the section's stories, in order, the first with a picture as the lead`, `${cards.length} vs ${want.length}`);
+    if (cards.length !== want.length) continue;
+    check(cards.every((c, k) => c.includes(`>${esc(want[k].title)}</a>`) && c.includes(`${esc(want[k].source)} · `)), `${tl}: every title and source are the database's`);
+    check(cards.every((c, k) => [...c.matchAll(/<a\b[^>]*>/g)].every((m) => attr(m[0], "href") === esc(want[k].url) && / target="_blank"/.test(m[0]) && / rel="noopener"/.test(m[0]))),
+      `${tl}: every link in a story opens the publisher's own page (new tab, rel=noopener)`);
+    check(cards.every((c, k) => {
+      const reads = [...c.matchAll(/<a\b([^>]*)>(?:Leer en|Read on) ([^<]*) ↗<\/a>/g)];
+      return (k === 0 && lead ? reads.length === 1 : reads.length === 0) && reads.every((m) => attr(`<a${m[1]}>`, "href") === esc(want[k].url) && m[2] === esc(want[k].source));
+    }), `${tl}: the lead story says "Leer en {source}" with the story's own link`);
+    check(cards.every((c, k) => {
+      const imgs = [...c.matchAll(/<img\b[^>]*>/g)].map((m) => m[0]);
+      const variant = k === 0 && lead ? "lead" : "thumb";
+      return imgs.length === (want[k].image ? 1 : 0)
+        && imgs.every((i) => attr(i, "src") === `/news-image/${want[k].id}/${variant}` && (variant === "lead") !== / loading="lazy"/.test(i))
+        && (/(Imagen|Image): /.test(c) === want[k].image) && (!want[k].image || c.includes(`: ${esc(want[k].source)}</small>`));
+    }), `${tl}: a picture exactly where the story has one (the lead's eager, thumbs lazy), each credited to its source`);
+    check(want.every((i) => i.summary == null || i.summary.length <= 300) && cards.every((c, k) => want[k].summary == null ? !/<p( class="nsum")?>/.test(c) : c.includes(`${esc(want[k].summary)}</p>`)),
+      `${tl}: only the publisher's short summary (at most 300 characters), never the article`);
+    check(cards.every((c, k) => [...c.matchAll(/data-town="([^"]*)"/g)].map((m) => m[1]).join() === (sec === "local" ? want[k].mentions.map(esc).join() : "")),
+      `${tl}: the towns a local story names, and only on local stories`);
+  }
+  // The picture route: our cached copy, the same headers as a town photo; 404 for anything else.
+  const all = [...np.local, ...np.region, ...np.national];
+  const pic = all.find((i) => i.image);
+  if (pic) {
+    for (const [v, limit] of [["lead", 45_000], ["thumb", 10_000]]) {
+      const path = `/news-image/${pic.id}/${v}`;
+      const r = await send(path);
+      check(r.status === 200 && r.headers["content-type"] === "image/jpeg" && r.bytes > 0 && r.bytes <= limit, `${path} serves a JPEG of at most ${limit / 1000} KB`, `${r.status} ${r.headers["content-type"]} ${r.bytes}`);
+      check(/public/.test(r.headers["cache-control"] ?? "") && /max-age=2592000/.test(r.headers["cache-control"] ?? "") && /immutable/.test(r.headers["cache-control"] ?? "")
+        && Boolean(r.headers.etag) && r.headers["x-content-type-options"] === "nosniff", `${path} is cached for 30 days, immutable, with an ETag and nosniff`, JSON.stringify(r.headers));
+      check((await send(path, { headers: { "if-none-match": r.headers.etag } })).status === 304, `${path} answers 304 to its own ETag`);
+    }
+    check((await send(`/news-image/${pic.id}/huge`)).status === 404 && (await send("/news-image/abc/thumb")).status === 404, "/news-image: an unknown size or id is 404");
+  }
+  const bare = all.find((i) => !i.image);
+  if (bare) check((await send(`/news-image/${bare.id}/thumb`)).status === 404, `${label}: a story without a picture has no picture to serve (404)`);
+  // Home: the card exactly as app.news_home.
+  const nh = (await q("select app.news_home(id) as n from clients where code = $1", [code])).rows[0].n;
+  const home = (await send("/", { cookie })).text;
+  const card = /<section class="newsh">([\s\S]*?)<\/section>/.exec(home)?.[1];
+  check(Boolean(card) === Boolean(nh && (nh.lead || nh.more.length)), `${label}: home's "Noticias" shows exactly when news_home has stories`);
+  if (card && nh) {
+    check(card.includes('href="/noticias"'), `${label}: home's "Noticias" links to the page`);
+    check((attr(tag(card, "div", { class: "nhl" }) ?? "", "data-item") ?? null) === (nh.lead ? String(nh.lead.id) : null)
+      && (!nh.lead || (card.includes(`src="/news-image/${nh.lead.id}/lead"`) && card.includes(`>${esc(nh.lead.title)}</a>`) && card.includes(`: ${esc(nh.lead.source)}</small>`))),
+      `${label}: home's lead story is news_home's, with its picture and credit`);
+    check([...card.matchAll(/<li data-item="(\d+)">/g)].map((m) => m[1]).join() === nh.more.map((i) => String(i.id)).join()
+      && nh.more.every((i) => card.includes(`href="${esc(i.url)}" target="_blank" rel="noopener">${esc(i.title)}</a>`)), `${label}: home's two more headlines are news_home's, linked to the publisher`);
+    check(!NO_NEWS.test(card), `${label}: home's "Noticias" never says there is no news`);
+  }
+}
+
 // Round 5, "Siempre contigo" (0045, 0046): the number check, Tu semana, the
 // hometown gallery, pages kept for offline, and Modo noche.
 const LOTTO_WORDS = /ganaste|ganador|premio|probabilidad|odds|prize|números calientes|hot numbers|comprar|compra tu|\bbuy\b|jackpot|apuesta/i;
@@ -633,10 +725,10 @@ async function round5(cookie, code, label) {
   // Pages kept for offline: exactly the member pages, cleared at sign-in; each carries its offline line, hidden online.
   const sw = (await send("/sw.js")).text;
   const saved = /const SAVED = \[([^\]]*)\]/.exec(sw)?.[1]?.replace(/\s/g, "");
-  check(saved === '"/","/clima","/clima/aqui","/mas/tasa","/mas/miembro","/mas/semana"', "sw.js keeps exactly Inicio, Clima, Hoy en Leamington, Tasa, Miembro and Tu semana", saved);
+  check(saved === '"/","/clima","/clima/aqui","/mas/tasa","/mas/miembro","/mas/semana","/noticias"', "sw.js keeps exactly Inicio, Clima, Hoy en Leamington, Tasa, Miembro, Tu semana and Noticias", saved);
   check(/pathname === "\/api\/login"\) \{\s*event\.waitUntil\(clearPages\(\)\)/.test(sw) && /pathname === "\/login"\) \{\s*event\.waitUntil\(clearPages\(\)\)/.test(sw)
     && /caches\.delete\(PAGES\)/.test(sw), "sw.js clears every kept page when the sign-in page opens or a code signs in");
-  for (const path of ["/", "/clima", "/clima/aqui", "/mas/tasa", "/mas/miembro", "/mas/semana"]) {
+  for (const path of ["/", "/clima", "/clima/aqui", "/mas/tasa", "/mas/miembro", "/mas/semana", "/noticias"]) {
     const html = (await send(path, { cookie })).text;
     const bar = tag(html, "p", { id: "off" });
     check(Boolean(bar) && / hidden=""/.test(bar) && /(Sin conexión · guardado a las|Offline · saved at) \d{1,2}(:\d{2})?(am|pm)/.test(html),
@@ -919,7 +1011,7 @@ const cookie = login.cookie;
 await welcome(cookie, CODE, CODE);
 
 for (const path of ["/", "/futbol", "/clima/aqui", "/mas", "/mas/miembro", "/mas/semana", "/mas/tasa", "/mas/feriados", "/mas/escuela", "/mas/consulado",
-  "/mas/emergencias", "/mas/transporte", "/mas/loteria", "/mas/avisos",
+  "/mas/emergencias", "/mas/transporte", "/mas/loteria", "/mas/avisos", "/noticias", "/noticias?s=national",
   "/setup/municipality?edit=1", "/setup/watch?edit=1", "/setup/segment?edit=1", "/setup/kids?edit=1", "/setup/corridor?edit=1"]) {
   await page(path, cookie);
 }
@@ -931,6 +1023,7 @@ await round2(cookie, CODE, CODE);
 await money(cookie, CODE, CODE);
 await workday(cookie, CODE, CODE);
 await round5(cookie, CODE, CODE);
+await news(cookie, CODE, CODE);
 await teamVisuals(cookie, CODE);
 await richer(cookie, CODE);
 for (const path of ["/crest/999999999999", "/crest/abc", "/photo/999999999999", "/photo/abc", "/league-crest/999999999999", "/league-crest/abc"]) {

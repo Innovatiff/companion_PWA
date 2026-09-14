@@ -4,6 +4,7 @@
  * and there is no external map.
  */
 import Head from "next/head";
+import { DIAL_CSS } from "../../lib/page-css";
 import type { GetServerSideProps } from "next";
 import { formatDate } from "@leamington/shared/src/format.ts";
 import { db } from "../../lib/db";
@@ -40,6 +41,7 @@ export default function Consulado({ lang, country, consulates }: Props) {
       <Head>
         <title>{`${t(lang, "Consulado", "Consulate")} · Hoy`}</title>
         <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+        <style dangerouslySetInnerHTML={{ __html: DIAL_CSS }} />
       </Head>
       <main>
         <PageHead lang={lang} title={t(lang, "Consulado", "Consulate")} art="consulate" back />

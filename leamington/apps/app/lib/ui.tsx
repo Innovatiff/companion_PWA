@@ -51,7 +51,7 @@ export const ART_NAMES = [
   "plane", "warning", "settings", "clock", "pin",
   "badge-fundador", "badge-pueblo", "badge-avisos", "badge-vigia", "badge-explorador", "badge-fiel", "badge-renovo", "badge-temporada",
   "globe", "wave", "chart", "calculator", "bell-reminder", "canada",
-  "jacket", "umbrella", "sunscreen", "water", "leaf", "week",
+  "jacket", "umbrella", "sunscreen", "water", "leaf", "week", "news",
 ] as const;
 export type ArtName = (typeof ART_NAMES)[number];
 

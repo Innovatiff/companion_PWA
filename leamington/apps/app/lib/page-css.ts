@@ -5,6 +5,10 @@
  * after these, so page rules that meet a shared one are written more specific.
  * Match cards and warning cards are shared: home shows them too.
  */
+// Rows in a white card (Clima, Feriados, Escuela, Transporte, Consulado, setup) and the error box (forms): page-only.
+const ROWS = "ul.rows{list-style:none;margin:0 0 1rem;padding:.2rem 1.1rem;background:var(--card);border-radius:var(--r);box-shadow:var(--shadow)}ul.rows>li{padding:.85rem 0;border-bottom:1px solid var(--line)}ul.rows>li:last-child{border-bottom:0}";
+const ERR = ".err{color:var(--danger);background:var(--danger-soft);padding:.75rem 1rem;border-radius:16px}.ok{color:var(--ok)}";
+
 const TABLE =
   ".wrap{overflow-x:auto;margin:.5rem 0 1rem;background:var(--card);border-radius:var(--r);padding:.4rem 1rem;box-shadow:var(--shadow)}" +
   "table{border-collapse:collapse;width:100%;font-size:.95rem}caption{text-align:left;font-weight:750;padding:.6rem 0}" +
@@ -47,7 +51,7 @@ const AHORA =
   ".ahora.in{margin:.55rem 0 .4rem;padding:.55rem 0;border-block:1px solid var(--line)}.ahora.in .art{width:3.2rem;height:3.2rem}.ahora.in .nc>span{padding:.2rem .5rem;font-size:.76rem}" +
   ".tn{display:block;font-size:2.8rem;font-weight:800;letter-spacing:-.03em;line-height:1.05;font-variant-numeric:tabular-nums}.ahora.in .tn{font-size:1.9rem}.lab{display:block;font-size:.98rem}" + ".nc{display:flex;flex-wrap:wrap;gap:.35rem;margin:.55rem 0 0}.nc>span{display:inline-flex;align-items:center;gap:.3rem;padding:.3rem .75rem;border-radius:999px;background:var(--tile);font-size:.8rem;font-weight:650}.nc svg{width:1.1em;height:1.1em;fill:none;stroke:var(--brand-ink);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}";
 
-export const CLIMA_CSS = AHORA + ".seg{display:flex;gap:.3rem;padding:.3rem;margin:0 0 1rem;background:var(--card);border-radius:999px;box-shadow:var(--shadow);overflow-x:auto}.seg a{flex:1 0 auto;display:grid;place-items:center;min-height:48px;padding:0 1rem;border-radius:999px;text-decoration:none;color:var(--ink);font-weight:650;font-size:.92rem;white-space:nowrap}.seg a[aria-current]{background:var(--brand);color:#fff}" + ".gal{display:flex;gap:.6rem;overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding-inline:1rem;margin:.5rem -1rem .6rem;padding:0 1rem .3rem}.gph{flex:none;width:11.25rem;margin:0;scroll-snap-align:start}.gph img{display:block;width:100%;height:auto;aspect-ratio:4/3;object-fit:cover;border-radius:16px;background:var(--tile)}" +
+export const CLIMA_CSS = ROWS + AHORA + ".seg{display:flex;gap:.3rem;padding:.3rem;margin:0 0 1rem;background:var(--card);border-radius:999px;box-shadow:var(--shadow);overflow-x:auto}.seg a{flex:1 0 auto;display:grid;place-items:center;min-height:48px;padding:0 1rem;border-radius:999px;text-decoration:none;color:var(--ink);font-weight:650;font-size:.92rem;white-space:nowrap}.seg a[aria-current]{background:var(--brand);color:#fff}" + ".gal{display:flex;gap:.6rem;overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding-inline:1rem;margin:.5rem -1rem .6rem;padding:0 1rem .3rem}.gph{flex:none;width:11.25rem;margin:0;scroll-snap-align:start}.gph img{display:block;width:100%;height:auto;aspect-ratio:4/3;object-fit:cover;border-radius:16px;background:var(--tile)}" +
   // Town headers: a photo under a dark overlay, or the indigo gradient
   ".townhead{position:relative;isolation:isolate;display:flex;align-items:flex-end;min-height:9rem;margin:1.4rem 0 .6rem;border-radius:var(--r);overflow:hidden;background:#1d2147;box-shadow:var(--shadow)}" +
   ".townhead img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}" +
@@ -87,7 +91,7 @@ export const CLIMA_CSS = AHORA + ".seg{display:flex;gap:.3rem;padding:.3rem;marg
   "main>details{background:var(--card);border-radius:var(--r);padding:.2rem 1rem;margin:.75rem 0;box-shadow:var(--shadow)}" +
   "details{margin:.5rem 0}summary{min-height:48px;padding:.7rem 0;cursor:pointer;font-weight:700}";
 
-export const TASA_CSS = TABLE + ".seg{display:flex;gap:.3rem;padding:.3rem;margin:0 0 1rem;background:var(--card);border-radius:999px;box-shadow:var(--shadow);overflow-x:auto}.seg a{flex:1 0 auto;display:grid;place-items:center;min-height:48px;padding:0 1rem;border-radius:999px;text-decoration:none;color:var(--ink);font-weight:650;font-size:.92rem;white-space:nowrap}.seg a[aria-current]{background:var(--brand);color:#fff}" + ".arr{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center}.arr input{flex:1 1 9rem;min-width:0}.arr button{flex:1 0 auto;width:auto;margin:0;padding:.7rem 1.2rem}" +
+export const TASA_CSS = ERR + TABLE + ".seg{display:flex;gap:.3rem;padding:.3rem;margin:0 0 1rem;background:var(--card);border-radius:999px;box-shadow:var(--shadow);overflow-x:auto}.seg a{flex:1 0 auto;display:grid;place-items:center;min-height:48px;padding:0 1rem;border-radius:999px;text-decoration:none;color:var(--ink);font-weight:650;font-size:.92rem;white-space:nowrap}.seg a[aria-current]{background:var(--brand);color:#fff}" + ".arr{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center}.arr input{flex:1 1 9rem;min-width:0}.arr button{flex:1 0 auto;width:auto;margin:0;padding:.7rem 1.2rem}" +
   // Header: back, title, the reminder bell
   ".ph .bellbtn svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}" +
   // The rate big, its date; a plain note when it is not today's
@@ -183,7 +187,7 @@ export const AQUI_CSS = AHORA +
 // Extra result balls ("Más 1", "Adicional", "Bonus Ball"), shared by Lotería and Tu semana.
 const XBALL = ".brow{display:flex;flex-wrap:wrap;align-items:center;gap:0 .8rem}.xb{display:inline-flex;align-items:center;gap:.35rem}.xb small{font-weight:750;color:var(--muted)}.xb .balls b{width:2.1rem;height:2.1rem;font-size:.88rem}";
 
-export const LOTERIA_CSS = XBALL +
+export const LOTERIA_CSS = ERR + XBALL +
   ".ch{display:flex;align-items:center;gap:.7rem}.ch small{display:block}.gname{font-size:1.1rem}" +
   ".picks{display:flex;flex-wrap:wrap;gap:.4rem;margin:.8rem 0 .35rem}.picks input{width:3rem;min-height:50px;padding:.4rem;text-align:center;font-size:1.15rem;font-weight:800}" +
   ".picks.wide input{width:8.5rem;letter-spacing:.2em}.picks button{width:auto;margin:0;padding:.8rem 1.15rem}" +
@@ -216,19 +220,19 @@ export const SEMANA_CSS = XBALL +
   ".res2>span{display:flex;flex-wrap:wrap;align-items:center;gap:.3rem .4rem;min-width:0;overflow-wrap:anywhere}.res2>span:last-child{justify-content:flex-end;text-align:right}.res2 .sc{font-size:1.2rem;font-weight:800}.res2 .rd{grid-column:1/-1;color:var(--muted);font-weight:600}.nx2{margin:.6rem 0 0}" +
   ".rng{display:block;margin-top:.35rem;font-weight:650}.wcap{display:block;font-weight:650}";
 
-export const LOGIN_CSS = ".brandmark{font-weight:800;font-size:2.2rem;color:#fff;letter-spacing:-.03em;margin:0;line-height:1}.steps{list-style:none;padding:0;margin:.5rem 0}.steps li{display:flex;gap:.75rem;align-items:flex-start;margin:.8rem 0}.steps .n{display:grid;place-items:center;flex:none;width:2rem;height:2rem;border-radius:50%;background:var(--brand);color:#fff;font-weight:800;font-size:.9rem}" +
+export const LOGIN_CSS = ERR + ".brandmark{font-weight:800;font-size:2.2rem;color:#fff;letter-spacing:-.03em;margin:0;line-height:1}.steps{list-style:none;padding:0;margin:.5rem 0}.steps li{display:flex;gap:.75rem;align-items:flex-start;margin:.8rem 0}.steps .n{display:grid;place-items:center;flex:none;width:2rem;height:2rem;border-radius:50%;background:var(--brand);color:#fff;font-weight:800;font-size:.9rem}" +
   ".feat{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.5rem;list-style:none;padding:0;margin:0 0 1rem}" +
   ".feat li{display:flex;flex-direction:column;align-items:center;gap:.25rem;padding:.65rem .2rem;border-radius:18px;background:var(--card);box-shadow:var(--shadow);font-weight:750;font-size:.8rem;text-align:center;line-height:1.2}" +
   ".feat small{font-size:.7rem;font-weight:550}";
 
-export const SETUP_CSS = "" +
+export const SETUP_CSS = ROWS + ERR + "input[type=checkbox],input[type=radio]{width:1.35rem;min-height:1.35rem;vertical-align:middle;margin:0 .7rem 0 0;accent-color:var(--brand)}.choice{display:flex;align-items:center;min-height:52px;font-weight:550;margin:.5rem 0;padding:.5rem 1rem;background:var(--card);border-radius:18px;box-shadow:var(--shadow)}" +
   "button.link{display:inline;width:auto;min-height:48px;margin:0 0 0 .5rem;padding:.5rem;background:transparent;color:var(--brand-ink);text-decoration:underline;font-weight:550;box-shadow:none}" +
   "button.link.skip{display:block;width:100%;margin:.5rem 0;color:var(--muted)}" +
   ".results button{text-align:left;background:var(--card);color:var(--ink);border-radius:18px;font-weight:550;margin:.5rem 0;box-shadow:var(--shadow)}" +
   ".prog{display:flex;align-items:center;gap:.75rem;margin:0 0 1rem}.prog .bar{flex:1;margin:0}";
 
 // Más (moved out of APP_CSS so every other page stays lighter): the grid, Letra grande, Tema, the arrival form.
-export const MAS_CSS =
+export const MAS_CSS = ERR +
   ".menu{display:grid;gap:.5rem;list-style:none;padding:0;margin:0 0 1rem}" +
   ".menu a{display:flex;align-items:center;gap:.85rem;min-height:4.25rem;padding:.65rem 1rem;background:var(--card);border-radius:var(--r);text-decoration:none;color:var(--ink);font-weight:750;line-height:1.25;box-shadow:var(--shadow)}" +
   ".menu a>span:not(.pic){flex:1;min-width:0;hyphens:auto}.menu small{display:block;font-weight:500;margin-top:.15rem;line-height:1.3}" +
@@ -249,4 +253,19 @@ export const MAS_CSS =
 export const EXPIRY_CSS = ".steps{list-style:none;padding:0;margin:.5rem 0}.steps li{display:flex;gap:.75rem;align-items:flex-start;margin:.8rem 0}.steps .n{display:grid;place-items:center;flex:none;width:2rem;height:2rem;border-radius:50%;background:var(--brand);color:#fff;font-weight:800;font-size:.9rem}.code{overflow-wrap:anywhere;font:700 1.75rem/1.1 ui-monospace,\\\"Roboto Mono\\\",monospace;letter-spacing:.12em;border:2px dashed var(--brand);border-radius:20px;padding:1rem;text-align:center;background:#f7f8ff;color:var(--ink);margin:.5rem 0 1rem}";
 
 // Feriados: the filter pills and "Ver más feriados".
-export const FERIADOS_CSS = ".seg{display:flex;gap:.3rem;padding:.3rem;margin:0 0 1rem;background:var(--card);border-radius:999px;box-shadow:var(--shadow);overflow-x:auto}.seg a{flex:1 0 auto;display:grid;place-items:center;min-height:48px;padding:0 1rem;border-radius:999px;text-decoration:none;color:var(--ink);font-weight:650;font-size:.92rem;white-space:nowrap}.seg a[aria-current]{background:var(--brand);color:#fff}details.morehol>summary{display:flex;align-items:center;min-height:48px;padding:.6rem 1.1rem;margin:0 0 .75rem;border-radius:999px;background:var(--card);box-shadow:var(--shadow);font-weight:750;color:var(--brand-ink);cursor:pointer}";
+export const FERIADOS_CSS = ROWS + ".seg{display:flex;gap:.3rem;padding:.3rem;margin:0 0 1rem;background:var(--card);border-radius:999px;box-shadow:var(--shadow);overflow-x:auto}.seg a{flex:1 0 auto;display:grid;place-items:center;min-height:48px;padding:0 1rem;border-radius:999px;text-decoration:none;color:var(--ink);font-weight:650;font-size:.92rem;white-space:nowrap}.seg a[aria-current]{background:var(--brand);color:#fff}details.morehol>summary{display:flex;align-items:center;min-height:48px;padding:.6rem 1.1rem;margin:0 0 .75rem;border-radius:999px;background:var(--card);box-shadow:var(--shadow);font-weight:750;color:var(--brand-ink);cursor:pointer}";
+
+// Noticias (0047): the section pills, the lead story, compact story cards, the sources.
+export const NOTICIAS_CSS =
+  ".seg{display:flex;gap:.3rem;padding:.3rem;margin:0 0 1rem;background:var(--card);border-radius:999px;box-shadow:var(--shadow);overflow-x:auto}.seg a{flex:1 0 auto;display:grid;place-items:center;min-height:48px;padding:0 1rem;border-radius:999px;text-decoration:none;color:var(--ink);font-weight:650;font-size:.92rem;white-space:nowrap}.seg a[aria-current]{background:var(--brand);color:#fff}" +
+  ".nupd{margin:-.35rem .2rem .7rem}.stale{margin:0 0 .85rem;padding:.65rem .95rem;border-radius:16px;background:var(--warn-soft);color:var(--warn);font-weight:650}" +
+  ".nlead{padding:.8rem .85rem 1rem}.nlead .nt{font-size:1.2rem;margin:.25rem 0 .35rem}.nsum{margin:0 0 .3rem}" +
+  ".nread{display:inline-flex;align-items:center;min-height:48px;font-weight:750;text-decoration:none}" +
+  ".nrow{display:flex;flex-wrap:wrap;align-items:flex-start;gap:.6rem .85rem;padding:.8rem .9rem}.nth{flex:none;width:80px;height:80px;border-radius:12px;object-fit:cover;background:var(--tile)}" +
+  ".nx{flex:1 1 9.5rem;min-width:0}.nrow .nt{font-size:.98rem}.nrow .nt a::after{content:\" \\2197\";color:var(--brand-ink)}.ntowns{display:flex;flex-wrap:wrap;gap:.3rem;margin:.1rem 0 .2rem}" +
+  ".nres summary{display:flex;align-items:center;min-height:48px;cursor:pointer;font-weight:700;color:var(--brand-ink)}.nres p{margin:0 0 .2rem}" +
+  ".nsrc{margin:1rem .2rem}html.big .nth{width:64px;height:64px}";
+
+// Rows with a picture (Escuela, Transporte) and tap-to-call rows (Emergencias, Consulado): only those pages carry them.
+export const EV_CSS = ROWS + ".ev{display:flex;gap:.85rem;align-items:center}.ev>span{flex:1;min-width:0}.ev{flex-wrap:wrap}.ev>span{flex:1 1 11rem}";
+export const DIAL_CSS = ROWS + ".dialrow{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem .85rem;text-decoration:none;color:inherit;min-height:48px}.dialrow>span{flex:1 1 16.5rem;min-width:0}.dialrow .num{font-size:1.3rem;white-space:nowrap}";

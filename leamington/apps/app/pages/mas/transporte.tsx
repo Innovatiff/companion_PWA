@@ -3,6 +3,7 @@
  * "Verificado: {date}".
  */
 import Head from "next/head";
+import { EV_CSS } from "../../lib/page-css";
 import type { GetServerSideProps } from "next";
 import { formatDate } from "@leamington/shared/src/format.ts";
 import { db } from "../../lib/db";
@@ -39,6 +40,7 @@ export default function Transporte({ lang, transit }: Props) {
       <Head>
         <title>{`${t(lang, "Transporte", "Getting around")} · Hoy`}</title>
         <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+        <style dangerouslySetInnerHTML={{ __html: EV_CSS }} />
       </Head>
       <main>
         <PageHead lang={lang} title={t(lang, "Transporte", "Getting around")} art="bus" back />

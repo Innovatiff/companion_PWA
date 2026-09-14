@@ -264,6 +264,7 @@ export default function Semana({ lang, w, tz, country, fx7, lotLatest }: Props) 
             <small>{t(lang, `Máximas del pronóstico, ${shortDate(w.weather.from, lang)} a ${shortDate(w.weather.to, lang)}`, `Forecast highs, ${shortDate(w.weather.from, lang)} to ${shortDate(w.weather.to, lang)}`)}</small>
           </section>
         )}
+        <a className="prompt" href="/noticias">{t(lang, "Noticias de tu país y tu municipio →", "News from home →")}</a>
         <p className="flag-note" hidden>{country}</p>
       </main>
       <TabBar current="mas" lang={lang} />

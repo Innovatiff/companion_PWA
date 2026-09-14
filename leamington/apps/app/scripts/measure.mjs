@@ -93,7 +93,7 @@ console.log(`  TOTAL ${total(warm)} bytes`);
 // Every page a signed-in client opens, fetched fresh as on a warm open (the
 // service worker never caches section pages). Budget: 12,000 bytes each.
 const PAGES = ["/", "/futbol", "/clima", "/clima/aqui", "/mas", "/mas/miembro", "/mas/semana", "/mas/tasa", "/mas/feriados", "/mas/escuela", "/mas/consulado",
-  "/mas/emergencias", "/mas/transporte", "/mas/loteria", "/mas/avisos", "/setup/municipality?edit=1"];
+  "/mas/emergencias", "/mas/transporte", "/mas/loteria", "/mas/avisos", "/noticias", "/setup/municipality?edit=1"];
 const WARM_BUDGET = 12_000, COLD_BUDGET = 25_000, ART_BUDGET = 1_500;
 const arts = new Set();
 console.log(`\nWarm pages, one fresh fetch each (budget ${WARM_BUDGET} bytes)`);

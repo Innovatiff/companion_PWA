@@ -27,6 +27,8 @@ export default {
       { source: "/photo/:id", destination: "/api/photo/:id" },
       // A town's gallery, photos 1-6, from our own database (0045).
       { source: "/photo/:id/:rank", destination: "/api/photo/:id/:rank" },
+      // A news story's picture, our cached copy: thumb or lead (0047).
+      { source: "/news-image/:id/:size", destination: "/api/news-image/:id/:size" },
     ];
   },
   async headers() {

@@ -22,17 +22,17 @@ export const BASE = TOKENS +
   "h2{font-size:1.05rem;line-height:1.3;margin:1.35rem .2rem .55rem;font-weight:750;letter-spacing:-.01em}" +
   "p{margin:.5rem 0}small,.muted{color:var(--muted);font-size:.82rem}" +
   ".sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}" +
-  "ul.rows{list-style:none;margin:0 0 1rem;padding:.2rem 1.1rem;background:var(--card);border-radius:var(--r);box-shadow:var(--shadow)}" +
-  "ul.rows>li{padding:.85rem 0;border-bottom:1px solid var(--line)}ul.rows>li:last-child{border-bottom:0}" +
+  "" +
+  "" +
   "label{display:block;font-weight:650;margin:1rem 0 .4rem}" +
   "input,select{font:inherit;width:100%;min-height:50px;padding:.6rem 1rem;border:1.5px solid #d3d7ee;border-radius:16px;background:var(--card);color:var(--ink)}" +
   "input:focus,select:focus{outline:3px solid rgba(79,91,213,.22);border-color:var(--brand)}" +
-  "input[type=checkbox],input[type=radio]{width:1.35rem;min-height:1.35rem;vertical-align:middle;margin:0 .7rem 0 0;accent-color:var(--brand)}" +
-  ".choice{display:flex;align-items:center;min-height:52px;font-weight:550;margin:.5rem 0;padding:.5rem 1rem;background:var(--card);border-radius:18px;box-shadow:var(--shadow)}" +
+  "" +
+  "" +
   "button,.button{display:block;width:100%;min-height:50px;font:inherit;font-weight:700;padding:.7rem 1rem;border:0;border-radius:999px;" +
   "background:linear-gradient(135deg,var(--brand),var(--brand-2));color:#fff;text-align:center;text-decoration:none;cursor:pointer;margin:.75rem 0;box-shadow:0 10px 22px rgba(79,91,213,.3)}" +
   ".button.secondary,button.secondary{background:var(--card);color:var(--brand-ink);box-shadow:var(--shadow)}" +
-  ".err{color:var(--danger);background:var(--danger-soft);padding:.75rem 1rem;border-radius:16px}.ok{color:var(--ok)}" +
+  "" +
   ".skip{display:block;text-align:center;padding:.8rem;min-height:48px}";
 
 export const APP_CSS = BASE +
@@ -125,6 +125,10 @@ export const APP_CSS = BASE +
   ".hs b{font-size:1.1rem;font-weight:800}.hs small{font-weight:650}.hsr{color:var(--rain)}" +
   ".dst{display:flex;align-items:center;gap:.9rem}.dst b{display:block;line-height:1.3}.dst small{display:block;margin-top:.25rem}" +
   // Round 5: the offline line, Clima's gallery strip, theme previews
+  // Noticias (0047), on home and /noticias: the picture in a fixed box, source and time, the title, the credit
+  ".nimg{display:block;aspect-ratio:16/9;overflow:hidden;margin:0 0 .6rem;border-radius:16px;background:var(--tile)}.nimg img{display:block;width:100%;height:100%;object-fit:cover}" +
+  ".nmeta{display:block;font-weight:650}.nt{display:block;margin:.15rem 0 .3rem;font-size:1.02rem;line-height:1.3;font-weight:750;hyphens:manual}.nw{white-space:nowrap}.nt a{color:var(--ink);text-decoration:none}.ncr{display:block;font-size:.72rem}" +
+  ".nmore{list-style:none;margin:0;padding:0}.nhl+.nmore{margin-top:.6rem}.nmore li+li,.nhl+.nmore li{padding-top:.55rem;margin-top:.55rem;border-top:1px solid var(--line)}.nmore a{display:block;color:var(--ink);font-weight:700;line-height:1.3;text-decoration:none}.nmore small{display:block}" +
   ".offbar{margin:0 0 .75rem;padding:.6rem 1rem;border-radius:16px;background:#1b1f3b;color:#fff;font-weight:700}" +
   // Home's rate row: the week of the rate as seven dots (0042)
   ".wd{display:flex;gap:.3rem;margin-top:.4rem}.wd i{width:.72rem;height:.72rem;border-radius:50%;border:2px solid var(--brand)}.wd i.up{background:var(--brand)}.wd i.same{border-color:#8f98f5}.wd i.nd{border-style:dashed;border-color:#aab2e6}.wd i.no{background:transparent}" +
@@ -134,7 +138,7 @@ export const APP_CSS = BASE +
   ".clk{font-size:1.3rem;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}.nowt{font-size:1.05rem;font-weight:800;color:var(--brand-ink)}" +
   ".dif{justify-self:start;margin-left:.7rem;padding:.25rem .7rem;border-radius:999px;background:var(--tile);color:var(--brand-ink);font-size:.78rem;font-weight:750;text-align:center;line-height:1.2}" +
   // Letra grande's two previews (Más)
-  "a.tile.x::after{display:none}.ev{display:flex;gap:.85rem;align-items:center}.ev>span{flex:1;min-width:0}" +
+  "a.tile.x::after{display:none}" +
   "a.tile::after{content:\"›\";display:grid;place-items:center;flex:none;width:2.2rem;height:2.2rem;margin-left:auto;border-radius:50%;background:var(--tile);color:var(--brand-ink);font-size:1.4rem;line-height:1}" +
   ".stale .pic,.due .pic{background:var(--warn-soft)}" +
   ".flag{font-size:.95rem;letter-spacing:0;margin-right:.35rem}" +
@@ -152,8 +156,8 @@ export const APP_CSS = BASE +
   ".num{display:block;font-size:1.7rem;font-weight:800;line-height:1.1;letter-spacing:-.01em;font-variant-numeric:tabular-nums}" +
   ".sos{background:linear-gradient(135deg,#b42318,#d63d42);color:#fff;box-shadow:0 12px 26px rgba(180,35,24,.28)}.sos small,.sos a{color:#fff}.sos .ico{background:rgba(255,255,255,.2);color:#fff}.sos .pic{background:#fff}" +
   ".dial{display:inline-flex;align-items:center;gap:.45rem;min-height:48px;padding:.45rem .9rem;border-radius:999px;background:var(--ok-soft);color:var(--ok);font-weight:750;text-decoration:none;font-size:.9rem;white-space:nowrap}.dn{display:flex;flex-wrap:wrap;column-gap:.3rem}" +
-  ".dialrow{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem .85rem;text-decoration:none;color:inherit;min-height:48px}.dialrow>span{flex:1 1 16.5rem;min-width:0}" +
-  ".pair{display:grid}.dialrow .num{font-size:1.3rem;white-space:nowrap}" +
+  "" +
+  ".pair{display:grid}" +
   // Match cards (home and Fútbol), today in the league
   ".match{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:.5rem;text-align:center;text-decoration:none;color:var(--ink)}.match>small{grid-column:1/-1;font-weight:650}" +
   ".match>span{display:flex;flex-direction:column;align-items:center;gap:.35rem;font-weight:700;font-size:.92rem;line-height:1.2;overflow-wrap:anywhere}" +
@@ -174,7 +178,7 @@ export const APP_CSS = BASE +
   ".tb{display:block;padding:.6rem .85rem .75rem}.tb b{display:block;font-size:.95rem;line-height:1.2}.tt{display:flex;align-items:center;gap:.3rem;font-size:1.5rem;font-weight:800;margin:.1rem 0;line-height:1.1}" +
   "main>section{margin-bottom:.25rem}" +
   // Más grid, login and expiry
-  ".inf{display:flex;gap:.7rem;align-items:flex-start;margin:.6rem 0}.inf>:last-child{min-width:0;overflow-wrap:anywhere}.ev{flex-wrap:wrap}.ev>span{flex:1 1 11rem}.inf>.i{margin:0;padding-top:.1rem}" +
+  ".inf{display:flex;gap:.7rem;align-items:flex-start;margin:.6rem 0}.inf>:last-child{min-width:0;overflow-wrap:anywhere}.inf>.i{margin:0;padding-top:.1rem}" +
   // Tab bar: white, rounded top, outline icons with labels, a raised round Clima button
   "nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;align-items:flex-end;max-width:34rem;margin:0 auto;background:var(--card);border-radius:26px 26px 0 0;" +
   "box-shadow:0 -8px 30px rgba(40,48,120,.1);padding:.35rem .4rem calc(.35rem + env(safe-area-inset-bottom))}" +
@@ -228,6 +232,16 @@ const darkScope = (scope: string) => `${scope}{${DARK_TOKENS}}` +
   `${scope}.big{--muted:#cdd2ef;--line:#3a4278}`;
 
 export const DARK_CSS = `@media (prefers-color-scheme:dark){${darkScope("html:not(.light)")}}${darkScope("html.dark")}`;
+/**
+ * Only the dark rules a member can use: "Oscuro" gets the html.dark copy, "Claro"
+ * none, and "Automático" (and every signed-out page) the copy that follows the
+ * phone. About 130 bytes less on every page than both copies.
+ */
+export function darkCss(theme: string | null): string {
+  if (theme === "dark") return darkScope("html.dark");
+  if (theme === "light") return "";
+  return `@media (prefers-color-scheme:dark){${darkScope("html:not(.light)")}}`;
+}
 
 /**
  * The portals' dashboard look (docs/DESIGN.md section 9): a white sidebar with

@@ -1,8 +1,9 @@
 import Document, { Html, Head, Main, NextScript, type DocumentContext, type DocumentInitialProps } from "next/document";
-import { APP_CSS, DARK_CSS } from "@leamington/shared/src/ui/css.ts";
+import { APP_CSS, darkCss } from "@leamington/shared/src/ui/css.ts";
 
 // Inline, so a cold load is one HTML response (docs/DESIGN.md).
-const CSS = APP_CSS + "input.codein{font-size:1.5rem;letter-spacing:.12em;text-transform:uppercase}" + DARK_CSS;
+// The dark rules follow the member's theme (darkCss): only the copy they can use.
+const CSS = APP_CSS + "input.codein{font-size:1.5rem;letter-spacing:.12em;text-transform:uppercase}";
 
 type Props = DocumentInitialProps & { lang: string; big: boolean; theme: string | null };
 
@@ -26,7 +27,7 @@ export default class AppDocument extends Document<Props> {
           <meta name="theme-color" content="#eef0fb" />
           {/* No favicon request: every byte on a cold load counts. */}
           <link rel="icon" href="data:," />
-          <style dangerouslySetInnerHTML={{ __html: CSS }} />
+          <style dangerouslySetInnerHTML={{ __html: CSS + darkCss(this.props.theme) }} />
         </Head>
         <body>
           <Main />

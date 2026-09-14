@@ -3,6 +3,7 @@
  * today on. National only; department-level calendars do not exist as data.
  */
 import Head from "next/head";
+import { EV_CSS } from "../../lib/page-css";
 import type { GetServerSideProps } from "next";
 import { formatDate } from "@leamington/shared/src/format.ts";
 import { db } from "../../lib/db";
@@ -41,6 +42,7 @@ export default function Escuela({ lang, events }: Props) {
       <Head>
         <title>{`${t(lang, "Calendario escolar", "School calendar")} · Hoy`}</title>
         <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+        <style dangerouslySetInnerHTML={{ __html: EV_CSS }} />
       </Head>
       <main>
         <PageHead lang={lang} title={t(lang, "Escuela", "School")} art="school" back />

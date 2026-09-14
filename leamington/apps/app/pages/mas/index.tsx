@@ -50,6 +50,7 @@ function nextHoliday(h: { date: string; name: string }, lang: "es" | "en"): stri
 export default function Mas({ client, x, e, ok }: Props) {
   const lang = client.language;
   const links: [string, ArtName, string, string, string | null][] = [
+    ["/noticias", "news", "Noticias", "News", null],
     ["/mas/tasa", "money", "Tasa de referencia", "Reference rate", `${FLAG.CA} CAD → ${FLAG[client.country]}`],
     ["/mas/feriados", "calendar", "Feriados", "Public holidays", x?.next_holiday ? nextHoliday(x.next_holiday, lang) : null],
     ["/mas/escuela", "school", "Calendario escolar", "School calendar", null],
@@ -62,7 +63,7 @@ export default function Mas({ client, x, e, ok }: Props) {
     ["/mas/semana", "week", "Tu semana", "Your week", null],
   ];
   // The school calendar leads for parents; everyone can still find it.
-  if (client.hasKids) links.unshift(links.splice(2, 1)[0]);
+  if (client.hasKids) links.unshift(links.splice(links.findIndex((l) => l[0] === "/mas/escuela"), 1)[0]);
 
   return (
     <>

@@ -32,31 +32,40 @@ Hoy's budgets were raised on 2026-09-14 (from 15 KB cold and 5 KB warm) for the
 round-1 look the owner asked for: pictures, motion and bigger type cost about
 1.5 KB more CSS and markup per page, while the pictures themselves are cached files.
 
-Measured 2026-09-14 after the layout fix (16 px type, tight pairs stacked; local,
-demo client DEMXHN42, the fullest home). Every warm page keeps at least 1 KB
-under its budget:
+Measured 2026-09-14 after Noticias (local, demo clients with real stories; the
+fullest home is DEMXMX42's at 10,927). Every warm page keeps at least 1 KB under
+its budget:
 
 | Hoy page | Bytes |
 | --- | --- |
-| Cold: sign-in plus home (redirect, login, sign-in, home, sw.js, manifest, open ping) | 22,746 |
-| Tasa, 3 meses | 10,994 |
-| Tasa, Mes | 10,771 |
-| Home (warm) | 10,746 |
-| Clima | 10,450 |
-| Hoy en Leamington | 10,291 |
-| Tu semana | 9,546 |
-| Feriados | 9,053 |
-| Miembro | 8,940 |
-| Lotería (with a number check: 8,941) | 8,720 |
-| Fútbol | 8,764 |
-| Más | 8,628 |
-| Transporte | 8,485 |
-| Consulado | 8,453 |
-| Emergencias | 8,151 |
-| Setup step | 7,753 |
-| Notificaciones | 7,634 |
-| Escuela | 7,457 |
-| Illustrations, largest | 523 gzipped (badge-temporada.svg); first load of the 36 used: 38,438 |
+| Cold: sign-in plus home (redirect, login, sign-in, home, sw.js, manifest, open ping) | 22,727 |
+| Home (warm; DEMXHN42 10,859, DEMXMX42 10,927) | 10,927 |
+| Tasa, Mes | 10,616 |
+| Noticias, the fullest section (national, HN) | 10,378 |
+| Clima | 9,954 |
+| Hoy en Leamington | 9,598 |
+| Tu semana | 9,391 |
+| Feriados | 8,917 |
+| Miembro | 8,761 |
+| Fútbol | 8,580 |
+| Lotería | 8,573 |
+| Más | 8,496 |
+| Transporte | 8,382 |
+| Consulado | 8,373 |
+| Emergencias | 8,071 |
+| Setup step | 7,704 |
+| Notificaciones | 7,456 |
+| Escuela | 7,353 |
+| Illustrations, largest | 523 gzipped (badge-temporada.svg); first load of the 37 used: about 39,000 |
+
+Pictures on Noticias are outside the page budget and cached for 30 days: at most
+one lead picture (at most 45 KB) is loaded eagerly; every thumb (at most 10 KB)
+is lazy. The home card's picture is lazy.
+
+To keep home's margin with the news card, the dark rules follow the member's
+theme (only the copy they can use), and rules only other pages use (rows in a
+card, the error box, tap-to-call rows, picture rows, setup choices) moved to
+those pages' own CSS.
 
 Our inline JavaScript: home 1,676 bytes (the open script and the expiry
 script), the other kept pages 338 bytes (the expiry script): within the 2 KB
@@ -520,6 +529,42 @@ checks it).
   "$96.00 — ganado este período". A number without its period is not shown.
 - **Status chips (portals).** Words, not colour alone: "Activo", "Vence en 12
   días", "Vencido", "Prueba".
+
+### Noticias (0047)
+
+The owner asked for news of the member's country and municipio, on a page of
+its own, with pictures. The copyright stance is decided (OPEN-DECISIONS 3.24):
+Hoy shows the headline, the publisher's own short summary (at most 300
+characters), our small cached copy of the publisher's picture credited
+"Imagen: {source}", the source and the time, and "Leer en {source} ↗" to the
+full story on the publisher's site (a new tab, `rel="noopener"`, no JavaScript).
+Nothing suggests the whole article is in Hoy.
+
+- **/noticias.** A back button, "Noticias" and the newspaper illustration; the
+  last update ("Actualizado a las 10:30am"). Section pills as links: the
+  municipio (stories naming their towns), the state or department (regional
+  outlets) and the country; only sections with stories get a pill, and the
+  first with stories opens. The lead story is the section's first with a
+  picture: the picture in a fixed 16:9 box (no layout shift), source and time
+  ("hace 2 h", or the date and time after a day), the title (never clamped, never hyphenated), the
+  summary, "Leer en {source} ↗" and the credit. The rest are compact cards: an
+  80 px thumb on the left (lazy) or no picture at all, source and time, the title
+  as the publisher's link (↗), "📍 {town}" chips on local stories, and the
+  summary folded under "Resumen". Ten stories per section. The sources, linked to
+  their homepages, close the page.
+- **No graphic pictures.** Stories about death or violence arrive without a
+  picture on purpose; they get the text layout, never a placeholder.
+- **Stale, never empty.** When the feed has not answered within 3 hours: "Actualizado
+  a las …. La lista puede no estar al día." Never "no hay noticias": an empty
+  section has no pill, and with nothing at all only the update line and the
+  sources show.
+- **Home.** "Noticias" after "Útil para ti": the lead story's picture (lazy),
+  source and time, title and credit, then two more headlines as links. "Ver todo"
+  opens /noticias. Absent when app.news_home is null. "hace X" is computed at
+  render; the page's own update time is already on home.
+- **Pictures.** `/news-image/{id}/thumb|lead` serves our cached JPEG with the
+  photo headers (30 days immutable, ETag, 304, nosniff; 404 otherwise).
+- **Offline.** /noticias is one of the pages sw.js keeps.
 
 ## 5. Language
 
