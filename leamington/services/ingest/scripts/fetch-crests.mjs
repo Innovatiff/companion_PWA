@@ -13,7 +13,12 @@ import { query, closePool } from "../src/db.mjs";
 
 const ALLOWED_HOSTS = new Set(["media.api-sports.io", "media-4.api-sports.io", "media-3.api-sports.io", "media-2.api-sports.io", "media-1.api-sports.io"]);
 const TYPES = new Set(["image/png", "image/jpeg", "image/webp", "image/svg+xml"]);
-const MAX_BYTES = 150_000;
+// Hoy's budget for one crest image.
+const MAX_BYTES = 50_000;
+// The provider serves one stock "logo soon" image for teams without a crest.
+// It is not that team's crest, so it is never stored. Beyond this known image,
+// any image identical for two or more teams is treated the same way.
+const PLACEHOLDER_SHA256 = new Set((process.env.CREST_PLACEHOLDER_SHA256 ?? "").split(",").map((s) => s.trim()).filter(Boolean));
 
 const { rows } = await query(
   `select t.id, t.name, t.crest_source_url
@@ -37,19 +42,28 @@ for (const t of rows) {
     if (!TYPES.has(type)) throw new Error(`not an image: ${type || "no type"}`);
     const bytes = Buffer.from(await res.arrayBuffer());
     if (bytes.length === 0 || bytes.length > MAX_BYTES) throw new Error(`size ${bytes.length}`);
+    const sha = createHash("sha256").update(bytes).digest("hex");
+    if (PLACEHOLDER_SHA256.has(sha)) throw new Error("provider placeholder image, not a crest");
     await query(
       `insert into team_crests (team_id, content_type, bytes, sha256, source_url, fetched_at)
        values ($1, $2, $3, $4, $5, now())
        on conflict (team_id) do update
          set content_type = excluded.content_type, bytes = excluded.bytes, sha256 = excluded.sha256,
              source_url = excluded.source_url, fetched_at = now()`,
-      [t.id, type, bytes, createHash("sha256").update(bytes).digest("hex"), t.crest_source_url]);
+      [t.id, type, bytes, sha, t.crest_source_url]);
     await query("update teams set crest_fetched_at = now() where id = $1", [t.id]);
     stored++;
   } catch (err) {
     skipped.push(`${t.name}: ${err?.name === "AbortError" ? "timeout" : err.message}`);
   }
 }
-console.log(`crests: ${stored} stored, ${skipped.length} skipped of ${rows.length}`);
+// An image identical for two or more different teams is a stock image, not a
+// crest: remove it, so those teams show their initials instead.
+const shared = await query(
+  `delete from team_crests
+    where sha256 in (select sha256 from team_crests group by sha256 having count(*) > 1)
+       or octet_length(bytes) > $1
+   returning team_id`, [MAX_BYTES]);
+console.log(`crests: ${stored} stored, ${skipped.length} skipped of ${rows.length}, ${shared.rowCount} removed as shared stock or oversized images`);
 for (const s of skipped) console.log(`  skipped ${s}`);
 await closePool();

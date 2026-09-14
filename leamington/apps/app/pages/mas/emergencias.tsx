@@ -1,6 +1,6 @@
 /**
  * Emergencias: numbers in Canada first (where they are), then their own
- * country's. Every number is a tap-to-call link with "Verificado: {date}".
+ * country's. Every number is a big tap-to-call card with "Verificado: {date}".
  */
 import Head from "next/head";
 import type { GetServerSideProps } from "next";
@@ -9,6 +9,7 @@ import { formatDate } from "@leamington/shared/src/format.ts";
 import { db } from "../../lib/db";
 import { loadClient, recordView } from "../../lib/client";
 import { t } from "../../lib/t";
+import { FLAG, Icon, tel } from "../../lib/ui";
 
 export const config = { unstable_runtimeJS: false };
 
@@ -31,7 +32,6 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
 const NAMES: Record<string, [string, string]> = {
   CA: ["En Canadá", "In Canada"], MX: ["México", "Mexico"], GT: ["Guatemala", "Guatemala"], HN: ["Honduras", "Honduras"], JM: ["Jamaica", "Jamaica"],
 };
-const tel = (n: string) => `tel:${n.replace(/[^\d+]/g, "")}`;
 
 export default function Emergencias({ lang, country, contacts }: Props) {
   return (
@@ -47,21 +47,23 @@ export default function Emergencias({ lang, country, contacts }: Props) {
           const list = contacts.filter((r) => r.country === c);
           return list.length === 0 ? null : (
             <section key={c}>
-              <h2>{NAMES[c]?.[lang === "en" ? 1 : 0] ?? c}</h2>
-              <ul className="rows">
-                {list.map((r) => (
-                  <li key={r.id}>
-                    {r.label}<br />
-                    <a className="line nums" href={tel(r.number)}>{r.number}</a>
-                    {r.region && <><br /><small>{r.region}</small></>}
-                    {r.notes && <><br /><small>{r.notes}</small></>}
-                    <br /><small>
-                      {t(lang, "Verificado", "Verified")}: {formatDate(r.verified_at, lang)}
-                      {r.source_url && <>{" · "}<a href={r.source_url} rel="noopener">{t(lang, "Fuente", "Source")}</a></>}
-                    </small>
-                  </li>
-                ))}
-              </ul>
+              <h2>{FLAG[c]} {NAMES[c]?.[lang === "en" ? 1 : 0] ?? c}</h2>
+              {list.map((r) => (
+                <div key={r.id} className={`card${r.country === "CA" && r.number === "911" ? " sos" : ""}`}>
+                  <a className="dialrow" href={tel(r.number)}>
+                    <span className="ico"><Icon name="phone" /></span>
+                    <span>
+                      <small>{r.label}</small>
+                      <span className="num">{r.number}</span>
+                    </span>
+                  </a>
+                  <p><small>
+                    {(r.region || r.notes) && <>{[r.region, r.notes].filter(Boolean).join(" · ")}<br /></>}
+                    {t(lang, "Verificado", "Verified")}: {formatDate(r.verified_at, lang)}
+                    {r.source_url && <>{" · "}<a href={r.source_url} rel="noopener">{t(lang, "Fuente", "Source")}</a></>}
+                  </small></p>
+                </div>
+              ))}
             </section>
           );
         })}

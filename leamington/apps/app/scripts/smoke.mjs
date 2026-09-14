@@ -4,6 +4,8 @@
 //
 // CODE signs in and visits every page. SETUP_CODE (optional) walks the setup
 // flow: search, choose a town, skip, answer, finish. It changes that client.
+// CREST_CODE (optional) is a client whose team has a stored crest: its image
+// must show and be served from /crest/{id} with 30-day caching.
 import http from "node:http";
 import https from "node:https";
 
@@ -18,10 +20,10 @@ const check = (ok, label, detail = "") => {
   if (!ok) failures++;
 };
 
-function send(path, { method = "GET", cookie, form, json, origin } = {}) {
+function send(path, { method = "GET", cookie, form, json, origin, headers: extra } = {}) {
   const body = form ? new URLSearchParams(form).toString() : json ? JSON.stringify(json) : null;
   return new Promise((resolve, reject) => {
-    const headers = { accept: "text/html,*/*" };
+    const headers = { accept: "text/html,*/*", ...extra };
     if (cookie) headers.cookie = cookie;
     if (origin) headers.origin = origin;
     if (body != null) {
@@ -33,7 +35,7 @@ function send(path, { method = "GET", cookie, form, json, origin } = {}) {
       res.on("data", (c) => chunks.push(c));
       res.on("end", () => resolve({
         status: res.statusCode, location: res.headers.location ?? "", text: Buffer.concat(chunks).toString(),
-        cookie: res.headers["set-cookie"]?.[0]?.split(";")[0],
+        cookie: res.headers["set-cookie"]?.[0]?.split(";")[0], headers: res.headers, bytes: Buffer.concat(chunks).length,
       }));
     });
     req.on("error", reject);
@@ -49,9 +51,60 @@ async function page(path, cookie, label = path) {
   const r = await send(path, { cookie });
   check(r.status === 200, `${label} 200`, `got ${r.status} ${r.location}`);
   check(!/<script[^>]+src=/i.test(r.text) && !r.text.includes("/_next/"), `${label} ships no framework JS`);
-  const bad = FORBIDDEN.find((re) => re.test(r.text.replace(/<script[\s\S]*?<\/script>/g, "")));
+  // Crest images' loading="lazy" attribute is markup, not words on the screen.
+  const bad = FORBIDDEN.find((re) => re.test(r.text.replace(/<script[\s\S]*?<\/script>/g, "").replace(/ loading="lazy"/g, "")));
   check(!bad, `${label} has no reassurance-from-silence or placeholder text`, String(bad));
   return r.text;
+}
+
+// Images are team crests from our own domain only: sized, lazy, each at most
+// 50 KB, cached for 30 days with an ETag.
+const crestsChecked = new Set();
+async function crests(html, label) {
+  const imgs = [...html.matchAll(/<img\b[^>]*>/g)].map((m) => m[0]);
+  check(imgs.every((i) => /src="\/crest\/\d+"/.test(i) && /width="\d+"/.test(i) && /height="\d+"/.test(i) && / alt=""/.test(i) && / loading="lazy"/.test(i)),
+    `${label}: every image is a crest from our own domain, sized and lazy`, imgs.join(" "));
+  for (const id of new Set(imgs.map((i) => /src="\/crest\/(\d+)"/.exec(i)?.[1]).filter(Boolean))) {
+    if (crestsChecked.has(id)) continue;
+    crestsChecked.add(id);
+    const r = await send(`/crest/${id}`);
+    check(r.status === 200 && /^image\//.test(r.headers["content-type"] ?? "") && r.bytes > 0 && r.bytes <= 50_000,
+      `/crest/${id} serves an image of at most 50 KB`, `${r.status} ${r.headers["content-type"]} ${r.bytes}`);
+    check(/max-age=2592000/.test(r.headers["cache-control"] ?? "") && Boolean(r.headers.etag) && r.headers["x-content-type-options"] === "nosniff",
+      `/crest/${id} is cached for 30 days, with an ETag and nosniff`, JSON.stringify(r.headers));
+    const again = await send(`/crest/${id}`, { headers: { "if-none-match": r.headers.etag } });
+    check(again.status === 304, `/crest/${id} answers 304 to its own ETag`, String(again.status));
+  }
+  return imgs.length;
+}
+
+// The team header shows the crest when stored, otherwise the team's initials.
+async function teamVisuals(cookie, label) {
+  const f = await send("/futbol", { cookie });
+  if (f.text.includes('class="card team"')) {
+    check(/class="card team"><(img|span) class="cr"/.test(f.text), `${label}: the Fútbol team header shows its crest or its initials`);
+  }
+  return crests(f.text, `${label} /futbol`);
+}
+
+// Home quick cards ("Útil para ti") render only when their record exists, as
+// the section pages built on the same records show; every time-bound element
+// on home carries its expiry. CLIENT_TZ is the client's timezone (default Toronto).
+async function extras(cookie, label) {
+  const [home, feriados, emergencias, consulado, loteria] = await Promise.all(
+    ["/", "/mas/feriados", "/mas/emergencias", "/mas/consulado", "/mas/loteria"].map(async (p) => (await send(p, { cookie })).text));
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: process.env.CLIENT_TZ ?? "America/Toronto" }).format(new Date());
+  const first = /<time class="dt" dateTime="(\d{4}-\d{2}-\d{2})"/i.exec(feriados)?.[1];
+  const within = Boolean(first) && (Date.parse(first) - Date.parse(today)) / 86_400_000 <= 120;
+  check(home.includes('data-line="holiday"') === within, `${label}: the next-holiday card shows exactly when a holiday is within 120 days`, `first ${first}`);
+  check(home.includes('class="card call sos" href="tel:911"') === /class="card sos"><a class="dialrow" href="tel:911"/.test(emergencias),
+    `${label}: the 911 card shows exactly when Ontario's 911 record exists`);
+  check(home.includes('href="/mas/consulado"') === /Consulado en|Consulate in/.test(consulado), `${label}: the consulate card shows exactly when a consulate record exists`);
+  check(home.includes('data-line="lottery"') === loteria.includes('class="balls"'), `${label}: the lottery card shows exactly when a recent official draw exists`);
+  check(!/<p class="line"><\/p>|<span class="line"><\/span>|<span class="balls"><\/span>|<span class="num"><\/span>/.test(home), `${label}: no quick card renders without its data`);
+  check((home.match(/ data-line="/g) ?? []).length === (home.match(/ data-until="\d{4}-\d{2}-\d{2}T/g) ?? []).length,
+    `${label}: every time-bound element on home carries its expiry`);
+  await crests(home, `${label} /`);
 }
 
 // Signed out.
@@ -70,6 +123,10 @@ for (const path of ["/", "/futbol", "/mas", "/mas/tasa", "/mas/feriados", "/mas/
   "/setup/municipality?edit=1", "/setup/watch?edit=1", "/setup/segment?edit=1", "/setup/kids?edit=1", "/setup/corridor?edit=1"]) {
   await page(path, cookie);
 }
+
+await extras(cookie, CODE);
+await teamVisuals(cookie, CODE);
+check((await send("/crest/999999999999")).status === 404 && (await send("/crest/abc")).status === 404, "an unknown or malformed crest id is 404");
 
 const clima = await page("/clima", cookie);
 check(/Revisamos los avisos|We checked .* warnings|No hemos podido revisar|We have not been able to check|todavía no recibe|does not receive/.test(clima),
@@ -115,6 +172,17 @@ if (process.env.SETUP_CODE) {
   check(again.location === "/", "after setup, sign-in goes home", again.location);
   const mas = await send("/mas", { cookie: c });
   check(mas.text.indexOf("/mas/escuela") < mas.text.indexOf("/mas/tasa"), "a parent sees the school calendar first in Más");
+  await extras(c, process.env.SETUP_CODE);
+  await teamVisuals(c, process.env.SETUP_CODE);
+}
+
+// A client whose team has a stored crest (optional): it is shown as an image
+// from our own domain, and served as one.
+if (process.env.CREST_CODE) {
+  const k = await send("/api/login", { method: "POST", form: { code: process.env.CREST_CODE } });
+  check(k.status === 303 && Boolean(k.cookie), `${process.env.CREST_CODE} signs in`, `${k.status} ${k.location}`);
+  check(await teamVisuals(k.cookie, process.env.CREST_CODE) > 0, `${process.env.CREST_CODE}: a team with a stored crest shows it as an image`);
+  await extras(k.cookie, process.env.CREST_CODE);
 }
 
 // A client whose paid period has ended: the expiry screen, and only the

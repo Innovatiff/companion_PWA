@@ -1,6 +1,7 @@
 /**
  * Consulado: their country's consulate serving Windsor-Essex. Address, hours,
- * phone and the booking link only. We never scrape appointment availability.
+ * phone and the booking link only. We never scrape appointment availability,
+ * and there is no external map.
  */
 import Head from "next/head";
 import type { GetServerSideProps } from "next";
@@ -9,6 +10,7 @@ import { formatDate } from "@leamington/shared/src/format.ts";
 import { db } from "../../lib/db";
 import { loadClient, recordView } from "../../lib/client";
 import { t } from "../../lib/t";
+import { FLAG, Icon, tel } from "../../lib/ui";
 
 export const config = { unstable_runtimeJS: false };
 
@@ -17,7 +19,7 @@ type Consulate = {
   id: number; city: string; address: string | null; hours: string | null; phone: string | null; email: string | null;
   booking_url: string | null; services: Service[] | null; verified_at: string; source_url: string | null;
 };
-type Props = { lang: "es" | "en"; consulates: Consulate[] };
+type Props = { lang: "es" | "en"; country: string; consulates: Consulate[] };
 
 export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
   const loaded = await loadClient(ctx);
@@ -29,12 +31,10 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
        from consulates where country = $1
       order by (city = 'Leamington') desc, city`, [client.country]);
   await recordView(client.id, "consulado", { consulates: rows.length });
-  return { props: { lang: client.language, consulates: rows } };
+  return { props: { lang: client.language, country: client.country, consulates: rows } };
 };
 
-const tel = (n: string) => `tel:${n.replace(/[^\d+]/g, "")}`;
-
-export default function Consulado({ lang, consulates }: Props) {
+export default function Consulado({ lang, country, consulates }: Props) {
   return (
     <>
       <Head>
@@ -46,26 +46,37 @@ export default function Consulado({ lang, consulates }: Props) {
         <h1>{t(lang, "Consulado", "Consulate")}</h1>
         {consulates.map((c) => (
           <section key={c.id}>
-            <h2>{c.city}</h2>
-            {c.address && <p>{c.address}</p>}
-            {c.hours && <p><small>{t(lang, "Horario", "Hours")}</small><br />{c.hours}</p>}
-            {c.phone && <p><a href={tel(c.phone)}>{c.phone}</a></p>}
-            {c.email && <p><a href={`mailto:${c.email}`}>{c.email}</a></p>}
-            {c.booking_url && <p><a className="button secondary" href={c.booking_url} rel="noopener">{t(lang, "Pedir cita", "Book an appointment")}</a></p>}
+            <div className="card">
+              <div className="dialrow">
+                <span className="ico"><Icon name="building" /></span>
+                <span>
+                  <small>{FLAG[country]} {t(lang, "Consulado en", "Consulate in")}</small>
+                  <p className="line">{c.city}</p>
+                </span>
+              </div>
+              {c.address && <p className="inf"><span className="i"><Icon name="pin" /></span><span>{c.address}</span></p>}
+              {c.hours && <p className="inf"><span className="i"><Icon name="clock" /></span><span><small>{t(lang, "Horario", "Hours")}</small><br />{c.hours}</span></p>}
+              {c.phone && <p><a className="dial" href={tel(c.phone)}><Icon name="phone" />{c.phone}</a></p>}
+              {c.email && <p className="inf"><span className="i"><Icon name="mail" /></span><a href={`mailto:${c.email}`}>{c.email}</a></p>}
+              {c.booking_url && <a className="button secondary" href={c.booking_url} rel="noopener">{t(lang, "Pedir cita", "Book an appointment")}</a>}
+              <p><small>
+                {t(lang, "Verificado", "Verified")}: {formatDate(c.verified_at, lang)}
+                {c.source_url && <>{" · "}<a href={c.source_url} rel="noopener">{t(lang, "Fuente", "Source")}</a></>}
+              </small></p>
+            </div>
             {c.services && c.services.length > 0 && (
-              <ul className="rows">
-                {c.services.map((s) => (
-                  <li key={s.name}>
-                    {s.name}{s.cost && <small> · {s.cost}</small>}
-                    {s.documents && s.documents.length > 0 && <><br /><small>{s.documents.join(" · ")}</small></>}
-                  </li>
-                ))}
-              </ul>
+              <>
+                <h2>{t(lang, "Trámites", "Services")}</h2>
+                <ul className="rows">
+                  {c.services.map((s) => (
+                    <li key={s.name}>
+                      {s.name}{s.cost && <small> · {s.cost}</small>}
+                      {s.documents && s.documents.length > 0 && <><br /><small>{s.documents.join(" · ")}</small></>}
+                    </li>
+                  ))}
+                </ul>
+              </>
             )}
-            <p><small>
-              {t(lang, "Verificado", "Verified")}: {formatDate(c.verified_at, lang)}
-              {c.source_url && <>{" · "}<a href={c.source_url} rel="noopener">{t(lang, "Fuente", "Source")}</a></>}
-            </small></p>
           </section>
         ))}
       </main>

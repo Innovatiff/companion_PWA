@@ -68,3 +68,47 @@ insert into subscriptions (client_id, period_start, period_end, paid_at, kind, a
 select id, date '2026-01-01', date '2026-07-01', now() - interval '8 months', 'sale', affiliate_id
   from clients where code = 'DEMXEX42'
 on conflict (client_id, period_start) where voided_at is null do nothing;
+
+-- LOCAL ONLY, for screenshots: the rest of Motagua's week, two more La Ceiba
+-- forecast days, and a couple of lottery draws. Invented, like everything above.
+insert into teams (league_id, country, name, source, source_team_id)
+select l.id, 'HN', t.name, 'local-demo', t.sid
+  from leagues l, (values ('Real España', 'demo-3'), ('Marathón', 'demo-4')) t(name, sid)
+ where l.name = 'Liga Nacional de Honduras'
+on conflict do nothing;
+
+insert into fixtures (league_id, home_team_id, away_team_id, kickoff_utc, status, home_score, away_score, source, source_fixture_id, fetched_at)
+select l.id, h.id, a.id, k.kick, k.status::fixture_status, k.hs, k.aws, 'local-demo', k.sid, now()
+  from leagues l
+  cross join (values
+    ('demo-next', 'Olimpia', 'Motagua', (date_trunc('day', now() at time zone 'America/Toronto') + interval '5 days 20 hours') at time zone 'America/Toronto', 'scheduled', null::int, null::int),
+    ('demo-league', 'Real España', 'Marathón', (date_trunc('day', now() at time zone 'America/Toronto') + interval '17 hours') at time zone 'America/Toronto', 'finished', 3, 1),
+    ('demo-last', 'Motagua', 'Real España', (date_trunc('day', now() at time zone 'America/Toronto') - interval '7 days' + interval '19 hours') at time zone 'America/Toronto', 'finished', 2, 1),
+    ('demo-prev', 'Marathón', 'Motagua', (date_trunc('day', now() at time zone 'America/Toronto') - interval '14 days' + interval '18 hours') at time zone 'America/Toronto', 'finished', 0, 0)
+  ) k(sid, home, away, kick, status, hs, aws)
+  join teams h on h.name = k.home
+  join teams a on a.name = k.away
+ where l.name = 'Liga Nacional de Honduras' and h.league_id = l.id and a.league_id = l.id
+on conflict (source, source_fixture_id) do update
+  set kickoff_utc = excluded.kickoff_utc, status = excluded.status, home_score = excluded.home_score,
+      away_score = excluded.away_score, fetched_at = now();
+
+-- A fixtures feed run just now, so the schedule counts as current (3 hours).
+insert into source_runs (feed, started_at, finished_at, status, records_written) values ('fixtures', now(), now(), 'ok', 4);
+
+insert into forecasts (municipality_id, provider, target_date, temp_max_c, temp_min_c, precip_prob, fetched_at)
+select m.id, p.provider::forecast_provider, (now() at time zone m.timezone)::date + p.d, p.t, p.lo, p.rain, now()
+  from municipalities m, (values ('open-meteo', 1, 31, 23, 10), ('openweather', 1, 32, 24, 20), ('weatherapi', 1, 31, 23, 5),
+                                 ('open-meteo', 2, 28, 22, 80), ('openweather', 2, 27, 22, 75), ('weatherapi', 2, 28, 21, 40)) p(provider, d, t, lo, rain)
+ where m.name = 'La Ceiba'
+on conflict (municipality_id, provider, target_date) do update
+  set temp_max_c = excluded.temp_max_c, temp_min_c = excluded.temp_min_c, precip_prob = excluded.precip_prob, fetched_at = now();
+
+insert into lottery_results (game_id, draw_date, draw_time_local, numbers, source_url, verified_at)
+select g.id, (now() at time zone g.timezone)::date - r.d, r.t::time, r.n::text[], g.results_url, now()
+  from lottery_games g
+  join (values ('HN', 'Jugá 3', 0, '15:00', '{3,8,1}'), ('HN', 'La Diaria', 0, '11:00', '{47}'),
+               ('HN', 'Super Premio', 1, '21:00', '{05,12,19,27,33}'),
+               ('JM', 'Lotto', 1, '20:25', '{04,11,19,26,31,35}'), ('JM', 'Cash Pot', 0, '13:00', '{23}')) r(country, name, d, t, n)
+    on g.country = r.country::country_code and g.name = r.name and g.active
+on conflict (game_id, draw_date, draw_time_local) do update set numbers = excluded.numbers, verified_at = now();

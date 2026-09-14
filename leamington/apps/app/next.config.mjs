@@ -17,7 +17,11 @@ export default {
   outputFileTracingRoot: path.join(import.meta.dirname, "../.."),
   transpilePackages: ["@leamington/shared"],
   async rewrites() {
-    return [{ source: "/health", destination: "/api/health" }];
+    return [
+      { source: "/health", destination: "/api/health" },
+      // Team crests, from our own database (0033).
+      { source: "/crest/:id", destination: "/api/crest/:id" },
+    ];
   },
   async headers() {
     return [

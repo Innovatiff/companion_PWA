@@ -10,6 +10,7 @@ import { formatDate, formatTime12, formatWeekdayDate, localDate } from "@leaming
 import { db } from "../../lib/db";
 import { loadClient, recordView } from "../../lib/client";
 import { t } from "../../lib/t";
+import { Balls, Icon, drawTime } from "../../lib/ui";
 
 export const config = { unstable_runtimeJS: false };
 
@@ -29,13 +30,6 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
   return { props: { lang: loaded.client.language, tz: loaded.client.timezone, games } };
 };
 
-/** "21:00:00" as "9pm", in the operator's own time. */
-function drawTime(value: string): string {
-  const [h, m] = value.split(":").map(Number);
-  const hour = h % 12 || 12;
-  return `${hour}${m ? `:${String(m).padStart(2, "0")}` : ""}${h < 12 ? "am" : "pm"}`;
-}
-
 function extras(value: Record<string, unknown> | null): string {
   if (!value) return "";
   return Object.entries(value)
@@ -54,24 +48,27 @@ export default function Loteria({ lang, tz, games }: Props) {
       <main>
         <p><a href="/mas">← {t(lang, "Más", "More")}</a></p>
         <h1>{t(lang, "Lotería", "Lottery")}</h1>
-        <p><small>{t(lang, "Resultados oficiales de los últimos dos días.", "Official results from the last two days.")}</small></p>
+        <p className="inf">
+          <span className="i"><Icon name="info" /></span>
+          <small>{t(lang, "Resultados oficiales de los últimos dos días.", "Official results from the last two days.")}</small>
+        </p>
         {games.map((g) => (
           <section key={g.game}>
             <h2>{g.game}</h2>
-            <ul className="rows">
-              {g.draws.map((d) => (
-                <li key={d.draw_date + (d.draw_time ?? "")}>
+            {g.draws.map((d) => (
+              <div className="tile lottery" key={d.draw_date + (d.draw_time ?? "")}>
+                <span className="ico"><Icon name="star" /></span>
+                <span>
                   <small>{formatWeekdayDate(d.draw_date, lang)}{d.draw_time ? ` · ${drawTime(d.draw_time)}` : ""}</small>
-                  <br /><span className="line nums">{d.numbers.join(" · ")}</span>
-                  {extras(d.extras) && <><br /><small>{extras(d.extras)}</small></>}
-                  <br />
+                  <Balls numbers={d.numbers} />
+                  {extras(d.extras) && <small>{extras(d.extras)}</small>}
                   <small>
                     {t(lang, "Verificado", "Verified")}: {formatDate(localDate(d.verified_at, tz), lang)}, {formatTime12(d.verified_at, tz)}
                     {" · "}<a href={d.source_url} rel="noopener">{g.operator}</a>
                   </small>
-                </li>
-              ))}
-            </ul>
+                </span>
+              </div>
+            ))}
           </section>
         ))}
       </main>

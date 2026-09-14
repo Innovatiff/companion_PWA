@@ -110,6 +110,18 @@ Colour is never the only signal. An alert level is written in words ("Rojo",
 - **Morning line (Hoy home).** One sentence per line, large type, no icons.
   The greeting is an `h1`; each other line is a `p` with `data-line` and
   `data-until`. Supporting notes (e.g. "tasa de referencia") are `small`.
+- **Quick cards (Hoy home, "Útil para ti").** Below the lines, from
+  `app.home_extras`: the next holiday (date block, "En 2 días"), Ontario's 911
+  (tap to call), their consulate (city, tap to call the first number), the
+  latest official draw (numbers as balls). Each renders only when its record
+  exists and shows its verified date; time-bound ones carry `data-line` and
+  `data-until` like the lines.
+- **Crests.** `<img src="/crest/{teamId}">` from our own domain, only when
+  `team_crests` holds one; otherwise the team's initials in a coloured circle.
+  Each crest at most 50 KB, cached 30 days.
+- **Page-only CSS.** Rules used by one or two pages (tables, warnings, match
+  and forecast cards) live in `apps/app/lib/page-css.ts` and are inlined by
+  those pages only, so the home screen does not carry them.
 - **Tab bar (Hoy).**
   - Fixed to the bottom, with 4 items in this order: Inicio · Fútbol · Clima ·
     Más (English: Home · Football · Weather · More).

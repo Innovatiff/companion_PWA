@@ -9,7 +9,7 @@
  *
  * Forecast days follow the home-line rules (0023): at least two providers
  * updated within 12 hours, a range when they disagree. A day without that is
- * absent.
+ * absent. The home town comes first.
  */
 import Head from "next/head";
 import type { GetServerSideProps } from "next";
@@ -18,6 +18,8 @@ import { formatDate, formatTime12, formatWeekdayDate, localDate } from "@leaming
 import { db } from "../lib/db";
 import { loadClient, recordView } from "../lib/client";
 import { t } from "../lib/t";
+import { Art, Icon } from "../lib/ui";
+import { CLIMA_CSS } from "../lib/page-css";
 
 export const config = { unstable_runtimeJS: false };
 
@@ -27,7 +29,7 @@ type Alert = {
   issued_at: string | null; expires_at: string | null; source_url: string | null;
   cancelled_at: string | null; superseded: boolean;
 };
-type Day = { date: string; temp: string; low: number | null; text: string };
+type Day = { date: string; temp: string; low: number | null; rain?: boolean; text: string };
 type Town = { id: number; name: string; admin_region: string; is_home: boolean; days: Day[] };
 type Weather = {
   language: "es" | "en"; timezone: string; has_home: boolean; towns: Town[];
@@ -60,6 +62,11 @@ const COUNTRY: Record<string, [string, string]> = {
   MX: ["México", "Mexico"], GT: ["Guatemala", "Guatemala"], HN: ["Honduras", "Honduras"], JM: ["Jamaica", "Jamaica"],
 };
 
+/** "YYYY-MM-DD" plus n days. */
+function addDays(date: string, n: number): string {
+  return new Date(Date.parse(date) + n * 86_400_000).toISOString().slice(0, 10);
+}
+
 export default function Clima({ w, country, today }: Props) {
   const lang = w.language;
   const tz = w.timezone;
@@ -68,12 +75,18 @@ export default function Clima({ w, country, today }: Props) {
     const day = localDate(iso, tz);
     return day === today ? formatTime12(iso, tz) : `${formatTime12(iso, tz)}, ${formatDate(day, lang)}`;
   };
-  const dayName = (date: string, i: number) =>
-    date === today ? t(lang, "Hoy", "Today") : i === 1 && date > today ? t(lang, "Mañana", "Tomorrow") : formatWeekdayDate(date, lang);
+  const tomorrow = addDays(today, 1);
+  const dayName = (date: string) => {
+    if (date === today) return t(lang, "Hoy", "Today");
+    if (date === tomorrow) return t(lang, "Mañana", "Tomorrow");
+    const weekday = formatWeekdayDate(date, lang).split(" ")[0];
+    return weekday.charAt(0).toUpperCase() + weekday.slice(1);
+  };
 
   const card = (a: Alert) => (
     <div key={a.id} className={`alert ${a.level}`}>
       <span className="level">
+        <span className="i"><Icon name="alert" /></span>
         {pick(LEVEL[a.level], a.level)}
         {a.msg_type === "Update" ? ` · ${t(lang, "Actualización", "Update")}` : ""}
       </span>
@@ -97,12 +110,14 @@ export default function Clima({ w, country, today }: Props) {
   const agencyLink = w.agency_url && w.agency && (
     <p><a href={w.agency_url} rel="noopener">{t(lang, `Ver avisos de ${w.agency}`, `See ${w.agency} warnings`)}</a></p>
   );
+  const towns = [...w.towns].filter((town) => town.days.length > 0).sort((a, b) => Number(b.is_home) - Number(a.is_home));
 
   return (
     <>
       <Head>
         <title>{`${t(lang, "Clima", "Weather")} · Hoy`}</title>
         <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+        <style dangerouslySetInnerHTML={{ __html: CLIMA_CSS }} />
       </Head>
       <main>
         <h1>{t(lang, "Clima", "Weather")}</h1>
@@ -111,10 +126,13 @@ export default function Clima({ w, country, today }: Props) {
         {w.alerts_state === "current" && (
           <>
             {w.alerts_here?.map(card)}
-            <p className="card"><small>
-              {t(lang, `Revisamos los avisos de ${w.agency} a las ${moment(w.alerts_checked_at!)}.`,
-                       `We checked ${w.agency} warnings at ${moment(w.alerts_checked_at!)}.`)}
-            </small></p>
+            <div className="tile">
+              <span className="ico"><Icon name="check" /></span>
+              <small>
+                {t(lang, `Revisamos los avisos de ${w.agency} a las ${moment(w.alerts_checked_at!)}.`,
+                         `We checked ${w.agency} warnings at ${moment(w.alerts_checked_at!)}.`)}
+              </small>
+            </div>
             {w.alerts_elsewhere && w.alerts_elsewhere.length > 0 && (
               <details>
                 <summary>{t(lang, `En otras partes de ${pick(COUNTRY[country], country)}`, `Elsewhere in ${pick(COUNTRY[country], country)}`)} ({w.alerts_elsewhere.length})</summary>
@@ -124,38 +142,47 @@ export default function Clima({ w, country, today }: Props) {
           </>
         )}
         {w.alerts_state === "stale" && (
-          <section className="card">
-            <p>
-              {w.alerts_checked_at
-                ? t(lang, `No hemos podido revisar los avisos de ${w.agency} desde las ${moment(w.alerts_checked_at)}.`,
-                          `We have not been able to check ${w.agency} warnings since ${moment(w.alerts_checked_at)}.`)
-                : t(lang, `No hemos podido revisar los avisos de ${w.agency}.`, `We have not been able to check ${w.agency} warnings.`)}
-            </p>
-            {agencyLink}
+          <section className="tile">
+            <span className="ico"><Icon name="alert" /></span>
+            <span>
+              <p>
+                {w.alerts_checked_at
+                  ? t(lang, `No hemos podido revisar los avisos de ${w.agency} desde las ${moment(w.alerts_checked_at)}.`,
+                            `We have not been able to check ${w.agency} warnings since ${moment(w.alerts_checked_at)}.`)
+                  : t(lang, `No hemos podido revisar los avisos de ${w.agency}.`, `We have not been able to check ${w.agency} warnings.`)}
+              </p>
+              {agencyLink}
+            </span>
           </section>
         )}
         {w.alerts_state === "not_monitored" && (
-          <section className="card">
-            <p>{t(lang, `Hoy todavía no recibe los avisos de ${w.agency ?? "tu país"}. Consúltalos en su página.`,
-                        `Hoy does not receive ${w.agency ?? "your country's"} warnings yet. Check their page.`)}</p>
-            {agencyLink}
+          <section className="tile">
+            <span className="ico"><Icon name="info" /></span>
+            <span>
+              <p>{t(lang, `Hoy todavía no recibe los avisos de ${w.agency ?? "tu país"}. Consúltalos en su página.`,
+                          `Hoy does not receive ${w.agency ?? "your country's"} warnings yet. Check their page.`)}</p>
+              {agencyLink}
+            </span>
           </section>
         )}
 
         {!w.has_home && (
           <a className="prompt" href="/setup/municipality">{t(lang, "Elige tu municipio para ver el clima →", "Choose your town to see the weather →")}</a>
         )}
-        {w.towns.filter((town) => town.days.length > 0).map((town) => (
+        {towns.map((town) => (
           <section key={town.id}>
-            <h2>{town.name}</h2>
-            <ul className="rows">
-              {town.days.map((d, i) => (
-                <li key={d.date}>
-                  <small>{dayName(d.date, i)}</small><br />
-                  {d.text}{d.low != null && <small> · {t(lang, "mín", "low")} {d.low}°</small>}
-                </li>
+            <h2>{town.name}{town.is_home && <span className="chip">{t(lang, "Tu municipio", "Your town")}</span>}</h2>
+            <div className="days">
+              {town.days.map((d) => (
+                <div key={d.date} className={`card day ${d.rain ? "rain" : "sun"}`}>
+                  <small>{dayName(d.date)}</small>
+                  <Art name={d.rain ? "rainy" : "sunny"} size={52} />
+                  <b>{d.temp}</b>
+                  {d.rain && <small>{t(lang, "Lluvia", "Rain")}</small>}
+                  {d.low != null && <small>{t(lang, "mín", "low")} {d.low}°</small>}
+                </div>
               ))}
-            </ul>
+            </div>
           </section>
         ))}
 

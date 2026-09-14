@@ -1,19 +1,20 @@
 /**
  * Feriados: the next year of national public holidays in their country, each
- * with "Verificado: {date}".
+ * with "Verificado: {date}", as date blocks.
  */
 import Head from "next/head";
 import type { GetServerSideProps } from "next";
 import { TabBar } from "@leamington/shared/src/ui/TabBar.tsx";
-import { formatDate, formatWeekdayDate } from "@leamington/shared/src/format.ts";
+import { formatDate, formatWeekdayDate, localDate } from "@leamington/shared/src/format.ts";
 import { db } from "../../lib/db";
 import { loadClient, recordView } from "../../lib/client";
 import { t } from "../../lib/t";
+import { DateBlock, FLAG, daysBetween } from "../../lib/ui";
 
 export const config = { unstable_runtimeJS: false };
 
 type Holiday = { holiday_date: string; name: string; verified_at: string; source_url: string | null };
-type Props = { lang: "es" | "en"; country: string; holidays: Holiday[] };
+type Props = { lang: "es" | "en"; country: string; today: string; holidays: Holiday[] };
 
 export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
   const loaded = await loadClient(ctx);
@@ -28,14 +29,18 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
         and holiday_date < (now() at time zone $2)::date + 366
       order by holiday_date, name`, [client.country, client.timezone]);
   await recordView(client.id, "feriados", { holidays: rows.length });
-  return { props: { lang: client.language, country: client.country, holidays: rows } };
+  return { props: { lang: client.language, country: client.country, today: localDate(new Date(), client.timezone), holidays: rows } };
 };
 
 const COUNTRY: Record<string, [string, string]> = {
   MX: ["México", "Mexico"], GT: ["Guatemala", "Guatemala"], HN: ["Honduras", "Honduras"], JM: ["Jamaica", "Jamaica"],
 };
 
-export default function Feriados({ lang, country, holidays }: Props) {
+export default function Feriados({ lang, country, today, holidays }: Props) {
+  const soon = (date: string) => {
+    const n = daysBetween(today, date);
+    return n === 0 ? t(lang, "Hoy", "Today") : n === 1 ? t(lang, "Mañana", "Tomorrow") : t(lang, `En ${n} días`, `In ${n} days`);
+  };
   return (
     <>
       <Head>
@@ -45,18 +50,24 @@ export default function Feriados({ lang, country, holidays }: Props) {
       <main>
         <p><a href="/mas">← {t(lang, "Más", "More")}</a></p>
         <h1>{t(lang, "Feriados", "Public holidays")}</h1>
-        {holidays.length > 0 && <p className="step">{COUNTRY[country]?.[lang === "en" ? 1 : 0]}</p>}
-        <ul className="rows">
-          {holidays.map((h) => (
-            <li key={h.holiday_date + h.name}>
-              <small>{formatWeekdayDate(h.holiday_date, lang)}</small><br />{h.name}<br />
-              <small>
-                {t(lang, "Verificado", "Verified")}: {formatDate(h.verified_at, lang)}
-                {h.source_url && <>{" · "}<a href={h.source_url} rel="noopener">{t(lang, "Fuente", "Source")}</a></>}
-              </small>
-            </li>
-          ))}
-        </ul>
+        {holidays.length > 0 && <p className="step">{FLAG[country]} {COUNTRY[country]?.[lang === "en" ? 1 : 0]}</p>}
+        {holidays.map((h, i) => {
+          const weekday = formatWeekdayDate(h.holiday_date, lang).split(" ")[0];
+          return (
+            <div className="tile" key={h.holiday_date + h.name}>
+              <DateBlock date={h.holiday_date} lang={lang} />
+              <span>
+                <small>{weekday}</small>
+                <p className="line">{h.name}</p>
+                {i === 0 && <span className="chip">{soon(h.holiday_date)}</span>}
+                <small>
+                  {t(lang, "Verificado", "Verified")}: {formatDate(h.verified_at, lang)}
+                  {h.source_url && <>{" · "}<a href={h.source_url} rel="noopener">{t(lang, "Fuente", "Source")}</a></>}
+                </small>
+              </span>
+            </div>
+          );
+        })}
       </main>
       <TabBar current="mas" lang={lang} />
     </>

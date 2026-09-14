@@ -14,6 +14,7 @@ import type { GetServerSideProps } from "next";
 import { db } from "../../lib/db";
 import { loadClient, recordView } from "../../lib/client";
 import { t } from "../../lib/t";
+import { SETUP_CSS } from "../../lib/page-css";
 
 export const config = { unstable_runtimeJS: false };
 
@@ -138,6 +139,7 @@ export default function SetupStep(p: Props) {
       <Head>
         <title>Hoy</title>
         <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+        <style dangerouslySetInnerHTML={{ __html: SETUP_CSS }} />
       </Head>
       <main>
         <p className="step">{t(lang, `Paso ${p.index + 1} de 5`, `Step ${p.index + 1} of 5`)}</p>
