@@ -78,13 +78,38 @@ export const CLIMA_CSS =
   "details{margin:.5rem 0}summary{min-height:48px;padding:.7rem 0;cursor:pointer;font-weight:700}";
 
 export const TASA_CSS = TABLE +
-  ".rt{display:flex;align-items:baseline;flex-wrap:wrap;gap:.4rem;margin:.35rem 0 0;font-variant-numeric:tabular-nums}.rt b{font-size:2.9rem;font-weight:800;letter-spacing:-.03em;line-height:1}.rt span{font-weight:700;color:var(--muted)}" +
-  "details summary{min-height:48px;padding:.75rem 0;cursor:pointer;font-weight:700;color:var(--brand-ink)}" +
-  ".spark{display:block;width:100%;height:5rem;margin:.9rem 0 .2rem;overflow:visible}.spark .ln{stroke-dasharray:1;animation:draw 1.4s .2s ease-out both}@keyframes draw{from{stroke-dashoffset:1}}" +
-  // Where today's rate sits between the 30-day low and high
-  ".rg{position:relative;display:block;height:.55rem;margin:1rem .55rem .45rem;border-radius:9px;background:linear-gradient(90deg,#c7ccf5,var(--brand))}" +
-  ".rg i{position:absolute;top:50%;width:1.2rem;height:1.2rem;margin:-.6rem 0 0 -.6rem;border-radius:50%;background:#fff;border:3px solid var(--brand-ink);box-shadow:var(--shadow)}" +
-  ".rgl{display:flex;justify-content:space-between;gap:1rem;font-variant-numeric:tabular-nums}.rgl b{display:block;font-size:1.15rem}.rgl>span:last-child{text-align:right}";
+  // Header: back, title, the reminder bell
+  ".ph .bellbtn svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}" +
+  // The rate big, its date; a plain note when it is not today's
+  ".rhead{display:flex;align-items:flex-end;justify-content:space-between;gap:.75rem;margin:0 .2rem .9rem}.rhead small{display:block}.rdate{text-align:right;font-weight:650;white-space:nowrap}" +
+  ".rt{display:flex;align-items:baseline;gap:.35rem;margin:0 0 .15rem;font-variant-numeric:tabular-nums}.rt b{font-size:3.2rem;font-weight:800;letter-spacing:-.03em;line-height:1}.rt span{font-weight:750;color:var(--muted)}" +
+  ".stale{margin:0 0 .85rem;padding:.65rem .95rem;border-radius:16px;background:var(--warn-soft);color:var(--warn);font-weight:650}" +
+  // Chart card: bars grow from the bottom, the line draws on; neutral colours only
+  ".chartc{padding:1rem .85rem .85rem}.chart{display:block;width:100%;height:auto;overflow:visible}" +
+  ".chart .b{fill:#cdd2f7;transform-box:fill-box;transform-origin:bottom;animation:rise .6s cubic-bezier(.2,.7,.3,1) both}.chart .b.on{fill:var(--brand)}@keyframes rise{from{transform:scaleY(0)}}" +
+  ".chart .g{fill:none;stroke:#c7ccf5;stroke-width:1;stroke-dasharray:3 4}.chart .tk{font-size:10px;fill:#5a6080;font-weight:650}" +
+  ".chart .ar{fill:#e8eafc}.chart .ln{fill:none;stroke:var(--brand);stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:1;animation:draw 1.4s .2s ease-out both}@keyframes draw{from{stroke-dashoffset:1}}" +
+  ".chart .dt2{fill:#fff;stroke:var(--brand-ink);stroke-width:3}" +
+  ".hilo{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem;margin:.8rem 0 .2rem}.hilo>span{padding:.55rem .75rem;border-radius:14px;background:var(--tile)}.hilo small{display:block}.hilo b{font-size:1.25rem;font-variant-numeric:tabular-nums}" +
+  ".chg{display:inline-block;margin-top:.55rem;padding:.25rem .8rem;border-radius:999px;background:var(--tile);color:var(--brand-ink);font-weight:750;font-size:.86rem}" +
+  // Section card headers
+  ".ch{display:flex;align-items:center;gap:.7rem}.ch h2{margin:0}" +
+  // The week: seven circles that pop in
+  ".wkc{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:.25rem;list-style:none;padding:0;margin:.8rem 0 .55rem;text-align:center}.wkc small{display:block;font-weight:650;margin-bottom:.25rem}" +
+  ".wkc .o{display:grid;place-items:center;width:2.5rem;max-width:100%;aspect-ratio:1;margin:0 auto;border-radius:50%;border:2px solid var(--brand);color:var(--brand-ink);font-weight:800;animation:pop .45s cubic-bezier(.3,1.5,.5,1) both}" +
+  ".wc.up .o{background:var(--brand);color:#fff}.wc.nd .o{border-style:dashed;border-color:#aab2e6}" +
+  ".wc:nth-child(2) .o{animation-delay:.06s}.wc:nth-child(3) .o{animation-delay:.12s}.wc:nth-child(4) .o{animation-delay:.18s}.wc:nth-child(5) .o{animation-delay:.24s}.wc:nth-child(6) .o{animation-delay:.3s}.wc:nth-child(7) .o{animation-delay:.36s}" +
+  "@keyframes pop{from{opacity:0;transform:scale(.6)}}.wcap{font-weight:650}" +
+  // Calculator
+  ".seg.sm{margin:.8rem 0 0}.seg.sm a{min-height:44px;font-size:.88rem}" +
+  ".chips{display:flex;flex-wrap:wrap;gap:.45rem;margin:.75rem 0}.cp{display:inline-flex;align-items:center;min-height:48px;padding:0 1.05rem;border-radius:999px;background:var(--tile);color:var(--brand-ink);font-weight:750;text-decoration:none}.cp.on{background:var(--brand);color:#fff}" +
+  ".cres{margin:.3rem 0 .8rem;font-variant-numeric:tabular-nums}.cres b{font-size:1.1rem}.cres .big{display:block;font-size:2.3rem;font-weight:800;letter-spacing:-.02em;line-height:1.15;overflow-wrap:anywhere}" +
+  ".cform{display:flex;gap:.5rem;margin:0 0 .6rem}.cform input{flex:1;min-width:0}.cform button{width:auto;margin:0;padding:.8rem 1.1rem}" +
+  // Reminder
+  ".rt2{display:flex;align-items:baseline;flex-wrap:wrap;gap:.4rem;margin:.7rem 0 .35rem;font-variant-numeric:tabular-nums}.rt2 b{font-size:2.3rem;font-weight:800}.rt2 span{font-weight:750;color:var(--muted)}.rt2 .chip.got{background:var(--brand);color:#fff}" +
+  ".rgl{display:flex;justify-content:space-between;margin:.2rem 0 .5rem}.remind .arr{margin:.8rem 0 .5rem}.remind form button.secondary{margin-top:.8rem}" +
+  "details.days{padding:.2rem 1rem}details summary{min-height:48px;padding:.75rem 0;cursor:pointer;font-weight:700;color:var(--brand-ink)}" +
+  "html.big .rt b{font-size:2.6rem}html.big .cform{flex-wrap:wrap}html.big .cform button{width:100%}html.big .wkc .o{width:2.1rem}html.big .cres .big{font-size:1.9rem}";
 
 // The member page (0041): a premium card, then the badges grid.
 export const MIEMBRO_CSS =
@@ -113,7 +138,7 @@ export const WELCOME_CSS =
   "padding:1rem 1rem calc(1rem + env(safe-area-inset-bottom));color:#fff}" +
   ".wbg{position:absolute;inset:0;z-index:-2;width:100%;height:100%;object-fit:cover}" +
   ".welcome.wp::before{content:\"\";position:absolute;inset:0;z-index:-1;background:linear-gradient(rgba(10,12,40,.6),rgba(10,12,40,.05) 35%,rgba(10,12,40,.45))}" +
-  ".wtop{max-width:34rem}.welcome .credit{display:block;margin:0;color:#fff;font-size:.74rem;text-shadow:0 1px 3px rgba(0,0,0,.7)}" +
+  ".wtop{max-width:34rem}.welcome .credit{margin:0;-webkit-line-clamp:2;color:#fff;font-size:.74rem;text-shadow:0 1px 3px rgba(0,0,0,.7)}" +
   ".wcard{width:100%;max-width:34rem;margin:0 auto;padding:1.4rem 1.4rem 1.2rem;background:#fff;color:var(--ink);border-radius:32px;box-shadow:0 24px 50px rgba(0,0,0,.35)}" +
   ".wcard h1{margin:.5rem 0 .3rem;font-size:1.85rem}.wcard p{margin:0 0 1.1rem;color:var(--muted);font-weight:700}" +
   ".wgo{display:flex;align-items:center;justify-content:space-between;gap:1rem}" +

@@ -254,3 +254,40 @@ select id, (now() at time zone 'America/Toronto')::date, ((now() at time zone 'A
        timestamptz '2026-11-02 10:00:00-05', 'sale', affiliate_id
   from clients where code = 'DEMXGT42'
 on conflict (client_id, period_start) where voided_at is null do nothing;
+
+-- LOCAL ONLY, round 3 (0042): reference-rate history for the Tasa charts. Invented
+-- local demo numbers, never real quotes:
+--   HNL  daily back to 90 days (the existing last 20 days above stay as they are)
+--   JMD  daily, 95 days
+--   MXN  weekdays only, like the real feed (no quote on Saturday or Sunday)
+--   GTQ  none, so the page's "no rate yet" state can be seen
+insert into fx_rates (rate_date, quote, rate)
+select d::date, 'HNL', round((18.05 + 0.18 * sin(extract(doy from d) / 9.0) + 0.05 * sin(extract(doy from d) / 2.3))::numeric, 4)
+  from generate_series(current_date - 92, current_date - 22, interval '1 day') d
+on conflict (rate_date, quote) do nothing;
+insert into fx_rates (rate_date, quote, rate)
+select d::date, 'JMD', round((112.4 + 1.6 * sin(extract(doy from d) / 10.0) + 0.45 * sin(extract(doy from d) / 3.1))::numeric, 4)
+  from generate_series(current_date - 95, current_date, interval '1 day') d
+on conflict (rate_date, quote) do nothing;
+insert into fx_rates (rate_date, quote, rate)
+select d::date, 'MXN', round((13.62 + 0.32 * sin(extract(doy from d) / 8.0) + 0.09 * sin(extract(doy from d) / 2.7))::numeric, 4)
+  from generate_series(current_date - 95, current_date, interval '1 day') d
+ where extract(isodow from d) < 6
+on conflict (rate_date, quote) do nothing;
+
+-- LOCAL ONLY: Ontario public holidays, copied exactly from
+-- services/ingest/data/on-provincial_holidays.json (checked there against the
+-- ontario.ca source), so the local merge matches what ingest writes.
+insert into provincial_holidays (province, holiday_date, name, name_es, verified_at, source_url)
+select 'ON', v.d::date, v.name, v.name_es, date '2026-09-14',
+       'https://www.ontario.ca/document/your-guide-employment-standards-act-0/public-holidays'
+  from (values ('2026-01-01', 'New Year''s Day', 'Año Nuevo'), ('2026-02-16', 'Family Day', 'Día de la Familia'),
+               ('2026-04-03', 'Good Friday', 'Viernes Santo'), ('2026-05-18', 'Victoria Day', 'Día de la Reina Victoria'),
+               ('2026-07-01', 'Canada Day', 'Día de Canadá'), ('2026-09-07', 'Labour Day', 'Día del Trabajo'),
+               ('2026-10-12', 'Thanksgiving Day', 'Día de Acción de Gracias'), ('2026-12-25', 'Christmas Day', 'Navidad'),
+               ('2026-12-26', 'Boxing Day', 'Día de San Esteban (Boxing Day)'), ('2027-01-01', 'New Year''s Day', 'Año Nuevo'),
+               ('2027-02-15', 'Family Day', 'Día de la Familia'), ('2027-03-26', 'Good Friday', 'Viernes Santo'),
+               ('2027-05-24', 'Victoria Day', 'Día de la Reina Victoria'), ('2027-07-01', 'Canada Day', 'Día de Canadá'),
+               ('2027-09-06', 'Labour Day', 'Día del Trabajo'), ('2027-10-11', 'Thanksgiving Day', 'Día de Acción de Gracias'),
+               ('2027-12-25', 'Christmas Day', 'Navidad'), ('2027-12-26', 'Boxing Day', 'Día de San Esteban (Boxing Day)')) v(d, name, name_es)
+on conflict (province, holiday_date, name) do nothing;

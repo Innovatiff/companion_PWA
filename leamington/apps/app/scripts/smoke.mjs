@@ -358,6 +358,133 @@ async function round2(cookie, code, label) {
   }
 }
 
+// Round 3, "Tu dinero" (0042): Tasa, the calculator, the reminder and Feriados,
+// held to app.fx_history, app.rate_reminder and app.holidays_here_and_there.
+// FX stays descriptive: no provider name, no advice, no forecast.
+const PROVIDERS = /frankfurter|exchangerate|open\.er-api|jsdelivr|currency-api|fawazahmed|fixer\.io|oanda|xe\.com|wise\.com|western ?union|remitly|moneygram/i;
+const ADVICE = /\b(te conviene|conviene (enviar|esperar|mandar)|buen momento|mal momento|mejor momento|env[ií]a ahora|espera a que|te recomendamos|recomendamos|va a subir|va a bajar|pron[oó]stico de la tasa|good time to|best time to|we recommend|you should (send|wait)|will (rise|fall|go up|go down))\b/i;
+const tagsOf = (html, name, cls) => [...html.matchAll(new RegExp(`<${name}\\b[^>]*>`, "g"))].map((m) => m[0]).filter((t) => new RegExp(` class="${cls}"`).test(t));
+
+async function money(cookie, code, label) {
+  if (!DB) { console.log(`SKIP ${label}: Tasa, calculator, reminder and Feriados vs database (set DATABASE_URL)`); return; }
+  const history = async (days) => (await q("select app.fx_history(id, $2) as h from clients where code = $1", [code, days])).rows[0].h;
+
+  for (const r of [7, 30, 90]) {
+    const path = `/mas/tasa?r=${r}`;
+    const tl = `${label} ${path}`;
+    const html = (await send(path, { cookie })).text;
+    const h = await history(r);
+    const words = visible(html).replace(/<[^>]+>/g, " ");
+    check(!PROVIDERS.test(html), `${tl}: names no rate provider`, PROVIDERS.exec(html)?.[0]);
+    check(!ADVICE.test(words), `${tl}: gives no advice or forecast`, ADVICE.exec(words)?.[0]);
+    check(Boolean(tag(html, "a", { href: path })?.includes('aria-current="page"')), `${tl}: its range pill is the active one`);
+    if (!h.latest) {
+      check(!html.includes('class="chart"') && !html.includes('class="cres"'), `${tl}: no chart and no calculation without a reference rate`);
+      continue;
+    }
+    check(/tasa de referencia|reference rate/.test(words), `${tl}: says "tasa de referencia"`);
+    const open = tag(html, "svg", { class: "chart" }) ?? "";
+    const at = html.indexOf(open);
+    const body = open ? html.slice(at + open.length, html.indexOf("</svg>", at)) : "";
+    if (r <= 30) {
+      const bars = tagsOf(body, "rect", "b( on)?");
+      check(bars.map((b) => attr(b, "data-d")).join() === h.points.map((p) => p.date).join(),
+        `${tl}: one bar per real stored day, none invented`, `${bars.length} bars, ${h.points.length} points`);
+      check(bars.length > 0 && / class="b on"/.test(bars.at(-1)) && bars.filter((b) => / class="b on"/.test(b)).length === 1, `${tl}: only the latest bar is highlighted`);
+    } else {
+      const d = attr(tag(body, "path", { class: "ln" }), "d") ?? "";
+      const steps = (d.match(/C/g) ?? []).length;
+      check(steps === Math.max(0, h.points.length - 1), `${tl}: the line passes through exactly the stored days`, `${steps} steps, ${h.points.length} points`);
+    }
+    check(attr(tag(html, "span", { class: "hi" }), "data-d") === h.high.date && html.includes(`<b>${Number(h.high.rate).toFixed(2)}</b>`), `${tl}: the high and its date are the database's`);
+    check(attr(tag(html, "span", { class: "lo" }), "data-d") === h.low.date && html.includes(`<b>${Number(h.low.rate).toFixed(2)}</b>`), `${tl}: the low and its date are the database's`);
+    check(html.includes('class="stale"') === (!h.current || h.latest.stale), `${tl}: says the rate is not today's exactly when it is not current`);
+    check(h.change_pct == null || h.points.length < 2 ? !html.includes('class="chg"') : attr(tag(html, "span", { class: "chg" }), "data-pct") === String(h.change_pct),
+      `${tl}: the change chip is the database's`);
+    const circles = tagsOf(html, "li", "wc [a-z]+");
+    check(circles.map((c) => attr(c, "data-dir")).join() === h.week.map((w) => w.dir ?? "").join()
+      && circles.map((c) => attr(c, "data-d")).join() === h.week.map((w) => w.date).join(), `${tl}: the week circles are the database's week`);
+  }
+
+  // Calculator at the reference rate, both ways; anything that is not a plain amount is ignored.
+  const h = await history(30);
+  if (h.latest) {
+    const rate = Number(h.latest.rate), dec = h.currency === "JMD" ? 0 : 2;
+    const round = (n, d) => Math.round(n * 10 ** d) / 10 ** d;
+    const result = async (path) => tag((await send(path, { cookie })).text, "p", { class: "cres" });
+    const fwd = await result("/mas/tasa?cad=200");
+    check(attr(fwd, "data-dir") === "cad" && Number(attr(fwd, "data-amount")) === 200 && Number(attr(fwd, "data-result")) === round(200 * rate, dec),
+      `${label}: 200 CAD converts at the reference rate`, fwd);
+    check(Number(attr(await result("/mas/tasa?cad=37.5"), "data-result")) === round(37.5 * rate, dec), `${label}: a typed CAD amount converts at the reference rate`);
+    const back = await result("/mas/tasa?dir=local&n=2500");
+    check(attr(back, "data-dir") === "local" && Number(attr(back, "data-result")) === round(2500 / rate, 2), `${label}: ${h.currency} converts back to CAD at the reference rate`, back);
+    for (const bad of ["abc", "-5", "0", "1e5", "99999999", "12.345"]) {
+      const page = (await send(`/mas/tasa?cad=${encodeURIComponent(bad)}`, { cookie })).text;
+      check(!page.includes('class="cres"') && Boolean(tag(page, "form", { action: "/mas/tasa#calc" })), `${label}: the calculator ignores "${bad}" and shows the form again`);
+    }
+  }
+
+  // Reminder: set, refused, cleared, and the member's own state put back.
+  const reminder = async () => (await q("select app.rate_reminder(id) as r from clients where code = $1", [code])).rows[0].r;
+  const before = await reminder();
+  const post = (form, extra = {}) => send("/api/rate-reminder", { method: "POST", cookie, form, ...extra });
+  if (!h.latest) {
+    const r = await post({ action: "set", target: "10" });
+    check(r.location.startsWith("/mas/tasa?e=reminder-norate") && (await reminder()) === null, `${label}: no reminder can be set without a reference rate`, r.location);
+  } else {
+    const rate = Number(h.latest.rate);
+    const target = (Math.round(rate * 1.02 * 100) / 100).toFixed(2);
+    const set = await post({ action: "set", target });
+    const page = (await send(set.location.split("#")[0], { cookie })).text;
+    check(set.status === 303 && set.location.startsWith("/mas/tasa?ok=reminder") && Number(attr(tag(page, "div", { class: "rem" }), "data-target")) === Number(target)
+      && Number((await reminder())?.target) === Number(target), `${label}: a reminder is set and shown with its target`, set.location);
+    const pushes = Number((await q("select count(*) from push_subscriptions ps join clients c on c.id = ps.client_id where c.code = $1 and ps.disabled_at is null", [code])).rows[0].count);
+    const remind = /<section class="card remind" id="avisame">([\s\S]*?)<\/section>/.exec(page)?.[1] ?? "";
+    check(remind.includes('href="/mas/avisos"') === (pushes === 0), `${label}: the reminder says to turn on notifications exactly when no phone receives them`);
+    const far = await post({ action: "set", target: (rate * 2).toFixed(2) });
+    check(far.location.startsWith("/mas/tasa?e=reminder-range") && /class="err" role="alert"/.test((await send(far.location.split("#")[0], { cookie })).text)
+      && Number((await reminder())?.target) === Number(target), `${label}: a target far from the rate is refused with a reason and nothing changes`, far.location);
+    const junk = await post({ action: "set", target: "diez" });
+    check(junk.location.startsWith("/mas/tasa?e=reminder-number") && Number((await reminder())?.target) === Number(target), `${label}: a target that is not a number is refused`);
+    const foreign = await post({ action: "clear" }, { origin: "https://evil.example" });
+    check(foreign.status === 403 && (await reminder()) !== null, `${label}: a cross-origin reminder post is refused and changes nothing`, String(foreign.status));
+    const clear = await post({ action: "clear" });
+    const cleared = (await send(clear.location.split("#")[0], { cookie })).text;
+    check(clear.location.startsWith("/mas/tasa?ok=cleared") && (await reminder()) === null && Boolean(tag(cleared, "input", { id: "target" })) && !cleared.includes('class="rem"'),
+      `${label}: clearing the reminder removes it`);
+    if (before) await post({ action: "set", target: String(before.target) });
+    check(Number((await reminder())?.target ?? 0) === Number(before?.target ?? 0), `${label}: the member's own reminder is put back`);
+  }
+
+  // Feriados aquí y allá: the merged order, verified dates, and each filter.
+  const merged = (await q("select app.holidays_here_and_there(id, now(), 50) as h from clients where code = $1", [code])).rows[0].h ?? [];
+  for (const [f, keep] of [["", () => true], ["on", (x) => x.where === "ON"], ["pais", (x) => x.where !== "ON"]]) {
+    const path = f ? `/mas/feriados?f=${f}` : "/mas/feriados";
+    const html = (await send(path, { cookie })).text;
+    const rows = [...html.matchAll(/<div class="tile hol"[^>]*>/g)];
+    const want = merged.filter(keep);
+    check(rows.map((m) => `${attr(m[0], "data-where")}@${attr(m[0], "data-d")}`).join() === want.map((x) => `${x.where}@${x.date}`).join(),
+      `${label} ${path}: the holidays and their order are the database's`, `${rows.length} rows, ${want.length} expected`);
+    check(rows.every((m, i) => /(Verificado|Verified): /.test(html.slice(m.index, rows[i + 1]?.index ?? html.indexOf("</main>")))), `${label} ${path}: every holiday shows when it was verified`);
+    check(Boolean(tag(html, "a", { href: path })?.includes('aria-current="page"')), `${label} ${path}: its filter pill is the active one`);
+  }
+
+  // Home: the rate row's week dots, and the next holiday here or there.
+  const home = (await send("/", { cookie })).text;
+  if (home.includes('data-line="rate"')) {
+    const dots = /<span class="wd"[^>]*>([\s\S]*?)<\/span>/.exec(home)?.[1] ?? "";
+    const week = (await history(7)).week;
+    check([...dots.matchAll(/<i class="([a-z]+)"/g)].map((m) => m[1]).join() === week.map((w) => w.dir ?? "nd").join(), `${label}: home's rate row shows the week as dots`);
+  }
+  const next = merged[0];
+  check(home.includes('data-line="holiday"') === Boolean(next && next.days_left <= 120), `${label}: home's holiday card shows exactly when one is within 120 days`);
+  if (home.includes('data-line="holiday"')) {
+    const card = /<a class="tile holiday"[^>]*>([\s\S]*?)<\/a>/.exec(home)?.[1] ?? "";
+    check(card.includes(`dateTime="${next.date}"`) && card.includes(`>${esc(next.name)}<`) && (next.where !== "ON" || card.includes("🇨🇦 Ontario")),
+      `${label}: home's holiday is the next one in Ontario or at home, with its flag`);
+  }
+}
+
 // "Ahora" (0040): shown only with a temperature and an observation time, the
 // temperature as the data wrote it (a range stays a range), the picture of the
 // sky it reports, and its own validity (at most 90 minutes after observing).
@@ -463,6 +590,7 @@ await extras(cookie, CODE);
 await more(cookie, CODE);
 await arrival(cookie, CODE, CODE);
 await round2(cookie, CODE, CODE);
+await money(cookie, CODE, CODE);
 await teamVisuals(cookie, CODE);
 await richer(cookie, CODE);
 for (const path of ["/crest/999999999999", "/crest/abc", "/photo/999999999999", "/photo/abc", "/league-crest/999999999999", "/league-crest/abc"]) {
@@ -560,6 +688,7 @@ if (process.env.CREST_CODE) {
   await richer(k.cookie, process.env.CREST_CODE);
   await arrival(k.cookie, process.env.CREST_CODE, process.env.CREST_CODE);
   await round2(k.cookie, process.env.CREST_CODE, process.env.CREST_CODE);
+  await money(k.cookie, process.env.CREST_CODE, process.env.CREST_CODE);
 }
 
 // A client whose paid period has ended: the expiry screen, and only the

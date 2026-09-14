@@ -36,6 +36,7 @@ import { recordView, type Access } from "../lib/client";
 import { t } from "../lib/t";
 import { HomeTop, TabBar } from "../lib/frame";
 import { AllaAqui, BadgesRow, SeasonCard, WelcomeScreen, type MemberCard, type Season } from "../lib/member";
+import { WeekDots, type WeekPoint } from "../lib/money";
 import {
   Art, Balls, Credit, Crest, DateBlock, FLAG, Icon, Num, Pic, Ring, SKY_PHASES, TownPhoto, dayArt, drawTime, localDayEnd, skyPhase, tel,
   type ArtName, type Photo, type SkyPhase,
@@ -75,13 +76,16 @@ type More = {
 };
 // Today's forecast at their home town, for the high and low beside "Ahora".
 type HomeDay = { timezone: string; name: string; lat: number | null; lng: number | null; d: { temp: string; low: number | null; rain?: boolean } | null };
+// The next holiday in Ontario or at home (0042), and the rate's week for the dots.
+type HolidayNext = { date: string; name: string; where: string; days_left: number; verified_at: string };
 type Expired = { language: "es" | "en"; access: Access };
 type Here = { name: string; d: { temp: string; low: number | null; rain: boolean; rain_prob?: number | null } };
 type Props =
   | {
       renderId: string; renderedAt: string; language: "es" | "en"; lines: Line[]; prompt: string | null;
       extras: Extras | null; more: More | null; watchPhotos: Photo[]; pushReady: boolean; here: Here | null;
-      name: string; sky: SkyPhase; homeDay: HomeDay | null; welcome: boolean; allaAt: string; expired?: undefined;
+      name: string; sky: SkyPhase; homeDay: HomeDay | null; welcome: boolean; allaAt: string;
+      week: WeekPoint[]; holNext: HolidayNext | null; expired?: undefined;
     }
   | { expired: Expired };
 
@@ -102,7 +106,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
     return { props: { expired: { language: a.language, access: a.access } } };
   }
 
-  const [home, extras, moreRow, hereRow, homeDayRow] = await Promise.all([
+  const [home, extras, moreRow, hereRow, homeDayRow, weekRow, holRow] = await Promise.all([
     db().query("select app.render_home($1) as m", [clientId]),
     db().query("select app.home_extras($1) as x", [clientId]),
     db().query("select app.home_more($1) as h", [clientId]),
@@ -115,6 +119,9 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
     db().query(
       `select m.timezone, m.name, m.lat, m.lng, app.forecast_summary(m.id, (now() at time zone m.timezone)::date, now(), c.language::text) as d
          from clients c join municipalities m on m.id = c.municipality_id where c.id = $1`, [clientId]),
+    // Round 3 (0042): the rate's last seven real days, and the next holiday here or there.
+    db().query("select app.fx_history($1, 7)->'week' as w", [clientId]),
+    db().query("select app.holidays_here_and_there($1, now(), 1)->0 as n", [clientId]),
   ]);
   const m = home.rows[0]?.m;
   if (!m) {
@@ -158,6 +165,8 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
       } : null,
       welcome,
       allaAt: clock ?? m.rendered_at,
+      week: weekRow.rows[0]?.w ?? [],
+      holNext: holRow.rows[0]?.n ?? null,
     },
   };
 };
@@ -279,7 +288,11 @@ export default function Home(props: Props) {
   const seeAll = t(lang, "Ver todo", "See all");
 
   // Útil para ti (0033).
-  const hol = x?.next_holiday ?? null;
+  // The next holiday in Ontario or at home (0042), within 120 days as before.
+  const hol = props.holNext && props.holNext.days_left <= 120
+    ? { date: props.holNext.date, name: props.holNext.name, where: props.holNext.where, days_until: props.holNext.days_left,
+        verified_at: props.holNext.verified_at, valid_until: dayEnd }
+    : null;
   const sos = x?.emergency ?? null;
   const con = x?.consulate ?? null;
   const lot = x?.lottery && x.lottery.numbers.length > 0 ? x.lottery : null;
@@ -425,6 +438,7 @@ export default function Home(props: Props) {
                   ? <span className="nb"><Num value={s.num} />{s.unit && <em>{s.unit}</em>}</span>
                   : <p className="line">{line.text}</p>}
                 {s?.sub && <small>{s.sub}</small>}
+                {line.key === "rate" && props.week.length > 0 && <WeekDots week={props.week} lang={lang} />}
               </span>
             </>
           );
@@ -570,7 +584,7 @@ export default function Home(props: Props) {
           <a className="tile holiday" href="/mas/feriados" data-line="holiday" data-until={hol.valid_until}>
             <DateBlock date={hol.date} lang={lang} />
             <span>
-              <small>{`${t(lang, "Próximo feriado", "Next holiday")} ${FLAG[x!.country] ?? ""}`}</small>
+              <small>{`${t(lang, "Próximo feriado", "Next holiday")} · ${hol.where === "ON" ? `${FLAG.CA} Ontario` : FLAG[hol.where] ?? ""}`}</small>
               <p className="line">{hol.name}</p>
               <small>
                 <span className="chip" data-line="holiday-days" data-until={dayEnd}>{soon}</span>

@@ -272,7 +272,7 @@ export function WelcomeScreen({ lang, first, member, photo, place, sky }: {
       </Head>
       <main className={`welcome s-${sky}${photo ? " wp" : ""}`} data-lang={lang}>
         {photo && <TownPhoto p={photo} lazy={false} className="wbg" />}
-        <div className="wtop">{photo && <Credit p={photo} lang={lang} place={place ?? undefined} />}</div>
+        <div className="wtop">{photo && <Credit p={photo} lang={lang} place={place ?? undefined} licenseFirst />}</div>
         <section className="wcard">
           <Art name="wave" size={64} />
           <h1>{t(lang, `Te damos la bienvenida a Hoy, ${first}`, `Welcome to Hoy, ${first}`)}</h1>

@@ -43,7 +43,7 @@ round starts. The standing rules still apply:
 
 ## Round 5: Siempre contigo
 21. **¿Salió mi número?:** check numbers against official lottery results.
-22. **Quiniela Hoy:** free football picks and a monthly table with no money, shown only while fixtures are current.
+22. **Tu semana:** a weekly recap from real rows: days they opened Hoy, the week of the rate, their team's results, the latest lottery results, holidays ahead, badges earned. It replaces "Quiniela Hoy" (free football picks), which would have had nothing to show while the football provider account is suspended.
 23. **Hometown gallery:** more freely licensed photos of the hometown.
 24. **Offline:** pages saved for use without internet, with the time they were saved.
 25. **Night mode:** an automatic dark theme.
@@ -58,3 +58,10 @@ Round reviews may reshape any feature; each change is noted here.
   - **Fix (0043):** only readings within 20 minutes of the newest are combined. The temperature is the median when two providers agree within 2°, and a range only when none do. OpenWeather is now called every 30 minutes while there are 17 places or fewer, so its reading is as recent as the others'.
 - **Clima's today card** repeated the strip's "Hoy" row: merged in round 2.
 - **Home row headers** wrapped ("Leamington · Ahora · 9:25am"): shortened in round 2.
+
+### Round 2 (2026-09-14)
+- **The welcome screen is not a page view.** The Explorador badge counts distinct pages opened, so counting the welcome would make "Abre 5 secciones" untrue. welcomed_at is its record.
+- **The welcome says "Te damos la bienvenida a Hoy"**, which reads right for everyone.
+- **Vigía has no earned date:** saving watched towns rewrites their rows, so the date would be the last save, not when it was earned.
+- **Temporada is decided for the current season only**, because only one arrival and one departure are stored.
+- **Carried into round 3:** the welcome photo credit is clamped to two lines, and home's "Ahora" rows share one layout at 360 and 390 px.

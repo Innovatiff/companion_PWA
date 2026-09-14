@@ -115,6 +115,8 @@ export const APP_CSS = BASE +
   "-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 12px),#000 calc(100% - 11px));mask:radial-gradient(farthest-side,transparent calc(100% - 12px),#000 calc(100% - 11px));animation:fill 1.3s .2s cubic-bezier(.2,.7,.3,1) both}" +
   ".sring b{display:block;font-size:1.65rem;font-weight:800}.sring small{font-size:.76rem}.sring .art{width:3.4rem;height:3.4rem}" +
   ".brow .bar{margin-top:.35rem}" +
+  // Home's rate row: the week of the rate as seven dots (0042)
+  ".wd{display:flex;gap:.3rem;margin-top:.4rem}.wd i{width:.72rem;height:.72rem;border-radius:50%;border:2px solid var(--brand)}.wd i.up{background:var(--brand)}.wd i.same{border-color:#8f98f5}.wd i.nd{border-style:dashed;border-color:#aab2e6}" +
   ".alla{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:.85rem 1rem 1rem;margin:0 0 .75rem}.alla>header{display:flex;align-items:center;gap:.5rem;font-weight:750}" +
   ".ah2{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:.4rem;margin-top:.5rem}" +
   ".ah{display:flex;flex-direction:column;align-items:center;text-align:center;gap:.05rem;min-width:0}.ah small{font-size:.8rem;font-weight:650;line-height:1.2;overflow-wrap:break-word;hyphens:auto}" +

@@ -32,27 +32,29 @@ Hoy's budgets were raised on 2026-09-14 (from 15 KB cold and 5 KB warm) for the
 round-1 look the owner asked for: pictures, motion and bigger type cost about
 1.5 KB more CSS and markup per page, while the pictures themselves are cached files.
 
-Measured 2026-09-14 after round 2 ("Tú eres Hoy"; local, demo client DEMXHN42,
+Measured 2026-09-14 after round 3 ("Tu dinero"; local, demo client DEMXHN42,
 the fullest home):
 
 | Hoy page | Bytes |
 | --- | --- |
-| Cold: sign-in plus home (redirect, login, sign-in, home, sw.js, manifest, open ping) | 21,020 |
-| Home (warm) | 10,037 |
-| Clima | 9,684 |
-| Miembro | 8,343 |
-| Fútbol | 8,210 |
-| Tasa | 8,012 |
-| Transporte | 7,968 |
-| Consulado | 7,926 |
-| Emergencias | 7,632 |
-| Feriados | 7,492 |
-| Más | 7,485 |
-| Lotería | 7,242 |
-| Setup step | 7,233 |
-| Notificaciones | 7,114 |
-| Escuela | 6,940 |
-| Illustrations, largest | 523 gzipped (badge-temporada.svg); first load of the 28 used: 29,768 |
+| Cold: sign-in plus home (redirect, login, sign-in, home, sw.js, manifest, open ping) | 21,183 |
+| Tasa, 3 meses (the heaviest page: 90-day line and every stored day in the table) | 11,521 |
+| Tasa, Mes | 10,186 |
+| Home (warm) | 10,136 |
+| Clima | 9,750 |
+| Tasa, Semana | 9,623 |
+| Feriados | 8,462 |
+| Miembro | 8,406 |
+| Fútbol | 8,272 |
+| Transporte | 8,033 |
+| Consulado | 7,992 |
+| Emergencias | 7,699 |
+| Más | 7,551 |
+| Lotería | 7,307 |
+| Setup step | 7,297 |
+| Notificaciones | 7,179 |
+| Escuela | 7,004 |
+| Illustrations, largest | 523 gzipped (badge-temporada.svg); first load of the 31 used: 33,264 |
 
 Every page is measured with `scripts/measure.mjs` and the numbers are reported.
 
@@ -249,6 +251,43 @@ and keeps every page within a 360 px screen.
     temperature only with "Ahora"; the difference between them ("Allá: 2 h
     menos", "Misma hora"). The clocks are the render time, so the card holds 15
     minutes.
+- **Tu dinero (round 3, 0042).** FX stays descriptive (CLAUDE.md): "tasa de
+  referencia", never a provider, a ranking, a forecast or advice, and no colour
+  that says good or bad (charts and chips are indigo and lilac only).
+  - **Tasa** (`/mas/tasa`, after the reference's Analytics screen): a round back
+    button, the centred title, and a bell to #avisame. The rate big with its
+    unit, "1 CAD · tasa de referencia", and the date on the right; a rate that
+    is not current says plainly whose date it is and that it is not today's.
+    Semana / Mes / 3 meses as pill links (?r=7, 30, 90).
+  - **Chart** (server-rendered inline SVG, `apps/app/lib/money.tsx`): 7 and 30
+    days are bars, one per real stored day (MXN has no weekend quotes, and no
+    bar is drawn for them), lilac with the latest solid indigo, growing from the
+    bottom, staggered; 90 days is a smooth indigo line that draws on, with a soft
+    area and dots at the high and low. Under it: "Más alta" and "Más baja" with
+    dates, and the change as a neutral chip ("+2.62% desde el 16 ago"). Every
+    stored day stays readable in a "Todos los días" table.
+  - **Semana de la tasa:** seven circles, one per real stored day, the weekday
+    above: up is solid indigo with ↑, down outlined with ↓, same outlined with =,
+    unknown dashed; the caption is only the counts ("7 subidas · 0 bajadas").
+    Home's rate row shows the same week as seven dots.
+  - **Calculadora:** $50 / $100 / $200 / $500 chips, another amount in a small
+    GET form, and the other direction ({moneda} → CAD) with that currency's own
+    round chips. "{monto} CAD ≈ {x} {moneda}" at the reference rate (whole JMD,
+    cents otherwise), and the line "Con la tasa de referencia del {fecha}. Cada
+    servicio de envío usa su propia tasa y cobra su comisión." Anything but a
+    plain amount up to 10,000 CAD is ignored and the form shows again.
+  - **Avísame** (#avisame): a bell with an arrow; without a reminder, a number
+    prefilled 1% above the latest rate; with one, the target big, a bar from the
+    rate on the day it was set, "¡Llegó!" (with its validity) when reached, and
+    "Quitar aviso". Posts to `/api/rate-reminder` (set or clear; same-origin and
+    session checks). Refusals say why ("Elige un número cerca de la tasa de
+    hoy", "Todavía no hay tasa"). Without notifications on, one line links to
+    Notificaciones: the reminder arrives as a notification.
+- **Feriados aquí y allá** (`/mas/feriados`): Ontario's public holidays and
+  the home country's, merged by date, each with a date block, 🇨🇦 Ontario or the
+  home flag, a countdown chip and "Verificado"; pills filter Todos / Ontario /
+  {País}; the home country's full 12 months, with sources, stay in a
+  `<details>`. Home's "Próximo feriado" is the next of either, with its flag.
 - **Clima's today, once.** A town's forecast card is today; the three-day strip
   under it starts with tomorrow.
 - **Section header.** A bold title, and an indigo "Ver todo" link on the right
