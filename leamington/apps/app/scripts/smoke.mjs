@@ -97,11 +97,11 @@ const imagesChecked = new Set();
 const ART_SRC = /src="(\/art\/[a-z-]+\.svg\?v=\d+)"/;
 async function images(html, label) {
   const imgs = [...html.matchAll(/<img\b[^>]*>/g)].map((m) => m[0]);
-  check(imgs.every((i) => (/src="\/(crest|photo|league-crest)\/\d+"/.test(i) || ART_SRC.test(i)) && /width="\d+"/.test(i) && /height="\d+"/.test(i) && / alt=""/.test(i)),
+  check(imgs.every((i) => (/src="\/(crest|photo|league-crest)\/\d+"/.test(i) || /src="\/photo\/\d+\/[1-6]"/.test(i) || ART_SRC.test(i)) && /width="\d+"/.test(i) && /height="\d+"/.test(i) && / alt=""/.test(i)),
     `${label}: every image is a crest, a town photo or an illustration from our own domain, sized`, imgs.join(" "));
   check(imgs.filter((i) => /src="\/(crest|league-crest)\//.test(i)).every((i) => / loading="lazy"/.test(i)), `${label}: crests and league logos load lazily`);
-  const photos = new Set(imgs.map((i) => /src="\/photo\/(\d+)"/.exec(i)?.[1]).filter(Boolean));
-  const credited = new Set([...html.matchAll(/<small class="credit" data-photo="(\d+)">([\s\S]*?)<\/small>/g)]
+  const photos = new Set(imgs.map((i) => /src="\/photo\/(\d+(?:\/[1-6])?)"/.exec(i)?.[1]).filter(Boolean));
+  const credited = new Set([...html.matchAll(/<small class="credit" data-photo="(\d+(?:\/[1-6])?)">([\s\S]*?)<\/small>/g)]
     .filter((m) => /<a href="https?:\/\/[^"]+"[^>]*>[^<]+<\/a>/.test(m[2]) && /· /.test(m[2])).map((m) => m[1]));
   check([...photos].every((id) => credited.has(id)), `${label}: every town photo shown has its credit (author, linked, and license)`,
     `photos ${[...photos]} credited ${[...credited]}`);
@@ -123,7 +123,7 @@ async function images(html, label) {
       check(!/<script|<foreignObject|(xlink:)?href="(https?:)?\/\//i.test(r.text), `${art[1]} has no script and no outside reference`);
       continue;
     }
-    const [, kind, id] = /src="\/(crest|photo|league-crest)\/(\d+)"/.exec(i) ?? [];
+    const [, kind, id] = /src="\/(crest|photo|league-crest)\/(\d+(?:\/[1-6])?)"/.exec(i) ?? [];
     if (!kind || imagesChecked.has(kind + id)) continue;
     imagesChecked.add(kind + id);
     const path = `/${kind}/${id}`;
@@ -163,7 +163,8 @@ async function extras(cookie, label) {
   check(home.includes('href="/mas/consulado"') === /Consulado en|Consulate in/.test(consulado), `${label}: the consulate card shows exactly when a consulate record exists`);
   check(home.includes('data-line="lottery"') === loteria.includes('class="balls"'), `${label}: the lottery card shows exactly when a recent official draw exists`);
   check(!/<p class="line"><\/p>|<span class="line"><\/span>|<span class="balls"><\/span>|<span class="num"><\/span>/.test(home), `${label}: no quick card renders without its data`);
-  check((home.match(/ data-line="/g) ?? []).length === (home.match(/ data-until="\d{4}-\d{2}-\d{2}T/g) ?? []).length,
+  const lines = [...home.matchAll(/<[a-z]+\b[^>]*\bdata-line="[^"]*"[^>]*>/g)].map((m) => m[0]);
+  check(lines.length > 0 && lines.every((o) => /\bdata-until="\d{4}-\d{2}-\d{2}T/.test(o)),
     `${label}: every time-bound element on home carries its expiry`);
   await images(home, `${label} /`);
 }
@@ -216,7 +217,8 @@ async function more(cookie, label) {
   // Today appears once per town: the forecast card, not again as the strip's first row.
   const townBodies = clima.split('<section id="t').slice(1).map((chunk) => chunk.slice(0, chunk.indexOf("</section>")));
   check(townBodies.every((b) => (b.match(/>(Hoy|Today)</g) ?? []).length <= 1), `${label}: Clima shows each town's today once`);
-  const watched = [...home.matchAll(/href="\/clima#t(\d+)"/g)].map((m) => m[1]);
+  // The watched-town cards (the home photo also links to its own town's section on Clima).
+  const watched = [...home.matchAll(/<a class="town" href="\/clima#t(\d+)"/g)].map((m) => m[1]);
   check(watched.every((id) => climaTowns.some((town) => town.id === id && !town.home && town.today)),
     `${label}: every watched-town card is a town Clima shows with today's forecast`, `home ${watched}`);
   check(climaTowns.filter((town) => !town.home && town.today).every((town) => watched.includes(town.id)),
@@ -548,6 +550,11 @@ async function workday(cookie, code, label) {
     const cols = hrs.split('<div class="hc').slice(1).map((c) => `<div class="hc${c}`);
     check(cols.length === hours.length && cols.every((c, i) => attr(c.slice(0, c.indexOf(">") + 1), "data-h") === hours[i].hour_start),
       `${label}: one column per hour the providers gave, in order`, `${cols.length} vs ${hours.length}`);
+    check(cols.every((c, i) => Date.parse(attr(c.slice(0, c.indexOf(">") + 1), "data-until")) === Date.parse(hours[i].hour_start) + 3600e3),
+      `${label}: every hour column expires when its hour is over (a kept offline copy drops past hours)`);
+    const line = /<svg class="hsvg"[^>]*>/.exec(hrs);
+    check(!line || Date.parse(attr(line[0], "data-until")) === Date.parse(hours[0].hour_start) + 3600e3,
+      `${label}: the hourly line expires with the first hour`);
     check(cols.every((c, i) => c.includes('class="hd"') === (hours[i].temp_c != null) && (hours[i].temp_c == null || c.includes(`>${hours[i].temp_c}°<`))),
       `${label}: a dot and label exactly where the hour has a temperature, a gap where it does not`);
     check(cols.every((c, i) => {
@@ -605,10 +612,158 @@ async function workday(cookie, code, label) {
   const strip = /<section data-line="hours" data-until="([^"]+)">([\s\S]*?)<\/section>/.exec(home);
   check(Boolean(strip) === Boolean(x.h6), `${label}: "Próximas horas" shows exactly when the next hours exist`);
   if (strip && x.h6) {
-    const cells = [...strip[2].matchAll(/<span class="hs" data-h="([^"]+)">([\s\S]*?)<\/span>/g)];
+    const cells = [...strip[2].matchAll(/<span class="hs"([^>]*)>([\s\S]*?)<\/span>/g)].map((c) => [c[0], attr(`<span${c[1]}>`, "data-h"), c[2], attr(`<span${c[1]}>`, "data-until")]);
+    check(cells.length > 0 && cells.every((c) => Date.parse(c[3]) === Date.parse(c[1]) + 3600e3), `${label}: every next-hours cell expires when its hour is over`);
     check(Date.parse(strip[1]) === Date.parse(x.h6.valid_until) && cells.map((c) => c[1]).join() === x.h6.hours.map((hr) => hr.hour_start).join()
       && cells.every((c, i) => c[2].includes("<b>") === (x.h6.hours[i].temp_c != null)), `${label}: "Próximas horas" is the database's hours, temperatures only where they exist`);
   }
+}
+
+// Round 5, "Siempre contigo" (0045, 0046): the number check, Tu semana, the
+// hometown gallery, pages kept for offline, and Modo noche.
+const LOTTO_WORDS = /ganaste|ganador|premio|probabilidad|odds|prize|números calientes|hot numbers|comprar|compra tu|\bbuy\b|jackpot|apuesta/i;
+const sectionAt = (html, id) => {
+  const at = html.indexOf(`id="${id}"`);
+  if (at < 0) return "";
+  const start = html.lastIndexOf("<section", at);
+  return html.slice(start, html.indexOf("</section>", at) + 10);
+};
+
+async function round5(cookie, code, label) {
+  // Pages kept for offline: exactly the member pages, cleared at sign-in; each carries its offline line, hidden online.
+  const sw = (await send("/sw.js")).text;
+  const saved = /const SAVED = \[([^\]]*)\]/.exec(sw)?.[1]?.replace(/\s/g, "");
+  check(saved === '"/","/clima","/clima/aqui","/mas/tasa","/mas/miembro","/mas/semana"', "sw.js keeps exactly Inicio, Clima, Hoy en Leamington, Tasa, Miembro and Tu semana", saved);
+  check(/pathname === "\/api\/login"\) \{\s*event\.waitUntil\(clearPages\(\)\)/.test(sw) && /pathname === "\/login"\) \{\s*event\.waitUntil\(clearPages\(\)\)/.test(sw)
+    && /caches\.delete\(PAGES\)/.test(sw), "sw.js clears every kept page when the sign-in page opens or a code signs in");
+  for (const path of ["/", "/clima", "/clima/aqui", "/mas/tasa", "/mas/miembro", "/mas/semana"]) {
+    const html = (await send(path, { cookie })).text;
+    const bar = tag(html, "p", { id: "off" });
+    check(Boolean(bar) && / hidden=""/.test(bar) && /(Sin conexión · guardado a las|Offline · saved at) \d{1,2}(:\d{2})?(am|pm)/.test(html),
+      `${label} ${path}: carries the offline line with its saved time, hidden while online`);
+  }
+
+  // Modo noche: the class follows the setting; refused from elsewhere or unknown; combines with Letra grande.
+  {
+    const cls = (text) => (/<html[^>]*\bclass="([^"]*)"/.exec(text)?.[1] ?? "").split(" ").filter(Boolean).sort().join(" ");
+    const page = async (p = "/mas") => (await send(p, { cookie })).text;
+    const set = (theme, extra = {}) => send("/api/theme", { method: "POST", cookie, form: { theme }, ...extra });
+    const before = DB ? (await q("select theme from clients where code = $1", [code])).rows[0].theme : "auto";
+    const dark = await set("dark");
+    const d1 = await page();
+    check(dark.status === 303 && dark.location.startsWith("/mas") && cls(d1) === "dark" && /value="dark" class="on" aria-pressed="true"/.test(d1),
+      `${label}: choosing Oscuro gives <html class="dark"> and marks it`, `${dark.status} ${cls(d1)}`);
+    check(cls(await page("/")) === "dark" && cls(await page("/clima")) === "dark" && /html\.dark\{--ink:/.test(d1), `${label}: Oscuro applies on home and Clima, with the dark tokens inline`);
+    await set("light");
+    check(cls(await page()) === "light", `${label}: choosing Claro gives <html class="light">`);
+    const foreign = await set("dark", { origin: "https://evil.example" });
+    check(foreign.status === 403 && cls(await page()) === "light", `${label}: a cross-origin theme post is refused and changes nothing`, String(foreign.status));
+    const bad = await set("sepia");
+    check(bad.status === 400 && cls(await page()) === "light", `${label}: an unknown theme is refused and changes nothing`, String(bad.status));
+    await set("auto");
+    check(cls(await page()) === "", `${label}: Automático leaves the look to the phone`);
+    await send("/api/text-size", { method: "POST", cookie, form: { size: "large" } });
+    await set("dark");
+    check(cls(await page()) === "big dark", `${label}: Letra grande and Oscuro combine`);
+    await send("/api/text-size", { method: "POST", cookie, form: { size: "normal" } });
+    await set(before);
+    check(!DB || (await q("select theme from clients where code = $1", [code])).rows[0].theme === before, `${label}: the member's own theme is put back`);
+  }
+
+  if (!DB) { console.log(`SKIP ${label}: lottery check, Tu semana and gallery vs database (set DATABASE_URL)`); return; }
+
+  // ¿Salió mi número?: every game of their country, held to app.lottery_check.
+  const games = (await q("select app.lottery_checkable_games(id) as g from clients where code = $1", [code])).rows[0].g ?? [];
+  const names = [...new Set([...games.map((g) => g.game), ...(await q("select name from lottery_games")).rows.map((r) => r.name)])];
+  const noNames = (html) => names.reduce((text, n) => text.split(esc(n)).join(" "), visible(html).replace(/<[^>]+>/g, " "));
+  const base = (await send("/mas/loteria", { cookie })).text;
+  check(!LOTTO_WORDS.test(noNames(base)), `${label} /mas/loteria: no prize, odds, "hot numbers" or buying words`, LOTTO_WORDS.exec(noNames(base))?.[0]);
+  for (const g of games.slice(0, 4)) {
+    const latest = (await q("select numbers from lottery_results where game_id = $1 order by draw_date desc, draw_time_local desc nulls last limit 1", [g.game_id])).rows[0]?.numbers;
+    let nums;
+    if (g.match === "digits") {
+      nums = latest && latest.length === g.pick_min ? [...latest].reverse().map(Number) : Array.from({ length: g.pick_min }, (_, i) => (i + 1) % 10);
+    } else {
+      nums = [...new Set((latest ?? []).map(Number).filter((n) => n >= g.min && n <= g.max))].slice(0, g.pick_min);
+      for (let v = g.min; nums.length < g.pick_min; v++) if (!nums.includes(v)) nums.push(v);
+    }
+    const width = g.max >= 1000 ? String(g.max).length : 1;
+    const html = (await send(`/mas/loteria?g=${g.game_id}&${nums.map((n) => `n=${String(n).padStart(width, "0")}`).join("&")}`, { cookie })).text;
+    const block = sectionAt(html, `g${g.game_id}`);
+    const c = (await q("select app.lottery_check(id, $2, $3::int[]) as c from clients where code = $1", [code, g.game_id, nums])).rows[0].c;
+    const tl = `${label} lottery ${g.game}`;
+    check(!LOTTO_WORDS.test(noNames(block)), `${tl}: no prize, odds or buying words`);
+    if (c.error) {
+      check(block.includes('class="err" role="alert"') && !block.includes('class="tile draw"'), `${tl}: a refusal is shown, with no comparison`, c.error);
+    } else if (c.state === "stale") {
+      check(block.includes('class="stale"') && !block.includes('class="tile draw"'), `${tl}: results not up to date say so, with no comparison`);
+    } else {
+      const chunks = block.split('<div class="tile draw"').slice(1);
+      check(chunks.length === c.draws.length && chunks.every((ch, i) => attr(`<div${ch.slice(0, ch.indexOf(">") + 1)}`, "data-matched") === String(c.draws[i].matched_count)),
+        `${tl}: every official draw of the week with the database's number of matches`, `${chunks.length} vs ${c.draws.length}`);
+      check(chunks.every((ch, i) => {
+        const d = c.draws[i];
+        const want = g.match === "digits" ? (d.positions ?? []).filter(Boolean).length : d.numbers.filter((n) => nums.includes(Number(n))).length;
+        return (ch.match(/<b class="hit">/g) ?? []).length === want;
+      }), `${tl}: the matching official numbers are the ones highlighted`);
+      if (g.match === "digits") {
+        check(chunks.every((ch, i) => ch.includes('class="anyo"') === Boolean(c.draws[i].same_digits_any_order && !(c.draws[i].positions ?? []).every(Boolean))),
+          `${tl}: "the same digits in another order" shows exactly when the database says so`);
+      }
+      check(chunks.every((ch) => /(Verificado|Verified): /.test(ch) && /href="https?:\/\//.test(ch)), `${tl}: every draw shows when it was verified and its source`);
+    }
+  }
+  const takesMore = games[0];
+  if (takesMore) {
+    const html = (await send(`/mas/loteria?g=${takesMore.game_id}&n=${takesMore.max + 1}`, { cookie })).text;
+    check(sectionAt(html, `g${takesMore.game_id}`).includes('class="err" role="alert"'), `${label}: numbers a game does not take are refused, saying what it takes`);
+  }
+
+  // Tu semana: every part exactly when week_summary has it.
+  const wk = (await q("select app.week_summary(id) as w from clients where code = $1", [code])).rows[0].w;
+  const semana = (await send("/mas/semana", { cookie })).text;
+  for (const [part, value] of [["opened", wk.opened], ["rate", wk.rate], ["team", wk.team], ["weather", wk.weather],
+                               ["badges", wk.badges?.length ? wk.badges : null], ["holidays", wk.holidays_ahead?.length ? wk.holidays_ahead : null],
+                               ["lottery", wk.lottery?.length ? wk.lottery : null]]) {
+    check(semana.includes(`data-part="${part}"`) === Boolean(value), `${label} /mas/semana: "${part}" shows exactly when the week has it`);
+  }
+  if (wk.opened) {
+    check(tagsOf(semana, "li", "wc [a-z]+").map((t) => attr(t, "data-open")).join() === wk.opened.weekdays.map((v) => (v === null ? "" : String(v))).join(),
+      `${label} /mas/semana: the circles are the days opened, not opened and to come`);
+  }
+  if (wk.rate) check(tagsOf(semana, "rect", "b( on)?").length === wk.rate.points.length, `${label} /mas/semana: one bar per stored rate day this week`);
+  if (wk.lottery) check(wk.lottery.every((l) => l.numbers.every((n) => semana.includes(`<b>${n}</b>`))), `${label} /mas/semana: the week's official numbers are shown`);
+  if (wk.weather) {
+    const wpart = semana.slice(semana.indexOf('data-part="weather"'));
+    check(attr(tag(wpart, "span", { class: "hi" }), "data-t") === String(wk.weather.highest.temp_max) && attr(tag(wpart, "span", { class: "lo" }), "data-t") === String(wk.weather.lowest.temp_max)
+      && wpart.includes(`${esc(wk.weather.label)}</h2>`), `${label} /mas/semana: the forecast's highest and lowest, labelled a forecast`);
+  }
+  const home = (await send("/", { cookie })).text;
+  const teaser = /<a class="tile weekt"[^>]*>([\s\S]*?)<\/a>/.exec(home);
+  check(Boolean(teaser) === Boolean(wk.opened), `${label}: home's "Tu semana" shows exactly when the week has opened days`);
+  if (teaser) check([...teaser[1].matchAll(/<i class="([a-z]+)"/g)].map((m) => m[1]).join() === wk.opened.weekdays.map((v) => (v === true ? "up" : v === false ? "no" : "nd")).join(),
+    `${label}: home's "Tu semana" dots are the week's days`);
+
+  // Galería: each town's photos 2-6 exactly, each credited as town_gallery says; unknown ranks are 404.
+  const clima = (await send("/clima", { cookie })).text;
+  for (const id of [...clima.matchAll(/<section id="t(\d+)"/g)].map((m) => m[1])) {
+    const strip = ((await q("select app.town_gallery($1::bigint) as g", [id])).rows[0].g ?? []).filter((p) => p.rank > 1);
+    const shownRanks = [...clima.matchAll(new RegExp(`src="/photo/${id}/(\\d)"`, "g"))].map((m) => Number(m[1]));
+    check(shownRanks.join() === strip.map((p) => p.rank).join(), `${label} /clima: town ${id} shows exactly its gallery photos`, `${shownRanks} vs ${strip.map((p) => p.rank)}`);
+    for (const p of strip) {
+      const credit = new RegExp(`<small class="credit" data-photo="${id}/${p.rank}">([\\s\\S]*?)</small>`).exec(clima)?.[1] ?? "";
+      check(credit.includes(`>${esc(p.author)}<`) && credit.includes(`href="${esc(p.source_page_url)}"`) && credit.includes(esc(p.license)),
+        `${label} /clima: gallery photo ${id}/${p.rank} carries its own credit`);
+    }
+    const missing = [2, 3, 4, 5, 6].find((r) => !strip.some((p) => p.rank === r));
+    if (missing) {
+      const r = await send(`/photo/${id}/${missing}`);
+      check(r.status === 404 && r.headers["x-content-type-options"] === "nosniff", `/photo/${id}/${missing} (no such photo) is 404`, String(r.status));
+    }
+  }
+  check((await send("/photo/1/9")).status === 404 && (await send("/photo/abc/2")).status === 404, "a gallery rank that cannot exist is 404");
+  const hero = /<div class="ht">(<a [^>]*>)/.exec(home)?.[1];
+  check(!home.includes('<div class="ht">') || /href="\/clima#t\d+"/.test(hero ?? ""), `${label}: the home photo opens the town's photos on Clima`);
 }
 
 // "Ahora" (0040): shown only with a temperature and an observation time, the
@@ -706,7 +861,7 @@ check(login.status === 303 && Boolean(login.cookie), "the code signs in", `${log
 const cookie = login.cookie;
 await welcome(cookie, CODE, CODE);
 
-for (const path of ["/", "/futbol", "/clima/aqui", "/mas", "/mas/miembro", "/mas/tasa", "/mas/feriados", "/mas/escuela", "/mas/consulado",
+for (const path of ["/", "/futbol", "/clima/aqui", "/mas", "/mas/miembro", "/mas/semana", "/mas/tasa", "/mas/feriados", "/mas/escuela", "/mas/consulado",
   "/mas/emergencias", "/mas/transporte", "/mas/loteria", "/mas/avisos",
   "/setup/municipality?edit=1", "/setup/watch?edit=1", "/setup/segment?edit=1", "/setup/kids?edit=1", "/setup/corridor?edit=1"]) {
   await page(path, cookie);
@@ -718,6 +873,7 @@ await arrival(cookie, CODE, CODE);
 await round2(cookie, CODE, CODE);
 await money(cookie, CODE, CODE);
 await workday(cookie, CODE, CODE);
+await round5(cookie, CODE, CODE);
 await teamVisuals(cookie, CODE);
 await richer(cookie, CODE);
 for (const path of ["/crest/999999999999", "/crest/abc", "/photo/999999999999", "/photo/abc", "/league-crest/999999999999", "/league-crest/abc"]) {
@@ -817,6 +973,7 @@ if (process.env.CREST_CODE) {
   await round2(k.cookie, process.env.CREST_CODE, process.env.CREST_CODE);
   await money(k.cookie, process.env.CREST_CODE, process.env.CREST_CODE);
   await workday(k.cookie, process.env.CREST_CODE, process.env.CREST_CODE);
+  await round5(k.cookie, process.env.CREST_CODE, process.env.CREST_CODE);
 }
 
 // A client whose paid period has ended: the expiry screen, and only the

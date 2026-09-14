@@ -32,30 +32,39 @@ Hoy's budgets were raised on 2026-09-14 (from 15 KB cold and 5 KB warm) for the
 round-1 look the owner asked for: pictures, motion and bigger type cost about
 1.5 KB more CSS and markup per page, while the pictures themselves are cached files.
 
-Measured 2026-09-14 after round 4 ("Tu día de trabajo"; local, demo client
+Measured 2026-09-14 after round 5 ("Siempre contigo"; local, demo client
 DEMXHN42, the fullest home). Every warm page keeps at least 1 KB under its budget:
 
 | Hoy page | Bytes |
 | --- | --- |
-| Cold: sign-in plus home (redirect, login, sign-in, home, sw.js, manifest, open ping) | 22,109 |
-| Home (warm) | 10,767 |
-| Tasa, 3 meses | 10,695 |
-| Tasa, Mes | 10,466 |
-| Clima | 10,099 |
-| Hoy en Leamington | 9,974 |
-| Tasa, Semana | 9,908 |
-| Feriados | 8,788 |
-| Miembro | 8,702 |
-| Fútbol | 8,584 |
-| Transporte | 8,341 |
-| Consulado | 8,299 |
-| Emergencias | 8,004 |
-| Más | 7,854 |
-| Lotería | 7,615 |
-| Setup step | 7,602 |
-| Notificaciones | 7,487 |
-| Escuela | 7,310 |
-| Illustrations, largest | 523 gzipped (badge-temporada.svg); first load of the 33 used: 35,590 |
+| Cold: sign-in plus home (redirect, login, sign-in, home, sw.js, manifest, open ping) | 22,743 |
+| Home (warm) | 10,892 |
+| Tasa, 3 meses | 10,843 |
+| Tasa, Mes | 10,624 |
+| Clima | 10,494 |
+| Hoy en Leamington | 10,115 |
+| Tu semana | 9,292 |
+| Feriados | 8,898 |
+| Miembro | 8,782 |
+| Fútbol | 8,606 |
+| Lotería (with a number check) | 8,554 |
+| Transporte | 8,331 |
+| Lotería | 8,309 |
+| Consulado | 8,291 |
+| Más | 8,243 |
+| Emergencias | 7,994 |
+| Setup step | 7,599 |
+| Notificaciones | 7,479 |
+| Escuela | 7,303 |
+| Illustrations, largest | 523 gzipped (badge-temporada.svg); first load of the 36 used: 38,438 |
+
+Our inline JavaScript: home 1,676 bytes (the open script and the expiry
+script), the other kept pages 338 bytes (the expiry script): within the 2 KB
+budget.
+
+Offline copies drop what is over: every hour column and next-hours cell expires
+at the end of its hour, and the hourly line with the first hour (dots and
+labels stay in their own columns).
 
 Every page is measured with `scripts/measure.mjs` and the numbers are reported.
 
@@ -324,6 +333,42 @@ and keeps every page within a 360 px screen.
     and the detail page, valid until the change.
   - **Luz del día:** today's daylight in Leamington from sunrise and sunset
     ("12 h 20 min", "3 min menos que ayer") and tomorrow's sunrise.
+- **Siempre contigo (round 5, 0045, 0046).**
+  - **¿Salió mi número?** (`/mas/loteria`): for each game of their country with
+    a verified pick format, a small GET form sized by the game's picks and range
+    (a 5-digit ticket keeps its leading zeros). Their numbers against the
+    official results of the last 7 days (`app.lottery_check`): every draw with
+    its official balls dropping in, the matching ones ringed in indigo with a
+    check (by position for digit games), "Coinciden 3 números", "the same
+    digits in another order" where the operator sells that play, "Verificado"
+    and the source. Results only (CLAUDE.md): never "ganaste", a prize, odds,
+    "hot numbers" or a link to buy. A game whose results are not up to date says
+    so and is not compared; a refusal says what the game takes.
+  - **Tu semana** (`/mas/semana`, from Más and home's teaser): "Semana del 14 al
+    20 de septiembre"; seven circles for the days they opened Hoy (filled),
+    missed (outlined) and to come (dashed); the reference rate's week with its
+    high, low and neutral change; then, each only when real: badges earned,
+    holidays ahead, the latest official lottery results, their team's results,
+    and Leamington's forecast highest and lowest, labelled "pronóstico".
+  - **Galería:** photos 2-6 of each town (`/photo/{id}/{rank}`, exactly the
+    headers of `/photo/{id}`) as a scroll-snap strip under the town's photo on
+    Clima, lazy with fixed sizes, each with its own credit. The home photo opens
+    the town on Clima.
+  - **Sin internet:** the service worker keeps the latest copy of Inicio, Clima,
+    Hoy en Leamington, Tasa, Miembro and Tu semana (network first). Offline it
+    serves the kept copy and reveals the page's own hidden line "Sin conexión ·
+    guardado a las 10:32am"; the pages' inline script still drops everything past
+    its `data-until` (Ahora, hours, air, clocks, warnings, forecasts). Opening
+    the sign-in page, or signing in, clears every kept page. Our inline JS: home
+    1,676 bytes, Clima and the other kept pages 338 bytes.
+  - **Modo noche:** dark tokens (deep navy ground, dark indigo cards, light text
+    at AA, the primary kept readable, links brightened, photos slightly dimmed;
+    the sky hero, gauges and charts keep their colours) under
+    `prefers-color-scheme: dark` unless the member chose "Claro" (`html.light`),
+    and always with "Oscuro" (`html.dark`). Tema in Más offers Automático / Claro
+    / Oscuro with previews (`/api/theme`). Combines with `html.big`.
+- **Page-only rules leave APP_CSS:** Más's grid and settings, login and expiry,
+  setup choices and Clima's gallery are inlined by those pages alone.
 - **Feriados, shorter:** the next 8 of the chosen filter, the rest under "Ver
   más feriados".
 - **Tasa at 3 meses:** no day table (the line, high and low show the window);

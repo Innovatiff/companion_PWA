@@ -11,7 +11,7 @@ import type { GetServerSideProps } from "next";
 import { db } from "../../lib/db";
 import { loadClient, recordView } from "../../lib/client";
 import { t } from "../../lib/t";
-import { PageHead, TabBar } from "../../lib/frame";
+import { OfflineBar, PageHead, TabBar } from "../../lib/frame";
 import { EXPIRE_SCRIPT } from "../../lib/open-script";
 import { AhoraCard, nowArt, nowLive, type Now } from "../../lib/now";
 import { Art, LEAMINGTON } from "../../lib/ui";
@@ -22,7 +22,7 @@ export const config = { unstable_runtimeJS: false };
 
 type Props = {
   lang: "es" | "en"; at: string; now: Now | null; hourly: Hourly | null; sun: SunHeat | null; air: Air | null;
-  homeTz: string | null; homeName: string | null;
+  homeTz: string | null; homeName: string | null; renderedAt: string; tz: string;
 };
 
 export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
@@ -45,12 +45,12 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
   return {
     props: {
       lang: client.language, at, now: r.n ?? null, hourly: r.h ?? null, sun: r.s ?? null, air: r.a ?? null,
-      homeTz: r.home_tz ?? null, homeName: client.municipality,
+      homeTz: r.home_tz ?? null, homeName: client.municipality, renderedAt: new Date().toISOString(), tz: client.timezone,
     },
   };
 };
 
-export default function Aqui({ lang, at, now, hourly, sun, air, homeTz, homeName }: Props) {
+export default function Aqui({ lang, at, now, hourly, sun, air, homeTz, homeName, renderedAt, tz }: Props) {
   const when = new Date(at);
   const current = nowLive(now, Date.now()) ? now : null;
   return (
@@ -61,6 +61,7 @@ export default function Aqui({ lang, at, now, hourly, sun, air, homeTz, homeName
         <style dangerouslySetInnerHTML={{ __html: AQUI_CSS }} />
       </Head>
       <main>
+        <OfflineBar at={renderedAt} tz={tz} lang={lang} />
         <PageHead lang={lang} title={t(lang, "Hoy en Leamington", "Today in Leamington")} art={current ? nowArt(current) : "partly-day"} back="/clima" />
         {current && <AhoraCard n={current} lang={lang} tz={LEAMINGTON.timezone} />}
         <DstCard at={when} lang={lang} homeTz={homeTz} homeName={homeName} />

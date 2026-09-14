@@ -13,6 +13,7 @@ import { loadClient, recordView } from "../../lib/client";
 import { t } from "../../lib/t";
 import { PageHead, TabBar } from "../../lib/frame";
 import { DateBlock, FLAG, daysBetween } from "../../lib/ui";
+import { FERIADOS_CSS } from "../../lib/page-css";
 
 export const config = { unstable_runtimeJS: false };
 
@@ -72,6 +73,7 @@ export default function Feriados({ lang, country, today, merged, holidays, ontar
       <Head>
         <title>{`${t(lang, "Feriados", "Holidays")} · Hoy`}</title>
         <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+        <style dangerouslySetInnerHTML={{ __html: FERIADOS_CSS }} />
       </Head>
       <main>
         <PageHead lang={lang} title={t(lang, "Feriados", "Public holidays")} art="canada" back />

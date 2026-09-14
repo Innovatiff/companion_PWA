@@ -3,7 +3,7 @@
  * and the section page header. Plain links and inline stroke icons; no client
  * JS. Illustrations are cached files from /art (see lib/ui.tsx, Art).
  */
-import type { Lang } from "@leamington/shared/src/format.ts";
+import { formatTime12, type Lang } from "@leamington/shared/src/format.ts";
 import { t } from "./t";
 import { Art, type ArtName } from "./ui";
 
@@ -40,6 +40,18 @@ export function TabBar({ current, lang }: { current: Tab; lang: Lang }) {
         </a>
       ))}
     </nav>
+  );
+}
+
+/**
+ * "Sin conexión · guardado a las 10:32am": rendered hidden with the page's own
+ * render time; the service worker reveals it only on a kept copy served offline.
+ */
+export function OfflineBar({ at, tz, lang }: { at: string; tz: string; lang: Lang }) {
+  return (
+    <p id="off" className="offbar" role="status" hidden>
+      {t(lang, `Sin conexión · guardado a las ${formatTime12(at, tz)}`, `Offline · saved at ${formatTime12(at, tz)}`)}
+    </p>
   );
 }
 

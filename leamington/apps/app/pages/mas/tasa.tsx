@@ -16,7 +16,7 @@ import { formatDate } from "@leamington/shared/src/format.ts";
 import { db } from "../../lib/db";
 import { loadClient, recordView } from "../../lib/client";
 import { t } from "../../lib/t";
-import { TabBar } from "../../lib/frame";
+import { OfflineBar, TabBar } from "../../lib/frame";
 import { EXPIRE_SCRIPT } from "../../lib/open-script";
 import { Art, FLAG, Pic } from "../../lib/ui";
 import {
@@ -37,7 +37,7 @@ const ERRORS: Record<string, [string, string]> = {
 
 type Props = {
   lang: "es" | "en"; r: 7 | 30 | 90; h: FxHistory; rem: Reminder | null; start: number | null; pushOff: boolean;
-  calc: { local: boolean; raw: string | null }; e: string | null; ok: string | null;
+  calc: { local: boolean; raw: string | null }; e: string | null; ok: string | null; renderedAt: string; tz: string;
 };
 
 export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
@@ -68,12 +68,12 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
   return {
     props: {
       lang: client.language, r, h, rem, start, pushOff: push.rows[0].n === 0,
-      calc: { local, raw: typeof raw === "string" ? raw : null }, e, ok,
+      calc: { local, raw: typeof raw === "string" ? raw : null }, e, ok, renderedAt: new Date().toISOString(), tz: client.timezone,
     },
   };
 };
 
-export default function Tasa({ lang, r, h, rem, start, pushOff, calc, e, ok }: Props) {
+export default function Tasa({ lang, r, h, rem, start, pushOff, calc, e, ok, renderedAt, tz }: Props) {
   const cur = h.currency;
   const latest = h.latest;
   const rate = latest ? Number(latest.rate) : null;
@@ -107,6 +107,7 @@ export default function Tasa({ lang, r, h, rem, start, pushOff, calc, e, ok }: P
         <style dangerouslySetInnerHTML={{ __html: TASA_CSS }} />
       </Head>
       <main>
+        <OfflineBar at={renderedAt} tz={tz} lang={lang} />
         <header className="ph">
           <a className="back" href="/mas" aria-label={t(lang, "Volver a Más", "Back to More")}>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>

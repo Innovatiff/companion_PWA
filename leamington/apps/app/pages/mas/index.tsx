@@ -12,6 +12,7 @@ import { loadClient, recordView, type Client } from "../../lib/client";
 import { t } from "../../lib/t";
 import { PageHead, TabBar } from "../../lib/frame";
 import { FLAG, Pic, type ArtName } from "../../lib/ui";
+import { MAS_CSS } from "../../lib/page-css";
 
 export const config = { unstable_runtimeJS: false };
 
@@ -58,6 +59,7 @@ export default function Mas({ client, x, e, ok }: Props) {
     ["/mas/loteria", "lottery", "Lotería", "Lottery", x?.lottery?.game ?? null],
     ["/mas/avisos", "bell", "Notificaciones", "Notifications", null],
     ["/setup/municipality?edit=1", "settings", "Mis ajustes", "My settings", client.municipality],
+    ["/mas/semana", "week", "Tu semana", "Your week", null],
   ];
   // The school calendar leads for parents; everyone can still find it.
   if (client.hasKids) links.unshift(links.splice(2, 1)[0]);
@@ -67,6 +69,7 @@ export default function Mas({ client, x, e, ok }: Props) {
       <Head>
         <title>{`${t(lang, "Más", "More")} · Hoy`}</title>
         <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+        <style dangerouslySetInnerHTML={{ __html: MAS_CSS }} />
       </Head>
       <main>
         <PageHead lang={lang} title={t(lang, "Más", "More")} art="crown" />
@@ -94,6 +97,18 @@ export default function Mas({ client, x, e, ok }: Props) {
             <small>{t(lang, "Déjala vacía para borrarla.", "Leave it empty to clear it.")}</small>
           </section>
         )}
+        {/* Modo noche (0046): three previews; the current one is marked. */}
+        <section id="tema" className="card letra">
+          <h2>{t(lang, "Tema", "Theme")}</h2>
+          <form method="post" action="/api/theme" className="aa th">
+            {(["auto", "light", "dark"] as const).map((v) => (
+              <button key={v} type="submit" name="theme" value={v} className={client.theme === v ? "on" : "secondary"} aria-pressed={client.theme === v}>
+                <span className={`sw ${v}`} aria-hidden="true" />
+                {v === "auto" ? t(lang, "Automático", "Automatic") : v === "light" ? t(lang, "Claro", "Light") : t(lang, "Oscuro", "Dark")}
+              </button>
+            ))}
+          </form>
+        </section>
         {/* Letra grande: two big previews; the current one is marked. */}
         <section id="letra" className="card letra">
           <h2>{t(lang, "Tamaño de letra", "Text size")}</h2>

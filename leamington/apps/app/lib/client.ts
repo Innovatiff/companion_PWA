@@ -21,6 +21,8 @@ export type Client = {
   /** 0041: seasonal members can record the day they arrived. */
   segment: "seasonal" | "settled";
   arrivalDate: string | null;
+  /** Modo noche (0046): auto follows the phone. */
+  theme: "auto" | "light" | "dark";
 };
 
 /** Whether a paid period covers today, and what the expiry screen shows (0029). */
@@ -47,7 +49,7 @@ export async function loadClient(ctx: GetServerSidePropsContext, { allowUnpaid =
   if (!id) return { redirect: { destination: "/login", permanent: false } };
   const { rows } = await db().query(
     `select id, language, country, timezone, has_kids, municipality, split_part(full_name, ' ', 1) as first_name, text_size,
-            segment::text as segment, to_char(arrival_date, 'YYYY-MM-DD') as arrival_date,
+            segment::text as segment, to_char(arrival_date, 'YYYY-MM-DD') as arrival_date, to_jsonb(clients)->>'theme' as theme,
             app.client_access(id) as access
        from clients where id = $1 and active`, [id]);
   const r = rows[0];
@@ -57,12 +59,14 @@ export async function loadClient(ctx: GetServerSidePropsContext, { allowUnpaid =
   }
   if (!r.access.paid && !allowUnpaid) return { redirect: { destination: "/", permanent: false } };
   (ctx.req as { appLang?: string; appTextSize?: string }).appLang = r.language;
-  (ctx.req as { appTextSize?: string }).appTextSize = r.text_size;
+  (ctx.req as { appTextSize?: string; appTheme?: string }).appTextSize = r.text_size;
+  (ctx.req as { appTheme?: string }).appTheme = r.theme;
   return {
     client: {
       id: r.id, language: r.language, country: r.country, timezone: r.timezone, hasKids: r.has_kids,
       municipality: r.municipality, firstName: r.first_name, textSize: r.text_size === "large" ? "large" : "normal",
       segment: r.segment === "settled" ? "settled" : "seasonal", arrivalDate: r.arrival_date ?? null,
+      theme: r.theme === "light" || r.theme === "dark" ? r.theme : "auto",
     },
     access: r.access,
   };

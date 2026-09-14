@@ -1,15 +1,26 @@
-// Offline cache of the last home screen.
+// Hoy's service worker: pages that work without internet.
 //
-// Network first: on a working connection the person always gets a fresh
-// render. The cached copy is used only when the network fails, or has not
-// answered within 4 seconds. Each line in that copy carries its own expiry, and
-// the page removes expired lines rather than show them stale.
+// Saved pages (Inicio, Clima, Hoy en Leamington, Tasa, Miembro, Tu semana):
+// network first. On a working connection the member always gets a fresh render,
+// and that render is kept. When the network fails, or has not answered within 4
+// seconds, the last kept copy is served with its "Sin conexión · guardado a las
+// ..." line revealed (the page renders it hidden, with its own render time).
+// Every time-bound element in those pages carries data-until, and the pages'
+// inline script removes whatever has expired, so a saved copy never shows an old
+// "Ahora", hour, air reading or clock as current.
 //
-// Nothing is precached on install, so installing the worker costs no bytes. The
-// manifest and icons are cached the first time the browser asks for them.
+// Other pages are never kept: offline, they say so plainly.
+//
+// Privacy: visiting the sign-in page, or signing in, clears every kept page, so
+// a shared phone never shows the previous member's pages.
+//
+// Nothing is precached on install. The manifest, icons and illustrations are
+// cached the first time the browser asks for them (illustrations are versioned).
 
-const CACHE = "home-v1";
-const STATIC = ["/manifest.webmanifest", "/icon-192.png", "/icon-512.png"];
+const STATIC = "static-v2";
+const PAGES = "pages-v1";
+const SAVED = ["/", "/clima", "/clima/aqui", "/mas/tasa", "/mas/miembro", "/mas/semana"];
+const STATIC_PATHS = ["/manifest.webmanifest", "/icon-192.png", "/icon-512.png"];
 const TIMEOUT_MS = 4000;
 
 self.addEventListener("install", () => self.skipWaiting());
@@ -17,7 +28,7 @@ self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => k !== STATIC && k !== PAGES).map((k) => caches.delete(k))))
       .then(() => self.clients.claim()),
   );
 });
@@ -25,28 +36,68 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   const url = new URL(req.url);
-  if (req.method !== "GET" || url.origin !== self.location.origin) return;
+  if (url.origin !== self.location.origin) return;
 
-  if (req.mode === "navigate" && url.pathname === "/") {
-    event.respondWith(home(req));
-  } else if (req.mode === "navigate") {
-    // Section pages are never cached: they have no per-line expiry, and an old
-    // warning list must not be shown as the list. Offline, say so plainly.
+  // Signing in (any code) starts from nothing kept.
+  if (req.method === "POST" && url.pathname === "/api/login") {
+    event.waitUntil(clearPages());
+    return;
+  }
+  if (req.method !== "GET") return;
+
+  if (req.mode === "navigate" && url.pathname === "/login") {
+    event.waitUntil(clearPages());
     event.respondWith(fetch(req).catch(() => offline()));
-  } else if (STATIC.includes(url.pathname) || url.pathname.startsWith("/art/")) {
-    // Illustrations are versioned (?v=), so a cached copy is never out of date,
-    // and an offline home screen keeps its pictures.
+  } else if (req.mode === "navigate" && SAVED.includes(url.pathname)) {
+    event.respondWith(saved(req, url));
+  } else if (req.mode === "navigate") {
+    event.respondWith(fetch(req).catch(() => offline()));
+  } else if (STATIC_PATHS.includes(url.pathname) || url.pathname.startsWith("/art/")) {
     event.respondWith(staticAsset(req));
   }
 });
 
+function clearPages() {
+  return caches.delete(PAGES);
+}
+
 function offline() {
   const html = '<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
-    '<title>Hoy</title><body style="margin:0;font:18px/1.45 system-ui,sans-serif;color:#10231c;background:#f6f3ea">' +
+    '<title>Hoy</title><body style="margin:0;font:18px/1.45 system-ui,sans-serif;color:#1b1f3b;background:#eef0fb">' +
     '<main style="max-width:34rem;margin:0 auto;padding:1rem"><h1 style="font-size:1.55rem">Sin conexión</h1>' +
     '<p>Esta página necesita internet. <a href="/">Inicio</a> muestra lo último que guardamos.</p>' +
     '<p><small>No connection. This page needs the internet. <a href="/">Home</a> shows what we saved last.</small></p></main>';
   return new Response(html, { status: 503, headers: { "Content-Type": "text/html; charset=utf-8" } });
+}
+
+// A kept copy, with its offline line revealed.
+async function marked(res) {
+  const text = (await res.text()).replace(/(<p[^>]*\bid="off"[^>]*?) hidden=""/, "$1");
+  return new Response(text, { status: 200, headers: { "Content-Type": "text/html; charset=utf-8" } });
+}
+
+async function saved(req, url) {
+  const cache = await caches.open(PAGES);
+  // The page as it opens (no query string) is the one kept: ?r=90 or a
+  // calculation is fetched fresh and falls back to the plain page offline.
+  const key = url.pathname;
+  const network = fetch(req).then((res) => {
+    if (res.ok && res.type === "basic" && !res.redirected && url.search === "") cache.put(key, res.clone());
+    return res;
+  });
+  network.catch(() => {});
+
+  const timeout = new Promise((resolve) => setTimeout(resolve, TIMEOUT_MS, null));
+  try {
+    const first = await Promise.race([network, timeout]);
+    if (first) return first;
+    const kept = await cache.match(key);
+    return kept ? marked(kept) : network;
+  } catch (err) {
+    const kept = await cache.match(key);
+    if (kept) return marked(kept);
+    return offline();
+  }
 }
 
 // Push. The sender (services/ingest) sends {title, body, url, tag, queue}.
@@ -85,29 +136,8 @@ self.addEventListener("notificationclick", (event) => {
   );
 });
 
-async function home(req) {
-  const cache = await caches.open(CACHE);
-  const network = fetch(req).then((res) => {
-    // Only a real home screen is cached; a redirect to /login is not.
-    if (res.ok && res.type === "basic" && !res.redirected) cache.put("/", res.clone());
-    return res;
-  });
-  network.catch(() => {});
-
-  const timeout = new Promise((resolve) => setTimeout(resolve, TIMEOUT_MS, null));
-  try {
-    const first = await Promise.race([network, timeout]);
-    if (first) return first;
-    return (await cache.match("/")) || network;
-  } catch (err) {
-    const cached = await cache.match("/");
-    if (cached) return cached;
-    throw err;
-  }
-}
-
 async function staticAsset(req) {
-  const cache = await caches.open(CACHE);
+  const cache = await caches.open(STATIC);
   const hit = await cache.match(req);
   if (hit) return hit;
   const res = await fetch(req);

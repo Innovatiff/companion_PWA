@@ -332,3 +332,41 @@ select lp.id, v.provider::forecast_provider, now() - interval '20 minutes',
  where lp.key = 'leamington'
 on conflict (place_id, provider) do update
   set observed_at = excluded.observed_at, us_aqi = excluded.us_aqi, pm2_5 = excluded.pm2_5, fetched_at = now();
+
+-- LOCAL ONLY, round 5 (0045). Run from the repository root: the gallery images are
+-- read from apps/app/scripts/demo-gallery with psql's \set and base64.
+--   * Gallery photos 2-3 for La Ceiba and 2 for Morelia: generated placeholder
+--     images labelled "LOCAL DEMO · NOT A PHOTO", credited as local demo (CC0).
+--   * This week's Honduran draws (La Diaria and Jugá 3 today) and a finished
+--     Motagua match earlier today, so Tu semana has lottery and team parts.
+-- Invented, like everything above.
+\set demo_gallery_1 `base64 < apps/app/scripts/demo-gallery/demo-1.jpg | tr -d '\n'`
+\set demo_gallery_2 `base64 < apps/app/scripts/demo-gallery/demo-2.jpg | tr -d '\n'`
+insert into municipality_gallery_photos (municipality_id, rank, content_type, bytes, width, height, sha256, file_title,
+                                         source_page_url, article_url, author, license, license_url)
+select m.id, v.rank, 'image/jpeg', decode(v.b64, 'base64'), 480, 360, encode(sha256(decode(v.b64, 'base64')), 'hex'), v.title,
+       'https://example.org/hoy-local-demo', 'https://example.org/hoy-local-demo', 'Hoy local demo (not a photo)', 'CC0 1.0',
+       'https://creativecommons.org/publicdomain/zero/1.0/'
+  from (values ('HN', 'La Ceiba', 2, :'demo_gallery_1', 'File:Hoy local demo 1.jpg'),
+               ('HN', 'La Ceiba', 3, :'demo_gallery_2', 'File:Hoy local demo 2.jpg'),
+               ('MX', 'Morelia', 2, :'demo_gallery_1', 'File:Hoy local demo 1.jpg')) v(country, name, rank, b64, title)
+  join municipalities m on m.country = v.country::country_code and m.name = v.name
+  join municipality_photos p on p.municipality_id = m.id
+on conflict (municipality_id, rank) do update set bytes = excluded.bytes, sha256 = excluded.sha256, fetched_at = now();
+
+insert into lottery_results (game_id, draw_date, draw_time_local, numbers, source_url, verified_at)
+select g.id, (now() at time zone g.timezone)::date, r.t::time, r.n::text[], g.results_url, now()
+  from lottery_games g
+  join (values ('HN', 'Jugá 3', '11:00', '{7,2,8}'), ('HN', 'La Diaria', '11:00', '{12}')) r(country, name, t, n)
+    on g.country = r.country::country_code and g.name = r.name and g.active
+on conflict (game_id, draw_date, draw_time_local) do update set numbers = excluded.numbers, verified_at = now();
+
+insert into fixtures (league_id, home_team_id, away_team_id, kickoff_utc, status, home_score, away_score, source, source_fixture_id, fetched_at)
+select l.id, h.id, a.id, (date_trunc('day', now() at time zone 'America/Toronto') + interval '8 hours') at time zone 'America/Toronto',
+       'finished', 2, 0, 'local-demo', 'demo-week-1', now()
+  from leagues l
+  join teams h on h.league_id = l.id and h.name = 'Motagua'
+  join teams a on a.league_id = l.id and a.name = 'Olimpia'
+ where l.name = 'Liga Nacional de Honduras'
+on conflict (source, source_fixture_id) do update
+  set kickoff_utc = excluded.kickoff_utc, status = 'finished', home_score = 2, away_score = 0, fetched_at = now();

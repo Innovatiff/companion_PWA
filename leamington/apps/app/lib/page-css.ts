@@ -45,9 +45,9 @@ const AHORA =
   ".ahora{display:flex;flex-wrap:wrap;align-items:center;gap:.3rem .9rem}.ahora>span{flex:1;min-width:0}.ahora small{display:block}.ahora .nc{flex-basis:100%;margin-top:.2rem}" +
   ".ahora.card{padding:1rem 1.1rem;background:linear-gradient(135deg,#e6e9fd,#fff 70%)}" +
   ".ahora.in{margin:.55rem 0 .4rem;padding:.55rem 0;border-block:1px solid var(--line)}.ahora.in .art{width:3.2rem;height:3.2rem}.ahora.in .nc>span{padding:.2rem .5rem;font-size:.76rem}" +
-  ".tn{display:block;font-size:3.3rem;font-weight:800;letter-spacing:-.03em;line-height:1.05;font-variant-numeric:tabular-nums}.ahora.in .tn{font-size:2.2rem}.lab{display:block;font-size:1.05rem}";
+  ".tn{display:block;font-size:3.3rem;font-weight:800;letter-spacing:-.03em;line-height:1.05;font-variant-numeric:tabular-nums}.ahora.in .tn{font-size:2.2rem}.lab{display:block;font-size:1.05rem}" + ".nc{display:flex;flex-wrap:wrap;gap:.35rem;margin:.55rem 0 0}.nc>span{display:inline-flex;align-items:center;gap:.3rem;padding:.3rem .75rem;border-radius:999px;background:var(--tile);font-size:.86rem;font-weight:650}.nc svg{width:1.1em;height:1.1em;fill:none;stroke:var(--brand-ink);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}";
 
-export const CLIMA_CSS = AHORA +
+export const CLIMA_CSS = AHORA + ".seg{display:flex;gap:.3rem;padding:.3rem;margin:0 0 1rem;background:var(--card);border-radius:999px;box-shadow:var(--shadow);overflow-x:auto}.seg a{flex:1 0 auto;display:grid;place-items:center;min-height:48px;padding:0 1rem;border-radius:999px;text-decoration:none;color:var(--ink);font-weight:650;font-size:.92rem;white-space:nowrap}.seg a[aria-current]{background:var(--brand);color:#fff}" + ".gal{display:flex;gap:.6rem;overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding-inline:1rem;margin:.5rem -1rem .6rem;padding:0 1rem .3rem}.gph{flex:none;width:11.25rem;margin:0;scroll-snap-align:start}.gph img{display:block;width:100%;height:auto;aspect-ratio:4/3;object-fit:cover;border-radius:16px;background:var(--tile)}" +
   // Town headers: a photo under a dark overlay, or the indigo gradient
   ".townhead{position:relative;isolation:isolate;display:flex;align-items:flex-end;min-height:9rem;margin:1.4rem 0 .6rem;border-radius:var(--r);overflow:hidden;background:#1d2147;box-shadow:var(--shadow)}" +
   ".townhead img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}" +
@@ -81,7 +81,7 @@ export const CLIMA_CSS = AHORA +
   "main>details{background:var(--card);border-radius:var(--r);padding:.2rem 1rem;margin:.75rem 0;box-shadow:var(--shadow)}" +
   "details{margin:.5rem 0}summary{min-height:48px;padding:.7rem 0;cursor:pointer;font-weight:700}";
 
-export const TASA_CSS = TABLE +
+export const TASA_CSS = TABLE + ".seg{display:flex;gap:.3rem;padding:.3rem;margin:0 0 1rem;background:var(--card);border-radius:999px;box-shadow:var(--shadow);overflow-x:auto}.seg a{flex:1 0 auto;display:grid;place-items:center;min-height:48px;padding:0 1rem;border-radius:999px;text-decoration:none;color:var(--ink);font-weight:650;font-size:.92rem;white-space:nowrap}.seg a[aria-current]{background:var(--brand);color:#fff}" + ".arr{display:flex;gap:.5rem;align-items:center}.arr input{flex:1;min-width:0}.arr button{width:auto;margin:0;padding:.8rem 1.2rem}html.big .arr{flex-wrap:wrap}html.big .arr button{width:100%}" +
   // Header: back, title, the reminder bell
   ".ph .bellbtn svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}" +
   // The rate big, its date; a plain note when it is not today's
@@ -173,13 +173,53 @@ export const AQUI_CSS = AHORA +
   ".light .gv{justify-content:flex-start;margin:.6rem 0 .1rem}.light .gv b{font-size:2.3rem}.rise{margin:.5rem 0 0}" +
   "html.big .gv b{font-size:2.3rem}html.big .hgrid{grid-template-columns:repeat(var(--n),minmax(3rem,1fr));min-width:calc(var(--n)*3rem)}";
 
-export const LOGIN_CSS =
+// Lotería (0045): the number check's forms and draws; official balls drop in.
+export const LOTERIA_CSS =
+  ".ch{display:flex;align-items:center;gap:.7rem}.ch small{display:block}.gname{font-size:1.1rem}" +
+  ".picks{display:flex;flex-wrap:wrap;gap:.4rem;margin:.8rem 0 .35rem}.picks input{width:3.2rem;min-height:52px;padding:.4rem;text-align:center;font-size:1.25rem;font-weight:800}" +
+  ".picks.wide input{width:8.5rem;letter-spacing:.2em}.picks button{width:auto;margin:0;padding:.8rem 1.15rem}" +
+  ".lot .stale{margin:.75rem 0 0;padding:.65rem .95rem;border-radius:14px;background:var(--warn-soft);color:var(--warn);font-weight:650}.lot .err{margin:.75rem 0 0}" +
+  ".mine{margin:.75rem 0 0;font-weight:650}.draw{margin:.6rem 0 0;box-shadow:none;background:var(--tile)}" +
+  ".balls b{animation:drop .55s cubic-bezier(.3,1.4,.5,1) both}.balls b:nth-child(2){animation-delay:.07s}.balls b:nth-child(3){animation-delay:.14s}" +
+  ".balls b:nth-child(4){animation-delay:.21s}.balls b:nth-child(5){animation-delay:.28s}.balls b:nth-child(6){animation-delay:.35s}@keyframes drop{from{opacity:0;transform:translateY(-18px)}}" +
+  ".balls b.hit{position:relative;box-shadow:0 0 0 3px var(--card),0 0 0 6px var(--brand)}" +
+  ".balls b i{position:absolute;top:-.4rem;right:-.4rem;display:grid;place-items:center;width:1.15rem;height:1.15rem;border-radius:50%;background:var(--brand);color:#fff;font-size:.62rem;font-style:normal}" +
+  ".pos,.anyo{display:block;font-weight:700;color:var(--brand-ink)}";
+
+// Tu semana (0045): the opened-days circles, the rate's week, the week's parts.
+export const SEMANA_CSS =
+  ".ch{display:flex;align-items:center;gap:.7rem}.ch h2{margin:0}.wtitle{margin:-.4rem .2rem 1rem;font-weight:750;color:var(--muted)}" +
+  ".wkc{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:.25rem;list-style:none;padding:0;margin:.2rem 0 .55rem;text-align:center}.wkc small{display:block;font-weight:650;margin-bottom:.25rem}" +
+  ".wkc .o{display:grid;place-items:center;width:2.5rem;max-width:100%;aspect-ratio:1;margin:0 auto;border-radius:50%;border:2px solid var(--brand);color:var(--brand-ink);font-weight:800;animation:pop .45s cubic-bezier(.3,1.5,.5,1) both}" +
+  ".wc.up .o{background:var(--brand);color:#fff}.wc.nd .o{border-style:dashed;border-color:#aab2e6}@keyframes pop{from{opacity:0;transform:scale(.6)}}" +
+  ".wc:nth-child(2) .o{animation-delay:.06s}.wc:nth-child(3) .o{animation-delay:.12s}.wc:nth-child(4) .o{animation-delay:.18s}.wc:nth-child(5) .o{animation-delay:.24s}.wc:nth-child(6) .o{animation-delay:.3s}.wc:nth-child(7) .o{animation-delay:.36s}" +
+  ".big1{display:flex;align-items:baseline;gap:.5rem;margin:.3rem 0 0;font-weight:700}.big1 b{font-size:2.4rem;line-height:1}" +
+  ".rt{display:flex;align-items:baseline;gap:.35rem;margin:.6rem 0 .2rem;font-variant-numeric:tabular-nums}.rt b{font-size:2.4rem;font-weight:800;line-height:1}.rt span{font-weight:750;color:var(--muted)}.rt small{margin-left:auto}" +
+  ".stale{margin:.4rem 0;padding:.6rem .9rem;border-radius:14px;background:var(--warn-soft);color:var(--warn);font-weight:650}" +
+  ".chart{display:block;width:100%;height:auto;margin-top:.5rem;overflow:visible}.chart .b{fill:#cdd2f7;transform-box:fill-box;transform-origin:bottom;animation:rise .6s cubic-bezier(.2,.7,.3,1) both}.chart .b.on{fill:var(--brand)}" +
+  "@keyframes rise{from{transform:scaleY(0)}}.chart .g{fill:none;stroke:#c7ccf5;stroke-width:1;stroke-dasharray:3 4}.chart .tk{font-size:10px;fill:#5a6080;font-weight:650}" +
+  ".hilo{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem;margin:.75rem 0 .2rem}.hilo>span{padding:.55rem .75rem;border-radius:14px;background:var(--tile)}.hilo small{display:block}.hilo b{font-size:1.3rem;font-variant-numeric:tabular-nums}" +
+  ".chg{display:inline-block;margin-top:.5rem;padding:.25rem .8rem;border-radius:999px;background:var(--tile);color:var(--brand-ink);font-weight:750;font-size:.86rem}" +
+  ".bw{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.5rem;list-style:none;padding:0;margin:.4rem 0 0;text-align:center}.bw li{display:flex;flex-direction:column;align-items:center}.bw .art{animation:pop .5s cubic-bezier(.3,1.5,.5,1) both}" +
+  ".res2{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:.5rem;margin:.5rem 0;font-weight:650;font-size:.92rem}" +
+  ".res2>span{display:flex;align-items:center;gap:.4rem;min-width:0}.res2>span:last-child{justify-content:flex-end;text-align:right}.res2 .sc{font-size:1.2rem;font-weight:800}.res2 .rd{grid-column:1/-1;color:var(--muted);font-weight:600}.nx2{margin:.6rem 0 0}";
+
+export const LOGIN_CSS = ".brandmark{font-weight:800;font-size:2.5rem;color:#fff;letter-spacing:-.03em;margin:0;line-height:1}.steps{list-style:none;padding:0;margin:.5rem 0}.steps li{display:flex;gap:.75rem;align-items:flex-start;margin:.8rem 0}.steps .n{display:grid;place-items:center;flex:none;width:2rem;height:2rem;border-radius:50%;background:var(--brand);color:#fff;font-weight:800;font-size:.9rem}" +
   ".feat{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.5rem;list-style:none;padding:0;margin:0 0 1rem}" +
   ".feat li{display:flex;flex-direction:column;align-items:center;gap:.25rem;padding:.65rem .2rem;border-radius:18px;background:var(--card);box-shadow:var(--shadow);font-weight:750;font-size:.8rem;text-align:center;line-height:1.2}" +
   ".feat small{font-size:.7rem;font-weight:550}";
 
-export const SETUP_CSS =
+export const SETUP_CSS = "" +
   "button.link{display:inline;width:auto;min-height:48px;margin:0 0 0 .5rem;padding:.5rem;background:transparent;color:var(--brand-ink);text-decoration:underline;font-weight:550;box-shadow:none}" +
   "button.link.skip{display:block;width:100%;margin:.5rem 0;color:var(--muted)}" +
   ".results button{text-align:left;background:var(--card);color:var(--ink);border-radius:18px;font-weight:550;margin:.5rem 0;box-shadow:var(--shadow)}" +
   ".prog{display:flex;align-items:center;gap:.75rem;margin:0 0 1rem}.prog .bar{flex:1;margin:0}";
+
+// Más (moved out of APP_CSS so every other page stays lighter): the grid, Letra grande, Tema, the arrival form.
+export const MAS_CSS = ".aa.th{grid-template-columns:repeat(3,minmax(0,1fr))}.sw{display:block;width:2.6rem;height:1.7rem;border-radius:8px;border:2px solid var(--line)}.sw.light{background:linear-gradient(135deg,#eef0fb 50%,#fff 50%)}.sw.dark{background:linear-gradient(135deg,#0e1230 50%,#1a2046 50%)}.sw.auto{background:linear-gradient(135deg,#eef0fb 50%,#1a2046 50%)}.llegada h2,.letra h2{margin:.1rem 0 .75rem}.arr{display:flex;gap:.5rem;align-items:center}.arr input{flex:1;min-width:0}.arr button{width:auto;margin:0;padding:.8rem 1.2rem}.aa{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.65rem}.aa button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.15rem;min-height:6rem;margin:0;border-radius:20px}.aa .a1{font-size:1.45rem;font-weight:800;line-height:1.1}.aa .a2{font-size:2.3rem;font-weight:800;line-height:1}.aa .on::after{content:\\\"✓\\\";font-weight:800}.letra h2{margin:.1rem 0 .75rem}.menu{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem;list-style:none;padding:0;margin:0 0 1rem}.menu a{display:flex;flex-direction:column;gap:.65rem;min-height:8.25rem;height:100%;padding:1rem;background:var(--card);border-radius:var(--r);text-decoration:none;color:var(--ink);font-weight:750;line-height:1.25;box-shadow:var(--shadow)}.menu small{display:block;font-weight:500;margin-top:.2rem;line-height:1.3}html.big .menu a{flex-direction:row;align-items:center;min-height:5.5rem}html.big .arr{flex-wrap:wrap}html.big .arr button{width:100%}";
+
+// The expiry screen (home's route while a period has ended): the code and the steps.
+export const EXPIRY_CSS = ".steps{list-style:none;padding:0;margin:.5rem 0}.steps li{display:flex;gap:.75rem;align-items:flex-start;margin:.8rem 0}.steps .n{display:grid;place-items:center;flex:none;width:2rem;height:2rem;border-radius:50%;background:var(--brand);color:#fff;font-weight:800;font-size:.9rem}.code{font:700 2.1rem/1.1 ui-monospace,\\\"Roboto Mono\\\",monospace;letter-spacing:.12em;border:2px dashed var(--brand);border-radius:20px;padding:1rem;text-align:center;background:#f7f8ff;color:var(--ink);margin:.5rem 0 1rem}";
+
+// Feriados: the filter pills and "Ver más feriados".
+export const FERIADOS_CSS = ".seg{display:flex;gap:.3rem;padding:.3rem;margin:0 0 1rem;background:var(--card);border-radius:999px;box-shadow:var(--shadow);overflow-x:auto}.seg a{flex:1 0 auto;display:grid;place-items:center;min-height:48px;padding:0 1rem;border-radius:999px;text-decoration:none;color:var(--ink);font-weight:650;font-size:.92rem;white-space:nowrap}.seg a[aria-current]{background:var(--brand);color:#fff}details.morehol>summary{display:flex;align-items:center;min-height:48px;padding:.6rem 1.1rem;margin:0 0 .75rem;border-radius:999px;background:var(--card);box-shadow:var(--shadow);font-weight:750;color:var(--brand-ink);cursor:pointer}";

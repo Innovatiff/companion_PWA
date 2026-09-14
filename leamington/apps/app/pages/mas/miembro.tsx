@@ -8,13 +8,13 @@ import type { GetServerSideProps } from "next";
 import { db } from "../../lib/db";
 import { loadClient, recordView } from "../../lib/client";
 import { t } from "../../lib/t";
-import { PageHead, TabBar } from "../../lib/frame";
+import { OfflineBar, PageHead, TabBar } from "../../lib/frame";
 import { BadgeGrid, MemberCardView, MemberFacts, type Badge, type MemberCard } from "../../lib/member";
 import { MIEMBRO_CSS } from "../../lib/page-css";
 
 export const config = { unstable_runtimeJS: false };
 
-type Props = { lang: "es" | "en"; m: MemberCard; badges: Badge[]; seasonal: boolean };
+type Props = { lang: "es" | "en"; m: MemberCard; badges: Badge[]; seasonal: boolean; renderedAt: string; tz: string };
 
 export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
   const loaded = await loadClient(ctx);
@@ -28,10 +28,10 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
     founder: m.founder, member_number: m.member_number != null, status: m.status,
     badges_earned: badges.filter((b) => b.earned).length, badges_total: badges.length,
   });
-  return { props: { lang: client.language, m, badges, seasonal: client.segment === "seasonal" } };
+  return { props: { lang: client.language, m, badges, seasonal: client.segment === "seasonal", renderedAt: new Date().toISOString(), tz: client.timezone } };
 };
 
-export default function Miembro({ lang, m, badges, seasonal }: Props) {
+export default function Miembro({ lang, m, badges, seasonal, renderedAt, tz }: Props) {
   const earned = badges.filter((b) => b.earned).length;
   return (
     <>
@@ -41,6 +41,7 @@ export default function Miembro({ lang, m, badges, seasonal }: Props) {
         <style dangerouslySetInnerHTML={{ __html: MIEMBRO_CSS }} />
       </Head>
       <main>
+        <OfflineBar at={renderedAt} tz={tz} lang={lang} />
         <PageHead lang={lang} title={t(lang, "Tu membresía", "Your membership")} art="wave" back />
         <MemberCardView m={m} lang={lang} />
         <MemberFacts m={m} lang={lang} />

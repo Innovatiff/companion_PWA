@@ -25,6 +25,8 @@ export default {
       { source: "/league-crest/:id", destination: "/api/league-crest/:id" },
       // Hometown photos, from our own database (0034).
       { source: "/photo/:id", destination: "/api/photo/:id" },
+      // A town's gallery, photos 1-6, from our own database (0045).
+      { source: "/photo/:id/:rank", destination: "/api/photo/:id/:rank" },
     ];
   },
   async headers() {

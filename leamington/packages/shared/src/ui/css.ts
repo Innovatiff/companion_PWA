@@ -79,7 +79,7 @@ export const APP_CSS = BASE +
   "radial-gradient(1px 1px at 24% 66%,#fff 50%,transparent 70%),radial-gradient(1.3px 1.3px at 66% 6%,#fff 50%,transparent 70%)}" +
   // Their hometown photo inside the hero, with its credit
   ".ht{display:flex;align-items:center;gap:.75rem;margin:1rem 0 0;padding:.5rem;border-radius:18px;background:rgba(10,14,60,.24)}" +
-  ".ht>img{flex:none;width:5.5rem;height:4.2rem;border-radius:13px;object-fit:cover}.ht>span{min-width:0}" +
+  ".ht>a{flex:none;display:block}.ht img{display:block;width:5.5rem;height:4.2rem;border-radius:13px;object-fit:cover}.ht>span{min-width:0}" +
   ".place{display:inline-flex;align-items:center;gap:.3rem;font-size:.95rem;font-weight:750}" +
   ".credit{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin:.35rem .2rem 0;font-size:.7rem;line-height:1.35;color:var(--muted)}.credit a{color:inherit}" +
   ".hello .credit{margin:.15rem 0 0;color:rgba(255,255,255,.9)}.ht .credit{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}" +
@@ -103,8 +103,6 @@ export const APP_CSS = BASE +
   ".nb em{font-style:normal;font-size:.95rem;font-weight:700;color:var(--muted);letter-spacing:0;margin-left:.3rem}" +
   // "Ahora" beside its forecast fallback: the fallback shows only once "Ahora" is gone
   "span.ahora,.fc{display:contents}.ahora+.fc{display:none}.tx{flex:1;min-width:0}.aw{font-weight:800;color:var(--brand-ink)}.tb .aw{display:inline}.hello .aw{color:#fff}" +
-  ".nc{display:flex;flex-wrap:wrap;gap:.35rem;margin:.55rem 0 0}.nc>span{display:inline-flex;align-items:center;gap:.3rem;padding:.3rem .75rem;border-radius:999px;background:var(--tile);font-size:.86rem;font-weight:650}" +
-  ".nc svg{width:1.1em;height:1.1em;fill:none;stroke:var(--brand-ink);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}" +
   // Round 2 on home: the season ring card, the badges row, Allá y aquí
   ".season{position:relative;isolation:isolate;overflow:hidden;display:flex;align-items:center;gap:.9rem;color:#fff;border-radius:24px;padding:1.15rem 1.2rem;margin:0 0 .75rem;" +
   "background:radial-gradient(circle at 90% 10%,rgba(255,255,255,.18),transparent 40%),linear-gradient(125deg,#3b44b5,#6a4fd8);box-shadow:0 16px 34px rgba(63,75,196,.26)}" +
@@ -126,28 +124,22 @@ export const APP_CSS = BASE +
   ".hs{flex:none;scroll-snap-align:start;display:flex;flex-direction:column;align-items:center;gap:.1rem;min-width:4.5rem;padding:.6rem .4rem;background:var(--card);border-radius:18px;box-shadow:var(--shadow)}" +
   ".hs b{font-size:1.25rem;font-weight:800}.hs small{font-weight:650}.hsr{color:var(--rain)}" +
   ".dst{display:flex;align-items:center;gap:.9rem}.dst b{display:block;line-height:1.3}.dst small{display:block;margin-top:.25rem}" +
-  "details.morehol>summary{display:flex;align-items:center;min-height:48px;padding:.6rem 1.1rem;margin:0 0 .75rem;border-radius:999px;background:var(--card);box-shadow:var(--shadow);font-weight:750;color:var(--brand-ink);cursor:pointer}" +
+  // Round 5: the offline line, Clima's gallery strip, theme previews
+  ".offbar{margin:0 0 .75rem;padding:.6rem 1rem;border-radius:16px;background:#1b1f3b;color:#fff;font-weight:700}" +
   // Home's rate row: the week of the rate as seven dots (0042)
-  ".wd{display:flex;gap:.3rem;margin-top:.4rem}.wd i{width:.72rem;height:.72rem;border-radius:50%;border:2px solid var(--brand)}.wd i.up{background:var(--brand)}.wd i.same{border-color:#8f98f5}.wd i.nd{border-style:dashed;border-color:#aab2e6}" +
+  ".wd{display:flex;gap:.3rem;margin-top:.4rem}.wd i{width:.72rem;height:.72rem;border-radius:50%;border:2px solid var(--brand)}.wd i.up{background:var(--brand)}.wd i.same{border-color:#8f98f5}.wd i.nd{border-style:dashed;border-color:#aab2e6}.wd i.no{background:transparent}" +
   ".alla{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:.85rem 1rem 1rem;margin:0 0 .75rem}.alla>header{display:flex;align-items:center;gap:.5rem;font-weight:750}" +
   ".ah2{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:.4rem;margin-top:.5rem}" +
   ".ah{display:flex;flex-direction:column;align-items:center;text-align:center;gap:.05rem;min-width:0}.ah small{font-size:.8rem;font-weight:650;line-height:1.2;overflow-wrap:break-word;hyphens:auto}" +
   ".clk{font-size:1.55rem;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}.nowt{font-size:1.05rem;font-weight:800;color:var(--brand-ink)}" +
   ".dif{max-width:5.25rem;padding:.35rem .5rem;border-radius:999px;background:var(--tile);color:var(--brand-ink);font-size:.78rem;font-weight:750;text-align:center;line-height:1.2}" +
-  ".llegada h2,.letra h2{margin:.1rem 0 .75rem}.arr{display:flex;gap:.5rem;align-items:center}.arr input{flex:1;min-width:0}.arr button{width:auto;margin:0;padding:.8rem 1.2rem}" +
   // Letra grande's two previews (Más)
-  ".aa{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.65rem}.aa button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.15rem;min-height:6rem;margin:0;border-radius:20px}" +
-  ".aa .a1{font-size:1.45rem;font-weight:800;line-height:1.1}.aa .a2{font-size:2.3rem;font-weight:800;line-height:1}.aa .on::after{content:\"✓\";font-weight:800}.letra h2{margin:.1rem 0 .75rem}" +
   "a.tile.x::after{display:none}.ev{display:flex;gap:.85rem;align-items:center}.ev>span{flex:1;min-width:0}" +
   "a.tile::after{content:\"›\";display:grid;place-items:center;flex:none;width:2.2rem;height:2.2rem;margin-left:auto;border-radius:50%;background:var(--tile);color:var(--brand-ink);font-size:1.4rem;line-height:1}" +
   ".stale .pic,.due .pic{background:var(--warn-soft)}" +
   ".flag{font-size:.95rem;letter-spacing:0;margin-right:.35rem}" +
   ".chip{display:inline-block;padding:.15rem .65rem;border-radius:999px;background:var(--brand-soft);color:var(--brand-ink);font-size:.8rem;font-weight:750;white-space:nowrap;vertical-align:middle}" +
   ".chip.ok{background:var(--ok-soft);color:var(--ok)}.chip.warn{background:var(--warn-soft);color:var(--warn)}" +
-  ".seg{display:flex;gap:.3rem;padding:.3rem;margin:0 0 1rem;background:var(--card);border-radius:999px;box-shadow:var(--shadow);overflow-x:auto}" +
-  ".seg a{flex:1 0 auto;display:grid;place-items:center;min-height:48px;padding:0 1rem;border-radius:999px;text-decoration:none;color:var(--ink);font-weight:650;font-size:.92rem;white-space:nowrap}.seg a[aria-current]{background:var(--brand);color:#fff}" +
-  ".macro{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.6rem;margin:0 0 .75rem}" +
-  ".macro>*{background:var(--card);border-radius:18px;padding:.8rem .75rem;box-shadow:var(--shadow);min-width:0;margin:0}.macro small{display:block;font-weight:650}.macro b{display:block;font-size:1.3rem;font-weight:800;font-variant-numeric:tabular-nums}" +
   // Crests, date blocks, lottery balls, tap-to-call
   ".cr{display:grid;place-items:center;flex:none;font-weight:800;object-fit:contain}span.cr{border-radius:50%}" +
   ".dt{display:grid;place-items:center;align-content:center;flex:none;width:3.5rem;height:3.6rem;border-radius:16px;background:var(--tile);color:var(--brand-ink);font-size:.72rem;font-weight:750;text-transform:uppercase;line-height:1.15}.dt b{font-size:1.5rem;line-height:1}" +
@@ -182,14 +174,7 @@ export const APP_CSS = BASE +
   ".tb{display:block;padding:.6rem .85rem .75rem}.tb b{display:block;font-size:.95rem;line-height:1.2}.tt{display:flex;align-items:center;gap:.3rem;font-size:1.75rem;font-weight:800;margin:.1rem 0;line-height:1.1}" +
   "main>section{margin-bottom:.25rem}" +
   // Más grid, login and expiry
-  ".menu{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem;list-style:none;padding:0;margin:0 0 1rem}" +
-  ".menu a{display:flex;flex-direction:column;gap:.65rem;min-height:8.25rem;height:100%;padding:1rem;background:var(--card);border-radius:var(--r);text-decoration:none;color:var(--ink);font-weight:750;line-height:1.25;box-shadow:var(--shadow)}" +
-  ".menu small{display:block;font-weight:500;margin-top:.2rem;line-height:1.3}" +
-  ".brandmark{font-weight:800;font-size:2.5rem;color:#fff;letter-spacing:-.03em;margin:0;line-height:1}" +
-  ".steps{list-style:none;padding:0;margin:.5rem 0}.steps li{display:flex;gap:.75rem;align-items:flex-start;margin:.8rem 0}" +
-  ".steps .n{display:grid;place-items:center;flex:none;width:2rem;height:2rem;border-radius:50%;background:var(--brand);color:#fff;font-weight:800;font-size:.9rem}" +
   ".inf{display:flex;gap:.7rem;align-items:flex-start;margin:.6rem 0}.inf>.i{margin:0;padding-top:.1rem}" +
-  ".code{font:700 2.1rem/1.1 ui-monospace,\"Roboto Mono\",monospace;letter-spacing:.12em;border:2px dashed var(--brand);border-radius:20px;padding:1rem;text-align:center;background:#f7f8ff;color:var(--ink);margin:.5rem 0 1rem}" +
   // Tab bar: white, rounded top, outline icons with labels, a raised round Clima button
   "nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;align-items:flex-end;max-width:34rem;margin:0 auto;background:var(--card);border-radius:26px 26px 0 0;" +
   "box-shadow:0 -8px 30px rgba(40,48,120,.1);padding:.35rem .4rem calc(.35rem + env(safe-area-inset-bottom))}" +
@@ -202,9 +187,43 @@ export const APP_CSS = BASE +
   "html.big{font-size:125%;--muted:#3a405e;--line:#cdd1e8}html.big body{font-size:20px;line-height:1.45}" +
   "html.big small,html.big .credit,html.big .step{font-weight:600}html.big p.line{font-weight:750}html.big .credit{font-size:.74rem}" +
   "html.big .tile{min-height:5.75rem;padding:.95rem}html.big .pair,html.big .menu{grid-template-columns:minmax(0,1fr)}" +
-  "html.big .menu a{flex-direction:row;align-items:center;min-height:5.5rem}html.big .menu a,html.big h1,html.big p.line,html.big .match>span{overflow-wrap:anywhere}" +
+  "html.big .menu a,html.big h1,html.big p.line,html.big .match>span{overflow-wrap:anywhere}" +
   "html.big nav.tabs a{font-size:.66rem;min-height:66px}html.big nav.tabs svg{height:32px}html.big main{padding-bottom:calc(9rem + env(safe-area-inset-bottom))}" +
-  "html.big .sh>a,html.big .seg a,html.big .dial{min-height:56px}html.big a.tile::after{display:none}html.big .pic{width:3rem;height:3rem}html.big .pic .art{width:2.2rem;height:2.2rem}html.big .sk>.art{width:4.25rem;height:4.25rem}html.big .sk h1{padding-right:3.5rem}html.big .lbl{max-width:calc(100% - 4rem)}html.big .ring{width:4.4rem;height:4.4rem}html.big .nb{font-size:1.9rem}html.big .sbig{font-size:2.5rem}html.big .sring{width:5.5rem;height:5.5rem}html.big .ah2{grid-template-columns:minmax(0,1fr);gap:.6rem}html.big .arr{flex-wrap:wrap}html.big .arr button{width:100%}";
+  "html.big .sh>a,html.big .seg a,html.big .dial{min-height:56px}html.big a.tile::after{display:none}html.big .pic{width:3rem;height:3rem}html.big .pic .art{width:2.2rem;height:2.2rem}html.big .sk>.art{width:4.25rem;height:4.25rem}html.big .sk h1{padding-right:3.5rem}html.big .lbl{max-width:calc(100% - 4rem)}html.big .ring{width:4.4rem;height:4.4rem}html.big .nb{font-size:1.9rem}html.big .sbig{font-size:2.5rem}html.big .sring{width:5.5rem;height:5.5rem}html.big .ah2{grid-template-columns:minmax(0,1fr);gap:.6rem}";
+
+/**
+ * Modo noche (0046): a deep navy ground, dark indigo cards, light text at WCAG
+ * AA, the primary kept readable under white text and brightened for links,
+ * photos slightly dimmed; the sky hero, gauges and charts keep their own
+ * colours. Applied by the phone's setting unless the member chose "Claro"
+ * (html.light), and always with "Oscuro" (html.dark). Combines with html.big.
+ */
+const DARK_TOKENS =
+  "--ink:#e8eaf8;--paper:#0e1230;--card:#1a2046;--muted:#b3b9dd;--line:#2f3670;--tile:#262d5e;" +
+  "--brand:#5b67e8;--brand-2:#6a74ea;--brand-ink:#aab4ff;--brand-soft:#2a3170;--rain:#7eb2f5;--focus:#9db4ff;" +
+  "--danger:#ff8f86;--danger-soft:#3b1717;--warn:#ffbd7a;--warn-soft:#3a2a14;--caution:#f3d06a;--caution-soft:#383014;--ok:#76dfb1;--ok-soft:#133a2b;" +
+  "--shadow:0 1px 2px rgba(0,0,0,.35),0 10px 28px rgba(0,0,0,.35);color-scheme:dark";
+// Colours written literally for the light look, redone for the dark one.
+const DARK_RULES: [string, string][] = [
+  ["input,select", "border-color:#3a4278"],
+  ["nav.tabs a", "color:#b3b9dd"],
+  [".code", "background:#141a3c"],
+  [".level", "background:#262d5e"],
+  [".now.rain,.now.sun,.here.rain,.here.sun,.ahora.card,.thumb,.wcard", "background:var(--card)"],
+  [".holiday .dt", "background:#3a2a14;color:#ffbd7a"],
+  [".chart .ar", "fill:#262d5e"],
+  [".chart .b", "fill:#4a5296"],
+  [".chart .b.on", "fill:#8e98ff"],
+  [".rb", "background:#22305a"],
+  [".heat .chip,.mst", "background:var(--card)"],
+  [".offbar", "background:#e8eaf8;color:#0e1230"],
+  ["img:not(.art)", "filter:brightness(.85)"],
+];
+const darkScope = (scope: string) => `${scope}{${DARK_TOKENS}}` +
+  DARK_RULES.map(([sel, decl]) => `${sel.split(",").map((x) => `${scope} ${x}`).join(",")}{${decl}}`).join("") +
+  `${scope}.big{--muted:#cdd2ef;--line:#3a4278}`;
+
+export const DARK_CSS = `@media (prefers-color-scheme:dark){${darkScope("html:not(.light)")}}${darkScope("html.dark")}`;
 
 /**
  * The portals' dashboard look (docs/DESIGN.md section 9): a white sidebar with

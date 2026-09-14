@@ -39,6 +39,8 @@ export type Workday = {
 };
 
 const hourArt = (h: Hour) => nowArt({ condition: h.condition, is_day: h.is_day });
+/** An hour stops being shown when it is over (a kept offline copy drops it). */
+const hourEnd = (h: Hour) => new Date(Date.parse(h.hour_start) + 3600e3).toISOString();
 export const HEAT_SHOWN = ["caution", "high", "extreme"];
 
 // ---------------------------------------------------------------------------
@@ -48,7 +50,9 @@ export const HEAT_SHOWN = ["caution", "high", "extreme"];
  * One column per hour: the temperature dot and label (only where temp_c
  * exists), the sky, a thin rain bar (only where rain_prob exists, highlighted
  * for rain hours) and the hour. The line joins consecutive hours that both have
- * a temperature; a gap stays a gap.
+ * a temperature; a gap stays a gap. Every column expires when its hour is over;
+ * the line expires with the first hour, since it cannot follow removed columns
+ * (dots and labels sit in their own columns and stay right).
  */
 export function HourlyChart({ h, lang }: { h: Hourly; lang: Lang }) {
   const hours = h.hours;
@@ -70,12 +74,12 @@ export function HourlyChart({ h, lang }: { h: Hourly; lang: Lang }) {
     <div className="hscroll">
       <div className="hgrid" style={{ "--n": n } as CSSProperties}>
         {d && (
-          <svg className="hsvg" viewBox={`0 0 ${n * 40} 100`} preserveAspectRatio="none" aria-hidden="true">
+          <svg className="hsvg" viewBox={`0 0 ${n * 40} 100`} preserveAspectRatio="none" aria-hidden="true" data-until={hourEnd(hours[0])}>
             <path className="hl2" d={d} pathLength={1} />
           </svg>
         )}
         {hours.map((x) => (
-          <div key={x.hour_start} className={h.rain_hours.includes(x.hour) ? "hc rh" : "hc"} data-h={x.hour_start} data-rain={x.rain_prob}>
+          <div key={x.hour_start} className={h.rain_hours.includes(x.hour) ? "hc rh" : "hc"} data-h={x.hour_start} data-until={hourEnd(x)} data-rain={x.rain_prob}>
             <span className="hp">
               {x.temp_c != null && (
                 <>
@@ -101,7 +105,7 @@ export function HoursStrip({ h }: { h: Hourly }) {
   return (
     <a className="hstrip" href="/clima/aqui">
       {h.hours.map((x) => (
-        <span key={x.hour_start} className="hs" data-h={x.hour_start}>
+        <span key={x.hour_start} className="hs" data-h={x.hour_start} data-until={hourEnd(x)}>
           <small>{x.hour}</small>
           <Art name={hourArt(x)} size={34} lazy />
           {x.temp_c != null && <b>{`${x.temp_c}°`}</b>}

@@ -34,9 +34,10 @@ import { EXPIRE_SCRIPT, OPEN_SCRIPT } from "../lib/open-script";
 import { ahoraWord, nowArt, nowData, nowLive, type Now } from "../lib/now";
 import { recordView, type Access } from "../lib/client";
 import { t } from "../lib/t";
-import { HomeTop, TabBar } from "../lib/frame";
+import { HomeTop, OfflineBar, TabBar } from "../lib/frame";
 import { AllaAqui, BadgesRow, SeasonCard, WelcomeScreen, type MemberCard, type Season } from "../lib/member";
 import { WeekDots, type WeekPoint } from "../lib/money";
+import { EXPIRY_CSS } from "../lib/page-css";
 import { DstCard, HoursStrip, WorkdayCard, type Hourly, type Workday } from "../lib/workday";
 import {
   Art, Balls, Credit, Crest, DateBlock, FLAG, Icon, Num, Pic, Ring, SKY_PHASES, TownPhoto, dayArt, drawTime, localDayEnd, skyPhase, tel,
@@ -88,7 +89,7 @@ type Props =
       renderId: string; renderedAt: string; language: "es" | "en"; lines: Line[]; prompt: string | null;
       extras: Extras | null; more: More | null; watchPhotos: Photo[]; pushReady: boolean; here: Here | null;
       name: string; sky: SkyPhase; homeDay: HomeDay | null; welcome: boolean; allaAt: string;
-      week: WeekPoint[]; holNext: HolidayNext | null; hours: Hourly | null; expired?: undefined;
+      week: WeekPoint[]; holNext: HolidayNext | null; hours: Hourly | null; opened: { days: number; weekdays: (boolean | null)[] } | null; expired?: undefined;
     }
   | { expired: Expired };
 
@@ -99,17 +100,18 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
 
   // No paid period covering today: the expiry screen instead of the morning message.
   const access = await db().query(
-    "select language, full_name, text_size, app.client_access(id) as access from clients where id = $1 and active", [clientId]);
+    "select language, full_name, text_size, to_jsonb(clients)->>'theme' as theme, app.client_access(id) as access from clients where id = $1 and active", [clientId]);
   const a = access.rows[0];
   // Letra grande: <html class="big"> (pages/_document.tsx).
-  (req as { appTextSize?: string }).appTextSize = a?.text_size;
+  (req as { appTextSize?: string; appTheme?: string }).appTextSize = a?.text_size;
+  (req as { appTheme?: string }).appTheme = a?.theme;
   if (a?.access && !a.access.paid) {
     (req as { appLang?: string }).appLang = a.language;
     await recordView(clientId, "expiry", { status: a.access.status, period_end: a.access.period_end });
     return { props: { expired: { language: a.language, access: a.access } } };
   }
 
-  const [home, extras, moreRow, hereRow, homeDayRow, weekRow, holRow, hoursRow] = await Promise.all([
+  const [home, extras, moreRow, hereRow, homeDayRow, weekRow, holRow, hoursRow, openedRow] = await Promise.all([
     db().query("select app.render_home($1) as m", [clientId]),
     db().query("select app.home_extras($1) as x", [clientId]),
     db().query("select app.home_more($1) as h", [clientId]),
@@ -127,6 +129,8 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
     db().query("select app.holidays_here_and_there($1, now(), 1)->0 as n", [clientId]),
     // Round 4 (0044): Leamington's next 6 hours for the strip.
     db().query("select app.hourly_outlook('leamington', now(), 6, c.language::text) as h from clients c where c.id = $1", [clientId]),
+    // Round 5 (0045): the week's opened days, for the "Tu semana" teaser.
+    db().query("select app.week_summary($1)->'opened' as o", [clientId]),
   ]);
   const m = home.rows[0]?.m;
   if (!m) {
@@ -181,6 +185,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
       week: weekRow.rows[0]?.w ?? [],
       holNext: holRow.rows[0]?.n ?? null,
       hours: hoursRow.rows[0]?.h ?? null,
+      opened: openedRow.rows[0]?.o ?? null,
     },
   };
 };
@@ -196,6 +201,7 @@ function ExpiryScreen({ language: lang, access: a }: Expired) {
       <Head>
         <title>Hoy</title>
         <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+        <style dangerouslySetInnerHTML={{ __html: EXPIRY_CSS }} />
       </Head>
       <main data-lang={lang}>
         <header className="hello">
@@ -405,6 +411,7 @@ export default function Home(props: Props) {
         <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
       </Head>
       <main data-render={renderId} data-rendered={renderedAt} data-lang={lang}>
+        <OfflineBar at={renderedAt} tz={tz} lang={lang} />
         {/* Reserved for a future feature. Empty, and takes no space. */}
         <div id="slot"></div>
         <HomeTop lang={lang} name={name} warnings={warningsHere} until={alertsUntil} />
@@ -417,7 +424,9 @@ export default function Home(props: Props) {
               {/* Ahora: Leamington's current conditions (home_more.leamington_now) will sit here. */}
               {photo && (
                 <div className="ht">
-                  <TownPhoto p={photo} lazy={false} />
+                  <a href={`/clima#t${photo.municipality_id}`} aria-label={t(lang, `Fotos de ${h?.home_town ?? ""}`, `Photos of ${h?.home_town ?? ""}`)}>
+                    <TownPhoto p={photo} lazy={false} />
+                  </a>
                   <span>
                     {h?.home_town && <span className="place"><Icon name="pin" />{h.home_town}</span>}
                     <Credit p={photo} lang={lang} licenseFirst />
@@ -533,6 +542,16 @@ export default function Home(props: Props) {
         )}
         {season && <SeasonCard s={season} lang={lang} until={dayEnd} />}
         {badgesTotal > 0 && <BadgesRow earned={h!.badges_earned ?? 0} total={badgesTotal} lang={lang} until={dayEnd} />}
+        {props.opened && (
+          <a className="tile weekt" href="/mas/semana" data-line="week" data-until={dayEnd}>
+            <Pic name="week" />
+            <span className="tx">
+              <small>{t(lang, "Tu semana", "Your week")}</small>
+              <span className="nb"><Num value={String(props.opened.days)} /><em>{props.opened.days === 1 ? t(lang, "día", "day") : t(lang, "días", "days")}</em></span>
+              <span className="wd">{props.opened.weekdays.map((v, i) => <i key={i} className={v === true ? "up" : v === false ? "no" : "nd"} />)}</span>
+            </span>
+          </a>
+        )}
         <DstCard at={new Date(allaAt)} lang={lang} homeTz={h?.home_timezone} homeName={homeDay?.name} />
         {h?.home_timezone && homeDay && (
           <AllaAqui lang={lang} at={allaAt} until={allaUntil} leamNow={leamNow}

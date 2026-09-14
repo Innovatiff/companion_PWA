@@ -99,6 +99,9 @@ const BADGE: Record<string, { art: ArtName; name: [string, string]; how: [string
     how: ["Llega a tu día de regreso con tu plan vigente", "Reach your going-home day with your plan active"] },
 };
 
+/** A badge's name in the member's language. */
+export const badgeName = (key: string, lang: Lang) => (BADGE[key] ? t(lang, ...BADGE[key].name) : key);
+
 /** Temporada without a season on record: how to make it decidable, or who it is for. */
 const temporadaHow = (lang: Lang, seasonal: boolean) => seasonal
   ? t(lang, "Anota tu llegada y tu regreso", "Add your arrival and going-home dates")

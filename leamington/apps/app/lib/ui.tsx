@@ -51,7 +51,7 @@ export const ART_NAMES = [
   "plane", "warning", "settings", "clock", "pin",
   "badge-fundador", "badge-pueblo", "badge-avisos", "badge-vigia", "badge-explorador", "badge-fiel", "badge-renovo", "badge-temporada",
   "globe", "wave", "chart", "calculator", "bell-reminder", "canada",
-  "jacket", "umbrella", "sunscreen", "water", "leaf",
+  "jacket", "umbrella", "sunscreen", "water", "leaf", "week",
 ] as const;
 export type ArtName = (typeof ART_NAMES)[number];
 
@@ -178,12 +178,12 @@ export function TownPhoto({ p, lazy = true, className }: { p: Photo; lazy?: bool
  * `licenseFirst` ("CC BY-SA 4.0 · Foto: {author}") keeps the license visible
  * where the line is clamped to one line.
  */
-export function Credit({ p, lang, place, licenseFirst }: { p: Photo; lang: Lang; place?: string; licenseFirst?: boolean }) {
+export function Credit({ p, lang, place, licenseFirst, photoKey }: { p: Photo; lang: Lang; place?: string; licenseFirst?: boolean; photoKey?: string }) {
   const license = p.license_url ? <a href={p.license_url} rel="noopener">{p.license}</a> : p.license;
   const author = <a href={p.source_page_url} rel="noopener">{p.author}</a>;
   const word = `${place ? `${place}. ` : ""}${lang === "en" ? "Photo" : "Foto"}: `;
   return (
-    <small className="credit" data-photo={p.municipality_id}>
+    <small className="credit" data-photo={photoKey ?? p.municipality_id}>
       {licenseFirst ? <>{license}{` · ${word}`}{author}</> : <>{word}{author}{" · "}{license}</>}
     </small>
   );
