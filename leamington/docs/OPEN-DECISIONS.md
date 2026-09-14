@@ -468,3 +468,30 @@ nothing is sample data.
   show, because Open-Meteo and WeatherAPI agree, but with two providers
   instead of three, and the forecast feed reads "partial".
   - **Fix:** a valid key (new keys can take a few hours to activate).
+
+### 3.20 Real images in Hoy (owner's choice, 2026-09-13)
+
+The owner chose hometown photos. Pictures never stand in for data; they only
+show the real place or team.
+
+- **Hometown photos:** one photo per town a client lives in or watches, from
+  Wikimedia Commons.
+  - Taken only from the town's own Wikipedia article, whose coordinates must be
+    within 25 km of our town: the lead image, or a photo named after the town.
+  - Must be a landscape JPEG with a free license (CC0, public domain, CC BY,
+    CC BY-SA) and a named author.
+  - Hoy shows "Foto: author · license" linking to the file's page.
+  - Stored in our database at 480 px (about 15–35 KB, at most 120 KB) and
+    served from Hoy's own domain.
+- **Crests:** from the football provider's media host, at most 50 KB. The
+  provider's stock "logo soon" image, and any image shared by several teams, is
+  never stored; those teams show their initials.
+- **A person can choose a better photo** for a town in
+  `services/ingest/src/feeds/town-photo-overrides.json` (San Pedro Sula's
+  first automatic pick was a construction site). The chosen file still passes
+  every check.
+- **Daily jobs** (`photos`, `crests`, 5:40 and 5:45 Toronto) fetch only what is
+  missing, so new clients' towns and newly seen teams get pictures the next
+  morning. Both are monitored with a one-day interval.
+- **Budgets:** the pictures are cached for 30 days, so they cost data once
+  per phone.

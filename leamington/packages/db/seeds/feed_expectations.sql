@@ -12,7 +12,10 @@ insert into feed_expectations (feed, label, expected_interval, grace, active) va
   ('fixtures',    'Football fixtures',            interval '1 hour',     interval '20 minutes', true),
   -- Push delivery: if the sender stops, alerts stop reaching phones.
   ('notify:send', 'Push delivery',                interval '1 minute',   interval '10 minutes', true),
-  ('notify:plan', 'Engagement planner',           interval '15 minutes', interval '15 minutes', true)
+  ('notify:plan', 'Engagement planner',           interval '15 minutes', interval '15 minutes', true),
+  -- Pictures: not safety-critical, but a quiet job still shows.
+  ('photos',      'Hometown photos',              interval '1 day',      interval '1 day',      true),
+  ('crests',      'Team crests',                  interval '1 day',      interval '1 day',      true)
 on conflict (feed) do update
   set label = excluded.label, expected_interval = excluded.expected_interval,
       grace = excluded.grace, active = excluded.active;

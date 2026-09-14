@@ -19,6 +19,8 @@ import { ingestLottery } from "./feeds/lottery.mjs";
 import { ingestStatic } from "./feeds/static.mjs";
 import { ingestFixtures } from "./feeds/fixtures.mjs";
 import { sendDueNotifications, planEngagement } from "./feeds/notify.mjs";
+import { ingestTownPhotos } from "./feeds/town-photos.mjs";
+import { ingestCrests } from "./feeds/crests.mjs";
 
 const log = logger("scheduler");
 
@@ -34,6 +36,9 @@ export const FIXED_JOBS = [
   // Push: alerts go out within a minute of being queued; engagement is planned per client hour.
   { feed: "notify:send", cron: "* * * * *",         tz: "UTC", fn: (ctx) => sendDueNotifications(ctx), label: "Push delivery (alerts first)" },
   { feed: "notify:plan", cron: "2,17,32,47 * * * *", tz: "UTC", fn: (ctx) => planEngagement(ctx),       label: "Daily engagement planner" },
+  // Pictures for new clients' towns and newly seen teams, from our own copies.
+  { feed: "photos", cron: "40 5 * * *", tz: "America/Toronto", fn: (ctx) => ingestTownPhotos(ctx), label: "Hometown photos (daily, missing only)" },
+  { feed: "crests", cron: "45 5 * * *", tz: "America/Toronto", fn: (ctx) => ingestCrests(ctx),     label: "Team crests (daily, missing only)" },
 ];
 
 /**

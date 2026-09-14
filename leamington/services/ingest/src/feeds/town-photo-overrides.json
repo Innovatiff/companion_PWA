@@ -1,0 +1,6 @@
+{
+  "_note": "Photos chosen by a person for a town, when the automatic pick is poor. Each file must be a landscape JPEG on Wikimedia Commons with a free license and a named author; scripts/fetch-town-photos.mjs still checks all of that. Kept in src/feeds (copied into the ingest image) and out of data/, which the static feed reads.",
+  "photos": {
+    "HN:Cortés:San Pedro Sula": "File:Boulevard Micheletti SPS.jpg"
+  }
+}
