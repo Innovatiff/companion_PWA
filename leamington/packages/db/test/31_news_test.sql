@@ -328,14 +328,17 @@ begin
   select a.e into e from jsonb_array_elements(app.news_page(v_h, v_now)->'national') a(e) where a.e->>'title' = 'National 47 hours';
   assert (e->>'image')::boolean and exists (select 1 from app.news_image(v_n1, 'thumb')), 'back on';
 
-  -- A story ingest marked graphic: in its section, never with a picture, never the home lead.
+  -- A story ingest marked graphic: in its section, never with a picture, and never on the home card (0048).
   v_i := pg_temp.item('t-hn-a', 'g1', 'Asesinan a comerciante en San Pedro Sula', v_now - interval '10 minutes');
   update news_items set image_suppressed = 'asesinan' where id = v_i;
   perform pg_temp.mention(v_i, 'HN', 'Cortés', 'San Pedro Sula', 'San Pedro Sula');
   p := app.news_page(v_h, v_now);
   assert p->'local'->0->>'title' = 'Asesinan a comerciante en San Pedro Sula' and not (p->'local'->0->>'image')::boolean, p->>'local';
   x := app.news_home(v_h, v_now);
-  assert x->'lead'->>'id' is distinct from v_i::text and x->'more'->0->>'id' = v_i::text, x::text;
+  assert x->'lead'->>'id' is distinct from v_i::text, x::text;
+  assert not exists (select 1 from jsonb_array_elements(x->'more') m where m->>'id' = v_i::text),
+    format('the newest local story is graphic, so home skips it: %s', x->'more');
+  assert jsonb_array_length(x->'more') = 2, format('two other headlines instead: %s', x->'more');
   raise notice 'PASS news pictures: suppressed stories and outlets with pictures off keep their text, never a picture';
 end $$;
 
