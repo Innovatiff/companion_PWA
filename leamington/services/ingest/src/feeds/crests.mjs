@@ -17,7 +17,12 @@ const TYPES = new Set(["image/png", "image/jpeg", "image/webp", "image/svg+xml"]
 export const MAX_CREST_BYTES = 50_000;
 // League logos: four images, shown on Fútbol only, cached 30 days (0037).
 export const MAX_LEAGUE_LOGO_BYTES = 150_000;
-export const PLACEHOLDER_SHA256 = new Set(["9f8004a0b4a645c2061f82ebf7ede6520830c071eb2ca9a37fa3f150d53bef11"]);
+// The provider's stock pictures: "logo soon", and a 90,381-byte grey camera
+// "image not available" (seen for Atlético Choloma) that fits the league limit.
+export const PLACEHOLDER_SHA256 = new Set([
+  "9f8004a0b4a645c2061f82ebf7ede6520830c071eb2ca9a37fa3f150d53bef11",
+  "7670cc2d08b0b4a846ac6ec076c99d3767c4d2b9322e2d31cd05871422ddbbda",
+]);
 
 /** Why a fetched image may not be stored as a crest, or null. Exported for tests. */
 export function crestRejection({ type, bytes, sha256 }, maxBytes = MAX_CREST_BYTES) {

@@ -26,6 +26,11 @@ test("the provider's stock image is refused", () => {
   assert.match(crestRejection({ type: "image/png", bytes: png, sha256: stock }), /placeholder/);
 });
 
+test("the 'image not available' stock picture is refused even within the league logo limit", () => {
+  const imageNotAvailable = "7670cc2d08b0b4a846ac6ec076c99d3767c4d2b9322e2d31cd05871422ddbbda";
+  assert.match(crestRejection({ type: "image/png", bytes: Buffer.alloc(90_381), sha256: imageNotAvailable }, MAX_LEAGUE_LOGO_BYTES), /placeholder/);
+});
+
 test("non-images, empty and oversized files are refused", () => {
   assert.match(crestRejection({ type: "text/html", bytes: png, sha256: "x" }), /not an image/);
   assert.match(crestRejection({ type: "image/png", bytes: Buffer.alloc(0), sha256: "x" }), /size 0/);
