@@ -102,7 +102,7 @@ export const APP_CSS = BASE +
   ".nb{display:block;font-size:1.75rem;font-weight:800;line-height:1.1;letter-spacing:-.02em;font-variant-numeric:tabular-nums}" +
   ".nb em{display:inline-block;font-style:normal;font-size:.95rem;font-weight:700;color:var(--muted);letter-spacing:0;margin-left:.3rem}" +
   // "Ahora" beside its forecast fallback: the fallback shows only once "Ahora" is gone
-  ".tile.x{flex-wrap:wrap}.tile.x .tx{flex:1 1 7rem}span.ahora,.fc{display:contents}.ahora+.fc{display:none}.tx{flex:1;min-width:0}.aw{font-weight:800;color:var(--brand-ink)}.tb .aw{display:inline}.hello .aw{color:#fff}" +
+  ".tile.x{flex-wrap:wrap}.tile.x .tx{flex:1 1 7rem}span.ahora,span.fc{display:contents}.ahora+span.fc{display:none}.tx{flex:1;min-width:0}.aw{font-weight:800;color:var(--brand-ink)}.tb .aw{display:inline}.hello .aw{color:#fff}" +
   // Round 2 on home: the season ring card, the badges row, Allá y aquí
   ".season{position:relative;isolation:isolate;overflow:hidden;display:flex;align-items:center;gap:.9rem;color:#fff;border-radius:24px;padding:1.15rem 1.2rem;margin:0 0 .75rem;" +
   "background:radial-gradient(circle at 90% 10%,rgba(255,255,255,.18),transparent 40%),linear-gradient(125deg,#3b44b5,#6a4fd8);box-shadow:0 16px 34px rgba(63,75,196,.26)}" +
@@ -160,7 +160,7 @@ export const APP_CSS = BASE +
   ".pair{display:grid}" +
   // Match cards (home and Fútbol), today in the league
   ".match{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:.5rem;text-align:center;text-decoration:none;color:var(--ink)}.match>small{grid-column:1/-1;font-weight:650}" +
-  ".match>span{display:flex;flex-direction:column;align-items:center;gap:.35rem;font-weight:700;font-size:.92rem;line-height:1.2;overflow-wrap:anywhere}" +
+  ".match>span{display:flex;flex-direction:column;align-items:center;gap:.35rem;font-weight:700;font-size:.92rem;line-height:1.2;overflow-wrap:anywhere;hyphens:auto}" +
   ".match>.chip{padding:.4rem .8rem;background:linear-gradient(135deg,var(--brand),var(--brand-2));color:#fff}" +
   ".score{font-size:1.6rem;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}" +
   ".lg{display:block;text-decoration:none;color:var(--ink)}.lg>small{display:block;font-weight:650}" +

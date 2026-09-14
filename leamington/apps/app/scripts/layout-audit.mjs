@@ -38,7 +38,9 @@ const ONLY = process.env.ONLY ? process.env.ONLY.split(",") : null;
 const CHROME = process.env.CHROME ?? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 
 // Intentional horizontal scrollers: their content may run past their edges.
-const SCROLLERS = [".towns", ".hstrip", ".gal", ".hscroll", ".wrap", "nav.seg", ".seg.jump"];
+const SCROLLERS = [".towns", ".hstrip", ".gal", ".hscroll", ".wrap", "nav.seg", ".seg.jump", ".vstrip"];
+// Intentional clamps: text cut on purpose, whole elsewhere (a video strip card's title, whole in the link's title and on /futbol/videos).
+const CLAMPED = [".vcard:not(.big) .vt"];
 // Boxes: an element or text inside one must stay inside it.
 const BOXES = [
   ".card", ".tile", ".alert", ".choice", ".chip", "button", ".button", ".cp", ".dial", ".seg a", ".strip li", ".gw", ".here",
@@ -58,6 +60,7 @@ const INJECT_WIDE = "*{font-family:Verdana,Tahoma,sans-serif!important;font-weig
 const CHECK = `(() => {
   const BOX = ${JSON.stringify(BOXES.join(","))};
   const SCROLL = ${JSON.stringify(SCROLLERS.join(","))};
+  const CLAMP = ${JSON.stringify(CLAMPED.join(","))};
   const out = [];
   const seen = new Set();
   const name = (el) => {
@@ -133,7 +136,7 @@ const CHECK = `(() => {
   for (let n = walker.nextNode(); n; n = walker.nextNode()) {
     if (!n.nodeValue.trim()) continue;
     const p = n.parentElement;
-    if (!p || hiddenish(p) || p.closest("script,style,title")) continue;
+    if (!p || hiddenish(p) || p.closest("script,style,title") || p.closest(CLAMP)) continue;
     const pcs = getComputedStyle(p);
     if (pcs.visibility === "hidden" || pcs.display === "none") continue;
     range.selectNodeContents(n);
@@ -231,7 +234,7 @@ async function loteriaCheck(cookie) {
 async function pagesFor(code) {
   const cookie = await signIn(code);
   const check = await loteriaCheck(cookie);
-  const pages = ["/", "/clima", "/clima/aqui", "/futbol", "/mas", "/mas/miembro", "/mas/semana", "/mas/loteria", check,
+  const pages = ["/", "/clima", "/clima/aqui", "/futbol", "/futbol/videos", "/futbol/videos?s=league", "/mas", "/mas/miembro", "/mas/semana", "/mas/loteria", check,
     "/mas/tasa?r=7", "/mas/tasa?r=30", "/mas/tasa?r=90", "/mas/tasa?r=30&cad=100", "/mas/tasa?dir=local&n=1000",
     "/noticias", "/noticias?s=local", "/noticias?s=region", "/noticias?s=national",
     "/mas/feriados", "/mas/escuela", "/mas/consulado", "/mas/emergencias", "/mas/transporte", "/mas/avisos",

@@ -1,6 +1,6 @@
 // Hoy's service worker: pages that work without internet.
 //
-// Saved pages (Inicio, Clima, Hoy en Leamington, Tasa, Miembro, Tu semana, Noticias):
+// Saved pages (Inicio, Clima, Hoy en Leamington, Tasa, Miembro, Tu semana, Noticias, Videos):
 // network first. On a working connection the member always gets a fresh render,
 // and that render is kept. When the network fails, or has not answered within 4
 // seconds, the last kept copy is served with its "Sin conexión · guardado a las
@@ -19,7 +19,7 @@
 
 const STATIC = "static-v2";
 const PAGES = "pages-v1";
-const SAVED = ["/", "/clima", "/clima/aqui", "/mas/tasa", "/mas/miembro", "/mas/semana", "/noticias"];
+const SAVED = ["/", "/clima", "/clima/aqui", "/mas/tasa", "/mas/miembro", "/mas/semana", "/noticias", "/futbol/videos"];
 const STATIC_PATHS = ["/manifest.webmanifest", "/icon-192.png", "/icon-512.png"];
 const TIMEOUT_MS = 4000;
 

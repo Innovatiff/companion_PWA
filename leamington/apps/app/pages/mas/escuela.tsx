@@ -47,7 +47,8 @@ export default function Escuela({ lang, events }: Props) {
       <main>
         <PageHead lang={lang} title={t(lang, "Escuela", "School")} art="school" back />
         {events.length > 0 && <p className="step">{t(lang, "Calendario nacional", "National calendar")} · {events[0].school_year}</p>}
-        <ul className="rows">
+        {/* No events: no list at all, never an empty card. */}
+        {events.length > 0 && <ul className="rows">
           {events.map((e) => (
             <li className="ev school" key={e.event_name + e.start_date}>
               <DateBlock date={e.start_date} lang={lang} />
@@ -60,7 +61,7 @@ export default function Escuela({ lang, events }: Props) {
               </span>
             </li>
           ))}
-        </ul>
+        </ul>}
       </main>
       <TabBar current="mas" lang={lang} />
     </>

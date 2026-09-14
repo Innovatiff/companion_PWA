@@ -15,7 +15,10 @@ const TABLE =
   "th,td{text-align:left;padding:.6rem .35rem;border-bottom:1px solid var(--line)}tr:last-child td{border-bottom:0}" +
   "th{font-size:.74rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}.n{text-align:right;font-variant-numeric:tabular-nums}";
 
-export const FUTBOL_CSS = TABLE +
+// Football videos (0049): the data note, the strip of cards, the big cards of /futbol/videos. Never a player.
+const VIDEO = ".vnote{display:flex;align-items:center;gap:.45rem;margin:-.1rem .2rem .55rem;color:var(--muted);font-size:.82rem;font-weight:650}.vnote svg{flex:none}.vstrip{display:flex;align-items:flex-start;gap:.65rem;overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding-inline:1rem;margin:0 -1rem .9rem;padding:.1rem 1rem .6rem}.vcard{display:flex;flex-direction:column;text-decoration:none;color:var(--ink)}.vstrip .vcard{flex:none;width:14.5rem;scroll-snap-align:start;background:var(--card);border-radius:18px;box-shadow:var(--shadow)}.vth{position:relative;display:block;aspect-ratio:16/9;overflow:hidden;border-radius:18px 18px 0 0;background:var(--tile)}.vth img{display:block;width:100%;height:100%;object-fit:cover}.play{position:absolute;left:50%;top:50%;width:2.6rem;height:2.6rem;margin:-1.3rem 0 0 -1.3rem;border-radius:50%;background:rgba(10,12,40,.62)}.play::after{content:\"\";position:absolute;left:1.02rem;top:.75rem;border-style:solid;border-width:.55rem 0 .55rem .9rem;border-color:transparent transparent transparent #fff}.vbadge{position:absolute;left:.5rem;top:.5rem;padding:.12rem .55rem;border-radius:999px;background:var(--brand);color:#fff;font-size:.72rem;font-weight:800}.vbadge.in{position:static;align-self:flex-start;margin-bottom:.2rem}.vb{display:flex;flex-direction:column;gap:.15rem;min-width:0;padding:.6rem .75rem .75rem}.vt{font-size:.92rem;line-height:1.3;font-weight:750}.vstrip .vt{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}.nw{white-space:nowrap}.card.vcard.big{padding:0}.vcard.big .vth{border-radius:var(--r) var(--r) 0 0}.vcard.big .vt{font-size:1.02rem}.vcard.big .vb{padding:.75rem 1rem .9rem}";
+
+export const FUTBOL_CSS = VIDEO + TABLE +
   // The hero: an indigo pitch with the crest, league and flag, form and goals
   ".hero{position:relative;isolation:isolate;overflow:hidden;color:#fff;border-radius:24px;padding:1rem 1.15rem 1.15rem;margin:0 0 1rem;" +
   "background:repeating-linear-gradient(90deg,rgba(255,255,255,.045) 0 26px,transparent 26px 52px),linear-gradient(135deg,#3b44b5,#5f6be3);box-shadow:0 16px 34px rgba(63,75,196,.28)}" +
@@ -39,7 +42,7 @@ export const FUTBOL_CSS = TABLE +
   ".grp{padding:.8rem 1rem .4rem}.grp>header{display:flex;align-items:center;gap:.6rem;padding-bottom:.6rem;border-bottom:1px solid var(--line)}" +
   ".grp h3{flex:1;margin:0;font-size:.98rem}.grp .flag{font-size:1.2rem;margin:0}" +
   ".fxs{list-style:none;margin:0;padding:0}.fx{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:.5rem;padding:.7rem 0;border-bottom:1px solid var(--line);font-size:.9rem}" +
-  ".fx:last-child{border-bottom:0}.fx>span.h,.fx>span.a{display:flex;flex-wrap:wrap;align-items:center;gap:.3rem .45rem;min-width:0;line-height:1.2;overflow-wrap:anywhere;hyphens:auto}.fx>span.a{justify-content:flex-end;text-align:right}" +
+  ".fx:last-child{border-bottom:0}.fx>span.h,.fx>span.a{display:flex;align-items:center;gap:.45rem;min-width:0;line-height:1.2;overflow-wrap:anywhere;hyphens:auto}.fx>span>b{min-width:0}.fx>span.a{justify-content:flex-end;text-align:right}" +
   ".fx b{font-weight:700}.fx .sc{font-size:1.15rem;font-weight:800;font-variant-numeric:tabular-nums;padding:0 .2rem}.fx>small{grid-column:1/-1;text-align:center;margin-top:-.25rem;font-size:.76rem}" +
   ".team{display:flex;align-items:center;gap:1rem}.team h1{margin:0}.team p{margin:.15rem 0 0}";
 
@@ -217,7 +220,7 @@ export const SEMANA_CSS = XBALL +
   ".chg{display:inline-block;margin-top:.5rem;padding:.25rem .8rem;border-radius:999px;background:var(--tile);color:var(--brand-ink);font-weight:750;font-size:.86rem}" +
   ".bw{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.5rem;list-style:none;padding:0;margin:.4rem 0 0;text-align:center}.bw li{display:flex;flex-direction:column;align-items:center}.bw .art{animation:pop .5s cubic-bezier(.3,1.5,.5,1) both}" +
   ".res2{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:.5rem;margin:.5rem 0;font-weight:650;font-size:.92rem}" +
-  ".res2>span{display:flex;flex-wrap:wrap;align-items:center;gap:.3rem .4rem;min-width:0;overflow-wrap:anywhere}.res2>span:last-child{justify-content:flex-end;text-align:right}.res2 .sc{font-size:1.2rem;font-weight:800}.res2 .rd{grid-column:1/-1;color:var(--muted);font-weight:600}.nx2{margin:.6rem 0 0}" +
+  ".res2>span{display:flex;align-items:center;gap:.4rem;min-width:0;overflow-wrap:anywhere;hyphens:auto}.res2>span:last-child{justify-content:flex-end;text-align:right}.res2 .sc{font-size:1.2rem;font-weight:800}.res2 .rd{grid-column:1/-1;color:var(--muted);font-weight:600}.nx2{margin:.6rem 0 0}" +
   ".rng{display:block;margin-top:.35rem;font-weight:650}.wcap{display:block;font-weight:650}";
 
 export const LOGIN_CSS = ERR + ".brandmark{font-weight:800;font-size:2.2rem;color:#fff;letter-spacing:-.03em;margin:0;line-height:1}.steps{list-style:none;padding:0;margin:.5rem 0}.steps li{display:flex;gap:.75rem;align-items:flex-start;margin:.8rem 0}.steps .n{display:grid;place-items:center;flex:none;width:2rem;height:2rem;border-radius:50%;background:var(--brand);color:#fff;font-weight:800;font-size:.9rem}" +
@@ -267,5 +270,10 @@ export const NOTICIAS_CSS =
   ".nsrc{margin:1rem .2rem}html.big .nth{width:64px;height:64px}";
 
 // Rows with a picture (Escuela, Transporte) and tap-to-call rows (Emergencias, Consulado): only those pages carry them.
-export const EV_CSS = ROWS + ".ev{display:flex;gap:.85rem;align-items:center}.ev>span{flex:1;min-width:0}.ev{flex-wrap:wrap}.ev>span{flex:1 1 11rem}";
-export const DIAL_CSS = ROWS + ".dialrow{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem .85rem;text-decoration:none;color:inherit;min-height:48px}.dialrow>span{flex:1 1 16.5rem;min-width:0}.dialrow .num{font-size:1.3rem;white-space:nowrap}";
+export const EV_CSS = ROWS + ".ev{display:flex;gap:.85rem;align-items:center}.ev>span:not(.pic){flex:1;min-width:0}.ev{flex-wrap:wrap;align-items:flex-start}.ev>span:not(.pic){flex:1 1 11rem}";
+export const DIAL_CSS = ROWS + ".dialrow{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem .85rem;text-decoration:none;color:inherit;min-height:48px}.dialrow>span:not(.pic){flex:1 1 12rem;min-width:0}.dialrow .num{font-size:1.3rem;white-space:nowrap}";
+
+// /futbol/videos (0049): the tabs, the update line, one column of big video cards.
+export const VIDEOS_CSS = VIDEO +
+  ".seg{display:flex;gap:.3rem;padding:.3rem;margin:0 0 1rem;background:var(--card);border-radius:999px;box-shadow:var(--shadow);overflow-x:auto}.seg a{flex:1 0 auto;display:grid;place-items:center;min-height:48px;padding:0 1rem;border-radius:999px;text-decoration:none;color:var(--ink);font-weight:650;font-size:.92rem;white-space:nowrap}.seg a[aria-current]{background:var(--brand);color:#fff}" +
+  ".nupd{margin:-.35rem .2rem .7rem}.stale{margin:0 0 .85rem;padding:.65rem .95rem;border-radius:16px;background:var(--warn-soft);color:var(--warn);font-weight:650}.vsrc{margin:1rem .2rem}";

@@ -47,7 +47,8 @@ its budget:
 | Tu semana | 9,391 |
 | Feriados | 8,917 |
 | Miembro | 8,761 |
-| Fútbol | 8,580 |
+| Fútbol (with two video strips, DEMXMX42) | 10,160 |
+| Videos (/futbol/videos, the league tab, DEMXMX42) | 8,925 |
 | Lotería | 8,573 |
 | Más | 8,496 |
 | Transporte | 8,382 |
@@ -565,6 +566,36 @@ Nothing suggests the whole article is in Hoy.
 - **Pictures.** `/news-image/{id}/thumb|lead` serves our cached JPEG with the
   photo headers (30 days immutable, ETag, 304, nosniff; 404 otherwise).
 - **Offline.** /noticias is one of the pages sw.js keeps.
+
+### Videos (0049)
+
+The owner asked for "videos links and their thumbnail on the sport page,
+highlights of their team". The stance is decided (OPEN-DECISIONS 3.25): links to
+official channels' uploads on YouTube, our small cached thumbnail, "YouTube ·
+{channel}", the time and the views. **Never an embedded player** (a player would
+make the phone call YouTube), and every list of videos says plainly "Se abre en
+YouTube · usa muchos datos".
+
+- **Fútbol.** Right after the team hero: "Videos de {team}" and "Resúmenes de
+  la liga", each a horizontal scroll-snap strip of cards (a 16:9 lazy thumbnail
+  with a play mark and a "Resumen" badge on highlights, the title in up to 3
+  lines, "YouTube · channel · hace X", the views in words: "705 mil vistas",
+  "1.2 millones de vistas"). The whole
+  card is the YouTube link (new tab, `rel="noopener"`). "Ver todo" opens
+  /futbol/videos. A list without videos is not rendered; never "no hay videos".
+- **/futbol/videos.** Back to Fútbol, "Videos", the update line (stale: "La
+  lista puede no estar al día"), tabs for the team and the league (only with
+  videos), the note, one column of big cards, and "Canales:" linking to the
+  channels. Kept offline by sw.js.
+- **No thumbnail yet:** the card has no picture (the badge moves beside the
+  title), never a broken image.
+- **Pictures.** `/video-thumb/{id}` serves our cached JPEG (at most 14 KB) with
+  the photo headers; 404 for an unknown video or one without a thumbnail.
+- **The strip title's 3-line clamp** is the one intentional clamp: the full title
+  is the card link's `title` and is whole on /futbol/videos (the layout audit
+  lists it, like the horizontal scrollers).
+- **Home:** no video row. Home's fullest page is 10,927 bytes, and a thumbnail
+  row would take its 1 KB margin.
 
 ## 5. Language
 

@@ -69,7 +69,7 @@ async function page(path, cookie, label = path) {
   const bad = FORBIDDEN.find((re) => re.test(visible(r.text)));
   check(!bad, `${label} has no reassurance-from-silence or placeholder text`, String(bad));
   if (r.status === 200 && !path.startsWith("/setup/") && !label.includes("(expired)")) {
-    tabs(r.text, label, path === "/" ? "/" : path.startsWith("/clima") ? "/clima" : path.startsWith("/mas/tasa") ? "/mas/tasa" : path.startsWith("/mas") || path.startsWith("/noticias") ? "/mas" : path);
+    tabs(r.text, label, path === "/" ? "/" : path.startsWith("/clima") ? "/clima" : path.startsWith("/mas/tasa") ? "/mas/tasa" : path.startsWith("/mas") || path.startsWith("/noticias") ? "/mas" : path.startsWith("/futbol") ? "/futbol" : path);
   }
   if (r.status === 200) await images(r.text, label);
   return r.text;
@@ -97,7 +97,7 @@ const imagesChecked = new Set();
 const ART_SRC = /src="(\/art\/[a-z-]+\.svg\?v=\d+)"/;
 async function images(html, label) {
   const imgs = [...html.matchAll(/<img\b[^>]*>/g)].map((m) => m[0]);
-  check(imgs.every((i) => (/src="\/(crest|photo|league-crest)\/\d+"/.test(i) || /src="\/photo\/\d+\/[1-6]"/.test(i) || /src="\/news-image\/\d+\/(thumb|lead)"/.test(i) || ART_SRC.test(i)) && /width="\d+"/.test(i) && /height="\d+"/.test(i) && / alt=""/.test(i)),
+  check(imgs.every((i) => (/src="\/(crest|photo|league-crest)\/\d+"/.test(i) || /src="\/photo\/\d+\/[1-6]"/.test(i) || /src="\/news-image\/\d+\/(thumb|lead)"/.test(i) || /src="\/video-thumb\/\d+"/.test(i) || ART_SRC.test(i)) && /width="\d+"/.test(i) && /height="\d+"/.test(i) && / alt=""/.test(i)),
     `${label}: every image is a crest, a town photo or an illustration from our own domain, sized`, imgs.join(" "));
   check(imgs.filter((i) => /src="\/(crest|league-crest)\//.test(i)).every((i) => / loading="lazy"/.test(i)), `${label}: crests and league logos load lazily`);
   const photos = new Set(imgs.map((i) => /src="\/photo\/(\d+(?:\/[1-6])?)"/.exec(i)?.[1]).filter(Boolean));
@@ -711,6 +711,78 @@ async function news(cookie, code, label) {
   }
 }
 
+// Football videos (0049, OPEN-DECISIONS 3.25): links to official channels' videos on YouTube with our
+// cached thumbnail, never a player, and the note that watching opens YouTube and uses a lot of data.
+const VIDEOS_LIMIT = 12;
+const NO_VIDEOS = /no hay videos|sin videos|no videos/i;
+const NO_YOUTUBE_LOAD = /<iframe|ytimg\.com|youtube\.com\/embed|youtube-nocookie/i;
+async function videos(cookie, code, label) {
+  if (!DB) { console.log(`SKIP ${label}: videos vs database (set DATABASE_URL)`); return; }
+  const fp = (await q("select app.football_page(id)->'videos' as v from clients where code = $1", [code])).rows[0].v;
+  const fv = (await q("select app.football_videos(id, now(), $2) as v from clients where code = $1", [code, VIDEOS_LIMIT])).rows[0].v;
+  const cardsIn = (html, sec) => {
+    const at = html.indexOf(`<section class="vids" data-videos="${sec}">`) >= 0 ? html.indexOf(`<section class="vids" data-videos="${sec}">`) : html.indexOf(`<section data-videos="${sec}">`);
+    if (at < 0) return null;
+    return html.slice(at, html.indexOf("</section>", at)).split(/(?=<a class="(?:card )?vcard)/).slice(1);
+  };
+  const open = (c) => c.slice(0, c.indexOf(">") + 1);
+  const holds = (cards, want, tl) => {
+    check(cards.map((c) => attr(open(c), "data-video")).join() === want.map((v) => String(v.id)).join(), `${tl}: exactly the database's videos, in order`, `${cards.length} vs ${want.length}`);
+    if (cards.length !== want.length) return;
+    check(cards.every((c, k) => attr(open(c), "href") === `https://www.youtube.com/watch?v=${want[k].youtube_id}` && want[k].url === attr(open(c), "href")
+      && / target="_blank"/.test(open(c)) && / rel="noopener"/.test(open(c))), `${tl}: every card links to its YouTube video (new tab, rel=noopener)`);
+    check(cards.every((c, k) => c.includes(`<b class="vt">${esc(want[k].title)}</b>`) && c.includes(`YouTube · ${esc(want[k].channel)} · `)), `${tl}: every title and channel are the database's, credited to YouTube`);
+    check(cards.every((c, k) => {
+      const imgs = [...c.matchAll(/<img\b[^>]*>/g)].map((m) => m[0]);
+      return imgs.length === (want[k].thumb ? 1 : 0) && imgs.every((i) => attr(i, "src") === `/video-thumb/${want[k].id}` && / loading="lazy"/.test(i));
+    }), `${tl}: a lazy thumbnail exactly where the video has one, never a broken picture`);
+    check(cards.every((c, k) => /class="vbadge( in)?"/.test(c) === want[k].is_highlight), `${tl}: the "Resumen" badge exactly on highlights`);
+    check(cards.every((c, k) => /class="vv">/.test(c) === (want[k].views != null)), `${tl}: views exactly where the database has them`);
+    check(cards.every((c) => !/class="vv">[^<]*\bk\b/.test(c)) && cards.every((c) => !/class="vv">/.test(c) || /class="vv">[\d.,]+( mil| millón| millones de)? vistas<|class="vv">[\d.,]+[KMB]? views</.test(c)),
+      `${tl}: views written in words ("705 mil vistas")`);
+  };
+  // Fútbol: the two strips right after the hero, as football_page.videos says.
+  const futbol = (await send("/futbol", { cookie })).text;
+  const any = Boolean(fp && (fp.team.length || fp.league.length));
+  for (const [sec, want] of [["team", fp?.team ?? []], ["league", fp?.league ?? []]]) {
+    const cards = cardsIn(futbol, sec);
+    check(Boolean(cards) === want.length > 0, `${label} /futbol: the ${sec} videos strip shows exactly when there are videos`, `${cards?.length} vs ${want.length}`);
+    if (cards) holds(cards, want, `${label} /futbol ${sec} videos`);
+  }
+  check(/Se abre en YouTube · usa muchos datos|Opens YouTube · uses a lot of data/.test(futbol) === any, `${label} /futbol: the data note shows exactly when videos are shown`);
+  if (any) {
+    const firstVids = futbol.indexOf('class="vids"');
+    const later = [/class="card match/, /class="card grp"/, /class="wrap"/].map((re) => futbol.search(re)).filter((i) => i >= 0);
+    check(futbol.indexOf('class="hero"') < firstVids && later.every((i) => firstVids < i), `${label} /futbol: the videos come right after the team hero`);
+  }
+  check(!NO_YOUTUBE_LOAD.test(futbol) && !NO_VIDEOS.test(visible(futbol).replace(/<[^>]+>/g, " ")), `${label} /futbol loads nothing from YouTube (no player, no ytimg) and never says there are no videos`);
+  // /futbol/videos: the tabs, the big cards, the channels, the stale note.
+  const page0 = (await send("/futbol/videos", { cookie })).text;
+  const secs = [["team", fv.team_videos], ["league", fv.league_videos]].filter(([, l]) => l.length > 0);
+  check([...page0.matchAll(/<a\b[^>]*data-section="([a-z]+)"/g)].map((m) => m[1]).join() === secs.map(([s]) => s).join(), `${label} /futbol/videos: a tab exactly for each list with videos`);
+  check(/puede no estar al día|may not be up to date/.test(page0) === Boolean(fv.stale), `${label} /futbol/videos: the not-current note exactly when stale`, String(fv.stale));
+  check(fv.channels.every((c) => page0.includes(`href="${esc(c.url)}" target="_blank" rel="noopener">${esc(c.name)}</a>`)), `${label} /futbol/videos: every channel listed, linked to YouTube`);
+  check(!NO_YOUTUBE_LOAD.test(page0) && !NO_VIDEOS.test(visible(page0).replace(/<[^>]+>/g, " ")), `${label} /futbol/videos loads nothing from YouTube and never says there are no videos`);
+  for (const [sec, want] of secs) {
+    const html = sec === secs[0][0] ? page0 : (await send("/futbol/videos?s=league", { cookie })).text;
+    check(/Se abre en YouTube · usa muchos datos|Opens YouTube · uses a lot of data/.test(html), `${label} /futbol/videos ${sec}: the data note is there`);
+    holds(cardsIn(html, sec) ?? [], want, `${label} /futbol/videos ${sec}`);
+  }
+  // The thumbnail route: our cached copy with a town photo's headers; 404 otherwise.
+  const withThumb = [...fv.team_videos, ...fv.league_videos].find((v) => v.thumb);
+  if (withThumb) {
+    const path = `/video-thumb/${withThumb.id}`;
+    const r = await send(path);
+    check(r.status === 200 && r.headers["content-type"] === "image/jpeg" && r.bytes > 0 && r.bytes <= 14_000, `${path} serves a JPEG of at most 14 KB`, `${r.status} ${r.bytes}`);
+    check(/public/.test(r.headers["cache-control"] ?? "") && /max-age=2592000/.test(r.headers["cache-control"] ?? "") && /immutable/.test(r.headers["cache-control"] ?? "")
+      && Boolean(r.headers.etag) && r.headers["x-content-type-options"] === "nosniff", `${path} is cached for 30 days, immutable, with an ETag and nosniff`, JSON.stringify(r.headers));
+    check((await send(path, { headers: { "if-none-match": r.headers.etag } })).status === 304, `${path} answers 304 to its own ETag`);
+  }
+  const noThumb = (await q("select id from videos where thumb is null limit 1")).rows[0]?.id;
+  check((await send("/video-thumb/abc")).status === 404 && (await send("/video-thumb/999999999")).status === 404 && (!noThumb || (await send(`/video-thumb/${noThumb}`)).status === 404),
+    "/video-thumb: an unknown video, or one without a thumbnail, is 404");
+}
+
 // Round 5, "Siempre contigo" (0045, 0046): the number check, Tu semana, the
 // hometown gallery, pages kept for offline, and Modo noche.
 const LOTTO_WORDS = /ganaste|ganador|premio|probabilidad|odds|prize|números calientes|hot numbers|comprar|compra tu|\bbuy\b|jackpot|apuesta/i;
@@ -725,10 +797,10 @@ async function round5(cookie, code, label) {
   // Pages kept for offline: exactly the member pages, cleared at sign-in; each carries its offline line, hidden online.
   const sw = (await send("/sw.js")).text;
   const saved = /const SAVED = \[([^\]]*)\]/.exec(sw)?.[1]?.replace(/\s/g, "");
-  check(saved === '"/","/clima","/clima/aqui","/mas/tasa","/mas/miembro","/mas/semana","/noticias"', "sw.js keeps exactly Inicio, Clima, Hoy en Leamington, Tasa, Miembro, Tu semana and Noticias", saved);
+  check(saved === '"/","/clima","/clima/aqui","/mas/tasa","/mas/miembro","/mas/semana","/noticias","/futbol/videos"', "sw.js keeps exactly Inicio, Clima, Hoy en Leamington, Tasa, Miembro, Tu semana, Noticias and Videos", saved);
   check(/pathname === "\/api\/login"\) \{\s*event\.waitUntil\(clearPages\(\)\)/.test(sw) && /pathname === "\/login"\) \{\s*event\.waitUntil\(clearPages\(\)\)/.test(sw)
     && /caches\.delete\(PAGES\)/.test(sw), "sw.js clears every kept page when the sign-in page opens or a code signs in");
-  for (const path of ["/", "/clima", "/clima/aqui", "/mas/tasa", "/mas/miembro", "/mas/semana", "/noticias"]) {
+  for (const path of ["/", "/clima", "/clima/aqui", "/mas/tasa", "/mas/miembro", "/mas/semana", "/noticias", "/futbol/videos"]) {
     const html = (await send(path, { cookie })).text;
     const bar = tag(html, "p", { id: "off" });
     check(Boolean(bar) && / hidden=""/.test(bar) && /(Sin conexión · guardado a las|Offline · saved at) \d{1,2}(:\d{2})?(am|pm)/.test(html),
@@ -1011,7 +1083,7 @@ const cookie = login.cookie;
 await welcome(cookie, CODE, CODE);
 
 for (const path of ["/", "/futbol", "/clima/aqui", "/mas", "/mas/miembro", "/mas/semana", "/mas/tasa", "/mas/feriados", "/mas/escuela", "/mas/consulado",
-  "/mas/emergencias", "/mas/transporte", "/mas/loteria", "/mas/avisos", "/noticias", "/noticias?s=national",
+  "/mas/emergencias", "/mas/transporte", "/mas/loteria", "/mas/avisos", "/noticias", "/noticias?s=national", "/futbol/videos", "/futbol/videos?s=league",
   "/setup/municipality?edit=1", "/setup/watch?edit=1", "/setup/segment?edit=1", "/setup/kids?edit=1", "/setup/corridor?edit=1"]) {
   await page(path, cookie);
 }
@@ -1024,6 +1096,7 @@ await money(cookie, CODE, CODE);
 await workday(cookie, CODE, CODE);
 await round5(cookie, CODE, CODE);
 await news(cookie, CODE, CODE);
+await videos(cookie, CODE, CODE);
 await teamVisuals(cookie, CODE);
 await richer(cookie, CODE);
 for (const path of ["/crest/999999999999", "/crest/abc", "/photo/999999999999", "/photo/abc", "/league-crest/999999999999", "/league-crest/abc"]) {

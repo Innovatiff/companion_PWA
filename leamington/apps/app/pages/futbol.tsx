@@ -10,6 +10,11 @@
  * Results are final and show with their date. Never a live score: a score
  * appears only on a finished match. An empty list renders nothing, never
  * "no matches". Crests and league logos come from our own domain when stored.
+ *
+ * Videos (0049, OPEN-DECISIONS 3.25), right after the hero: their team's videos
+ * and the league's highlights as strips of cards linking to YouTube, with our
+ * cached thumbnail and the note that watching opens YouTube and uses a lot of
+ * data. Never a player. A section without videos is not rendered.
  */
 import Head from "next/head";
 import type { GetServerSideProps } from "next";
@@ -20,6 +25,7 @@ import { loadClient, recordView } from "../lib/client";
 import { t } from "../lib/t";
 import { Crest, FLAG, Icon, LeagueLogo, roundName } from "../lib/ui";
 import { FUTBOL_CSS } from "../lib/page-css";
+import { VideoCard, VideoNote, type Video } from "../lib/videos";
 
 export const config = { unstable_runtimeJS: false };
 
@@ -37,6 +43,7 @@ type Football = {
   goals?: { matches: number; for: number; against: number } | null;
   league_today?: Match[] | null; league_recent?: Match[] | null; region_today?: Match[] | null;
   table?: { state: string; reason: string | null; rows: Standing[] | null } | null;
+  videos?: { team: Video[]; league: Video[]; updated_at: string | null; stale: boolean } | null;
 };
 type Props = { f: Football; now: string };
 
@@ -51,6 +58,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
     league_today: f.league_today?.length ?? null, league_recent: f.league_recent?.length ?? null,
     region_today: f.region_today?.length ?? null,
     table: f.table?.state ?? null, table_reason: f.table?.reason ?? null,
+    videos_team: f.videos?.team.length ?? null, videos_league: f.videos?.league.length ?? null,
   });
   return { props: { f, now: new Date().toISOString() } };
 };
@@ -96,6 +104,9 @@ export default function Futbol({ f, now }: Props) {
   const regionGroups = [...new Set(region.map((m) => m.league_id))].map((id) => region.filter((m) => m.league_id === id));
   const tableGroups = f.table?.state === "available" && f.table.rows
     ? [...new Set(f.table.rows.map((r) => r.group ?? ""))] : [];
+  const teamVideos = f.videos?.team ?? [];
+  const leagueVideos = f.videos?.league ?? [];
+  const seeAll = t(lang, "Ver todo", "See all");
 
   // One match as a row: both teams with crest or initials; the final score, or the kickoff (or status) chip.
   const row = (m: Match, sub?: string | null) => (
@@ -164,6 +175,21 @@ export default function Futbol({ f, now }: Props) {
             </div>
           )}
         </section>
+
+        {teamVideos.length > 0 && (
+          <section className="vids" data-videos="team">
+            <div className="sh"><h2>{t(lang, `Videos de ${f.team}`, `${f.team} videos`)}</h2><a href="/futbol/videos">{seeAll}</a></div>
+            <VideoNote lang={lang} />
+            <div className="vstrip">{teamVideos.map((v) => <VideoCard key={v.id} v={v} lang={lang} tz={tz} nowMs={nowMs} />)}</div>
+          </section>
+        )}
+        {leagueVideos.length > 0 && (
+          <section className="vids" data-videos="league">
+            <div className="sh"><h2>{t(lang, "Resúmenes de la liga", "League highlights")}</h2><a href="/futbol/videos?s=league">{seeAll}</a></div>
+            {teamVideos.length === 0 && <VideoNote lang={lang} />}
+            <div className="vstrip">{leagueVideos.map((v) => <VideoCard key={v.id} v={v} lang={lang} tz={tz} nowMs={nowMs} />)}</div>
+          </section>
+        )}
 
         {next && (
           <>
