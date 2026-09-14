@@ -88,11 +88,12 @@ test("condition codes map to our set; unknown codes give no sky", () => {
     ["storm", "drizzle", "rain", "snow", "fog", "fog", "storm", null, "clear", "partly_cloudy", "cloudy", null]);
 });
 
-test("OpenWeather is called hourly and not above 30 places", () => {
+test("OpenWeather is called every run up to 17 places, hourly up to 30, and not above", () => {
   const at = (min) => new Date(`2026-09-14T12:${String(min).padStart(2, "0")}:00Z`);
+  assert.deepEqual(openWeatherThisRun(at(30), 17), { call: true, warning: null }, "few places: every run");
   assert.deepEqual(openWeatherThisRun(at(0), 10), { call: true, warning: null });
   assert.deepEqual(openWeatherThisRun(at(14), 30), { call: true, warning: null });
-  assert.deepEqual(openWeatherThisRun(at(15), 10), { call: false, warning: null }, "the half-hour run leaves it out");
+  assert.deepEqual(openWeatherThisRun(at(15), 18), { call: false, warning: null }, "more places: the half-hour run leaves it out");
   assert.deepEqual(openWeatherThisRun(at(30), 31), { call: false, warning: null });
   const over = openWeatherThisRun(at(2), 31);
   assert.equal(over.call, false);
@@ -166,12 +167,12 @@ test("the hourly run stores all three providers for every place", { skip }, asyn
   assert.equal((await db.query("select count(*)::int as n from current_conditions")).rows[0].n, 9);
 });
 
-test("the half-hour run leaves OpenWeather out and is still ok", { skip }, async () => {
+test("with few places the half-hour run calls OpenWeather too, so its reading is as recent", { skip }, async () => {
   await addClientInJamaica();
   const { run, requested } = await runCurrent({ minute: 35 });
   assert.equal(run.status, "ok");
-  assert.equal(run.records_written, 6);
-  assert.ok(!requested.includes("api.openweathermap.org"));
+  assert.equal(run.records_written, 9);
+  assert.ok(requested.includes("api.openweathermap.org"));
 });
 
 test("one provider failing makes the run partial and writes the others", { skip }, async () => {

@@ -49,3 +49,12 @@ round starts. The standing rules still apply:
 25. **Night mode:** an automatic dark theme.
 
 Round reviews may reshape any feature; each change is noted here.
+
+## Review notes
+
+### Round 1 (2026-09-14)
+- **Ahora ranges.** The first production morning showed ranges like "11–16°".
+  - **Cause:** the providers' readings were half an hour apart during the warm-up, and in Morelia one outlier stood against two providers that agreed.
+  - **Fix (0043):** only readings within 20 minutes of the newest are combined. The temperature is the median when two providers agree within 2°, and a range only when none do. OpenWeather is now called every 30 minutes while there are 17 places or fewer, so its reading is as recent as the others'.
+- **Clima's today card** repeated the strip's "Hoy" row: merged in round 2.
+- **Home row headers** wrapped ("Leamington · Ahora · 9:25am"): shortened in round 2.

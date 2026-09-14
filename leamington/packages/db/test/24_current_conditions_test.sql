@@ -11,10 +11,10 @@ insert into current_conditions (municipality_id, provider, observed_at, temp_c, 
                                 condition, is_day, fetched_at)
 select m.id, v.provider::forecast_provider, v.obs::timestamptz, v.t, v.feels, v.hum, v.wind, v.sky, v.day, v.fetched::timestamptz
   from municipalities m join (values
-    -- Home: three fresh providers, 23.0 to 26.2; two say cloudy, one rain.
+    -- Home: three fresh providers within 20 minutes, 23.0 to 26.2; two say cloudy, one rain.
     ('Section Home',  'open-meteo',  '2026-09-13 13:30+00', 24.4, 25,   80,   10,   'cloudy', true,  '2026-09-13 13:35+00'),
     ('Section Home',  'weatherapi',  '2026-09-13 13:45+00', 26.2, 27,   null, 12,   'rain',   false, '2026-09-13 13:50+00'),
-    ('Section Home',  'openweather', '2026-09-13 13:15+00', 23.0, null, null, null, 'cloudy', true,  '2026-09-13 13:20+00'),
+    ('Section Home',  'openweather', '2026-09-13 13:30+00', 23.0, null, null, null, 'cloudy', true,  '2026-09-13 13:35+00'),
     -- Watch: rain and storm tie, day and night tie; the third observed at 11:00 is stale.
     ('Section Watch', 'open-meteo',  '2026-09-13 13:20+00', 30.2, null, 70,   null, 'rain',   true,  '2026-09-13 13:25+00'),
     ('Section Watch', 'weatherapi',  '2026-09-13 13:40+00', 31.4, null, 75,   null, 'storm',  false, '2026-09-13 13:45+00'),
@@ -42,13 +42,13 @@ begin
   select id into v_windsor from local_places where key = 'windsor';
 
   s := app.current_summary(v_home, null, '2026-09-13 14:00+00', 'en');
-  assert (s->>'temp_c')::int = 24 and s->>'temp' = '23–26°', format('median 24.4, range 23 to 26: %s', s);
+  assert (s->>'temp_c')::int = 24 and s->>'temp' = '24°', format('23 and 24 agree, so the median 24.4 (0043): %s', s);
   assert (s->>'feels_like')::int = 26 and (s->>'wind_kph')::int = 11, format('medians of two reports: %s', s);
   assert not s ? 'humidity', format('one provider''s humidity is not shown: %s', s);
   assert s->>'condition' = 'cloudy' and s->>'label' = 'Cloudy', format('the majority beats a more severe minority: %s', s);
   assert (s->>'is_day')::boolean and (s->>'providers')::int = 3, format('%s', s);
-  assert (s->>'observed_at')::timestamptz = '2026-09-13 13:15+00'
-     and (s->>'valid_until')::timestamptz = '2026-09-13 14:45+00', format('oldest observation used, plus 90 minutes: %s', s);
+  assert (s->>'observed_at')::timestamptz = '2026-09-13 13:30+00'
+     and (s->>'valid_until')::timestamptz = '2026-09-13 15:00+00', format('oldest observation used, plus 90 minutes: %s', s);
   assert app.current_summary(v_home, null, '2026-09-13 14:00+00', 'es')->>'label' = 'Nublado';
 
   s := app.current_summary(v_watch, null, '2026-09-13 14:00+00', 'es');
@@ -80,7 +80,7 @@ declare w jsonb; x jsonb; t jsonb; v_client uuid := '99990000-0000-4000-8000-000
 begin
   w := app.weather_page(v_client, '2026-09-13 14:00+00');
   select e into t from jsonb_array_elements(w->'towns') e where (e->>'is_home')::boolean;
-  assert t->'now'->>'temp' = '23–26°' and t->'now'->>'label' = 'Cloudy', format('home town now: %s', t);
+  assert t->'now'->>'temp' = '24°' and t->'now'->>'label' = 'Cloudy', format('home town now: %s', t);
   select e into t from jsonb_array_elements(w->'towns') e where e->>'name' = 'Section Watch';
   assert t->'now'->>'condition' = 'storm', format('watched town now: %s', t);
   select e into t from jsonb_array_elements(w->'local') e where e->>'key' = 'leamington';

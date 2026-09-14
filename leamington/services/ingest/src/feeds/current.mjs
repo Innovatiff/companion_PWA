@@ -126,14 +126,17 @@ const PROVIDERS = [
 
 /**
  * OpenWeather's free plan allows 1,000 calls a day, shared with the forecast
- * feed (4 runs a day per place). Current conditions call it once an hour, on
- * the run that starts in minutes 0-14, and not at all above 30 places:
- * 30 x (24 + 4) = 840 calls. Its hourly row stays inside the 90-minute window
- * between calls. Exported for tests.
+ * feed (4 runs a day per place). Up to 17 places it is called on every run,
+ * 17 x (48 + 4) = 884 calls, so its reading is as recent as the others' and
+ * counts toward the median (0043 only combines readings within 20 minutes).
+ * Up to 30 places it is called hourly, on the run that starts in minutes 0-14,
+ * 30 x (24 + 4) = 840; above that, not at all. Exported for tests.
  */
+export const OPENWEATHER_EVERY_RUN_MAX = 17;
 export const OPENWEATHER_MAX_TARGETS = 30;
 
 export function openWeatherThisRun(now, targetCount) {
+  if (targetCount <= OPENWEATHER_EVERY_RUN_MAX) return { call: true, warning: null };
   if (now.getUTCMinutes() >= 15) return { call: false, warning: null };   // the hourly run calls it
   if (targetCount > OPENWEATHER_MAX_TARGETS) {
     return { call: false,
