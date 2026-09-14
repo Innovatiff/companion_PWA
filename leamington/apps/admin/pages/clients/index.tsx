@@ -6,7 +6,7 @@ import { formatDate } from "@leamington/shared/src/format.ts";
 import { ownerPage, plain, type Viewer } from "../../lib/server.ts";
 import { isUuid, isClientStatus, CLIENT_STATUSES, containsPattern, q1 } from "../../lib/rules.ts";
 import { strings } from "../../lib/i18n.ts";
-import { Page, Chip, StatusChip } from "../../lib/ui.tsx";
+import { Page, Card, HeroAction, Chip, StatusChip } from "../../lib/ui.tsx";
 
 export const config = { unstable_runtimeJS: false };
 
@@ -49,64 +49,68 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
 export default function Clients({ viewer, rows, total, affiliates, filter }: Props) {
   const t = strings(viewer.lang);
   const c = t.clients;
+  const caption = rows.length === 0 ? c.title : c.caption(rows.length, total);
   return (
-    <Page viewer={viewer} section="clients" title={c.title}>
-      <p><a className="button inline" href="/clients/new">{c.register}</a></p>
-      <form method="get" action="/clients" className="filters">
-        <div>
-          <label htmlFor="aff">{c.affiliate}</label>
-          <select id="aff" name="aff" defaultValue={filter.aff}>
-            <option value="">{t.all}</option>
-            {affiliates.map((a) => (
-              <option key={a.id} value={a.id}>{a.name}{a.is_house ? ` (${t.chip.house})` : ""}{a.is_test ? ` (${t.chip.test})` : ""}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label htmlFor="status">{c.status}</label>
-          <select id="status" name="status" defaultValue={filter.status}>
-            <option value="">{t.all}</option>
-            {CLIENT_STATUSES.map((s) => <option key={s} value={s}>{t.status[s]}</option>)}
-          </select>
-        </div>
-        <div>
-          <label htmlFor="q">{c.search}</label>
-          <input id="q" name="q" defaultValue={filter.q} autoComplete="off" />
-        </div>
-        <div><button type="submit">{c.filter}</button></div>
-      </form>
-
-      {rows.length === 0 ? <p>{c.empty}</p> : (
-        <div className="wrap">
-          <table>
-            <caption>{c.caption(rows.length, total)}</caption>
-            <thead>
-              <tr>
-                <th scope="col">{c.name}</th><th scope="col">{c.code}</th><th scope="col">{c.affiliate}</th>
-                <th scope="col">{c.countryCol}</th><th scope="col">{c.regionCol}</th><th scope="col">{c.status}</th>
-                <th scope="col">{c.periodEnd}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.client_id}>
-                  <th scope="row">
-                    <a href={`/clients/${r.client_id}`}>{r.full_name}</a>{" "}
-                    {r.is_test && <Chip kind="test">{t.chip.test}</Chip>}{" "}
-                    {!r.active && <Chip kind="unk">{t.chip.inactive}</Chip>}
-                  </th>
-                  <td className="num">{r.code}</td>
-                  <td>{r.affiliate_name}{r.is_house ? ` (${t.chip.house})` : ""}</td>
-                  <td>{t.country[r.country] ?? r.country}</td>
-                  <td>{r.admin_region ?? t.dash}</td>
-                  <td><StatusChip status={r.status} daysLeft={r.days_left} lang={viewer.lang} /></td>
-                  <td>{r.period_end ? formatDate(r.period_end, viewer.lang, true) : t.dash}</td>
-                </tr>
+    <Page viewer={viewer} section="clients" title={c.title} subtitle={c.subtitle}
+          action={<HeroAction href="/clients/new">{c.register}</HeroAction>}>
+      <Card title={caption}>
+        <form method="get" action="/clients" className="filters">
+          <div>
+            <label htmlFor="aff">{c.affiliate}</label>
+            <select id="aff" name="aff" defaultValue={filter.aff}>
+              <option value="">{t.all}</option>
+              {affiliates.map((a) => (
+                <option key={a.id} value={a.id}>{a.name}{a.is_house ? ` (${t.chip.house})` : ""}{a.is_test ? ` (${t.chip.test})` : ""}</option>
               ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="status">{c.status}</label>
+            <select id="status" name="status" defaultValue={filter.status}>
+              <option value="">{t.all}</option>
+              {CLIENT_STATUSES.map((s) => <option key={s} value={s}>{t.status[s]}</option>)}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="q">{c.search}</label>
+            <input id="q" name="q" defaultValue={filter.q} autoComplete="off" />
+          </div>
+          <div><button type="submit" className="secondary">{c.filter}</button></div>
+        </form>
+
+        {rows.length === 0 ? <p>{c.empty}</p> : (
+          <div className="wrap">
+            <table>
+              <caption className="sr">{caption}</caption>
+              <thead>
+                <tr>
+                  <th scope="col">{c.name}</th><th scope="col">{c.code}</th><th scope="col">{c.affiliate}</th>
+                  <th scope="col">{c.countryCol}</th><th scope="col">{c.regionCol}</th><th scope="col">{c.status}</th>
+                  <th scope="col">{c.periodEnd}</th><th scope="col"><span className="sr">{t.view}</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr key={r.client_id}>
+                    <th scope="row">
+                      <a href={`/clients/${r.client_id}`}>{r.full_name}</a>{" "}
+                      {r.is_test && <Chip kind="test">{t.chip.test}</Chip>}{" "}
+                      {!r.active && <Chip kind="unk">{t.chip.inactive}</Chip>}
+                    </th>
+                    <td className="nums">{r.code}</td>
+                    <td>{r.affiliate_name}{r.is_house ? ` (${t.chip.house})` : ""}</td>
+                    <td>{t.country[r.country] ?? r.country}</td>
+                    <td>{r.admin_region ?? t.dash}</td>
+                    <td><StatusChip status={r.status} daysLeft={r.days_left} lang={viewer.lang} /></td>
+                    <td>{r.period_end ? formatDate(r.period_end, viewer.lang, true) : t.dash}</td>
+                    <td className="num"><a className="pill" href={`/clients/${r.client_id}`}>{t.view}</a></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
     </Page>
   );
 }

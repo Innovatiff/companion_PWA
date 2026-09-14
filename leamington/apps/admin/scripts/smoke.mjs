@@ -85,7 +85,13 @@ try {
   r = await http("/");
   r = await http("/", { cookie: lo });
   check(r.status === 200 && r.text.includes("Ventas por afiliado") && r.text.includes('lang="es"'), "GET / shows sales per affiliate, lang=es");
-  check(r.text.indexOf("Ventas por afiliado") < r.text.indexOf("Resumen"), "sales per affiliate comes before the money summary");
+  // The money summary is the stat cards in the header band (docs/DESIGN.md section 9); among the
+  // page's cards, sales per affiliate is the first one, and every stat card names its period.
+  const firstCard = r.text.slice(r.text.indexOf('<section class="card"'));
+  const band = r.text.slice(r.text.indexOf('<div class="stats">'), r.text.indexOf('<section class="card"'));
+  check(firstCard.slice(0, firstCard.indexOf("</section>")).includes("Ventas por afiliado") && band.includes("Ingresos brutos")
+    && (band.match(/class="stat"/g) ?? []).length === (band.match(/class="sub">[^<]+/g) ?? []).length,
+    "sales per affiliate is the first card, after the money summary in the header band, each figure with its period");
   check((await http("/api/login")).status === 405, "GET /api/login is 405");
   r = await http("/api/clients/renew", { method: "POST", cookie: lo, origin: "http://evil.example", form: { client_id: "x" } });
   check(r.status === 403, "a cross-origin POST is refused with 403", String(r.status));
@@ -298,8 +304,10 @@ try {
     && r.text.includes("renovaciones de clientes propios cobradas en otro negocio"),
     "affiliate detail shows registrations earned, renewals earned split own vs other, and own clients renewed elsewhere");
   r = await http("/affiliates", { cookie: lo });
-  check(r.text.includes("Tasa de vencimiento") && cells(rowWith(r.text, COL_NAME)).at(-1) === "Nadie ha llegado a su renovación todavía"
-    && cells(rowWith(r.text, AFF_NAME)).at(-1) === "0%", "/affiliates has a lapse rate column", cells(rowWith(r.text, AFF_NAME)).join(" | "));
+  // The last cell is the row's "Ver" link; the lapse rate is the column before it.
+  check(r.text.includes("Tasa de vencimiento") && cells(rowWith(r.text, COL_NAME)).at(-2) === "Nadie ha llegado a su renovación todavía"
+    && cells(rowWith(r.text, AFF_NAME)).at(-2) === "0%" && cells(rowWith(r.text, AFF_NAME)).at(-1) === "Ver",
+    "/affiliates has a lapse rate column", cells(rowWith(r.text, AFF_NAME)).join(" | "));
 
   // 7. every page returns 200, with no framework JS
   const pages = [

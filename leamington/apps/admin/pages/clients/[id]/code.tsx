@@ -1,6 +1,7 @@
 /**
  * The client's access code, huge and printable, grouped 4 + 4. The print
- * stylesheet shows only the name and the code. The one inline script is the
+ * stylesheet hides the sidebar, the header band and everything marked noprint,
+ * so a printout shows only the name and the code. The one inline script is the
  * print button.
  */
 import type { GetServerSideProps } from "next";
@@ -9,7 +10,8 @@ import { formatCode } from "@leamington/shared/src/code.ts";
 import { ownerPage, plain, type Viewer } from "../../../lib/server.ts";
 import { isUuid, q1 } from "../../../lib/rules.ts";
 import { strings } from "../../../lib/i18n.ts";
-import { Page, Chip, Note } from "../../../lib/ui.tsx";
+import { Page, Card, Chip, Note } from "../../../lib/ui.tsx";
+import { Icon } from "@leamington/shared/src/ui/Portal.tsx";
 
 export const config = { unstable_runtimeJS: false };
 
@@ -31,19 +33,22 @@ const PRINT = 'document.getElementById("print").addEventListener("click",functio
 export default function Code({ viewer, id, name, code, isTest, registered }: Props) {
   const t = strings(viewer.lang);
   return (
-    <Page viewer={viewer} section="clients" title={name}>
-      <div className="narrow">
-        {registered && <div className="noprint"><Note>{t.code.registered}</Note></div>}
-        {isTest && <p className="noprint"><Chip kind="test">{t.chip.test}</Chip></p>}
-        <p className="noprint"><small>{t.code.title}</small></p>
+    <Page viewer={viewer} section="clients" title={name} subtitle={t.code.title}>
+      {registered && <div className="noprint form"><Note>{t.code.registered}</Note></div>}
+      <Card className="form">
+        <h1 className="print-only">{name}</h1>
+        <p className="noprint">
+          <small>{t.code.title}</small>{" "}
+          {isTest && <Chip kind="test">{t.chip.test}</Chip>}
+        </p>
         <div className="code" aria-label={t.code.title}>{formatCode(code)}</div>
         <p>{t.code.never}</p>
         <div className="actions noprint">
-          <button type="button" id="print">{t.code.print}</button>
+          <button type="button" id="print"><Icon name="printer" />{t.code.print}</button>
           <a className="button secondary" href={`/clients/${id}`}>{t.code.back}</a>
         </div>
         <script dangerouslySetInnerHTML={{ __html: PRINT }} />
-      </div>
+      </Card>
     </Page>
   );
 }

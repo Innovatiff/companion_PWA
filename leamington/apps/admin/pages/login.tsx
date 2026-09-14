@@ -5,6 +5,8 @@
 import Head from "next/head";
 import type { GetServerSideProps } from "next";
 import { currentPerson } from "@leamington/shared/src/server/portal.ts";
+import { AuthLayout } from "@leamington/shared/src/ui/Portal.tsx";
+import { strings } from "../lib/i18n.ts";
 
 export const config = { unstable_runtimeJS: false };
 
@@ -30,16 +32,17 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
 
 export default function Login({ message }: Props) {
   const good = message === "setup" || message === "out";
+  const t = strings("es");
   return (
     <>
       <Head>
-        <title>Leamington · Propietario</title>
+        <title>{`Portal del propietario · ${t.brand} ${t.product}`}</title>
         <meta name="viewport" content="width=device-width,initial-scale=1" />
       </Head>
-      <main className="narrow">
-        <h1>Portal del propietario<br /><small>Owner portal</small></h1>
+      <AuthLayout brand={t.brand} product={t.product}>
+        <h1>Portal del propietario<small>Owner portal</small></h1>
         {message && (
-          <p className={good ? "ok" : "err"} role={good ? "status" : "alert"}>
+          <p className={good ? "note" : "note bad"} role={good ? "status" : "alert"}>
             {MESSAGES[message][0]}<br /><small>{MESSAGES[message][1]}</small>
           </p>
         )}
@@ -48,9 +51,9 @@ export default function Login({ message }: Props) {
           <input id="login" name="login" required autoComplete="username" autoCapitalize="none" spellCheck={false} maxLength={40} />
           <label htmlFor="password">Contraseña · Password</label>
           <input id="password" name="password" type="password" required autoComplete="current-password" />
-          <button type="submit">Entrar · Sign in</button>
+          <button type="submit" className="block">Entrar · Sign in</button>
         </form>
-      </main>
+      </AuthLayout>
     </>
   );
 }

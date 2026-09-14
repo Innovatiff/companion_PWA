@@ -4,7 +4,8 @@
  * THREE STATES, never collapsed: ok, stale and error are distinct, and a feed
  * whose health this page cannot place ("never run", or anything unknown) is
  * "could not determine", never ok. A successful run that wrote 0 records says
- * whether the source confirmed it had nothing.
+ * whether the source confirmed it had nothing. The counts in the header band
+ * are shown only when feeds are expected at all.
  *
  * feed_health_detail, source_runs and feed_expectations are operational tables
  * without an owner-facing RLS path for all of them; they are read with the
@@ -16,7 +17,8 @@ import { formatDateTime } from "@leamington/shared/src/format.ts";
 import { ownerPage, plain, type Viewer } from "../lib/server.ts";
 import { feedState, sortFeeds, durationLabel, type FeedState } from "../lib/rules.ts";
 import { strings } from "../lib/i18n.ts";
-import { Page, Chip, type ChipKind } from "../lib/ui.tsx";
+import { Page, Card, StatCard, Chip, FEED_CHIP } from "../lib/ui.tsx";
+import type { IconName, Tone } from "@leamington/shared/src/ui/Portal.tsx";
 
 export const config = { unstable_runtimeJS: false };
 
@@ -56,69 +58,80 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
   return { props: { viewer: g.viewer, feeds: sortFeeds(plain(feeds.rows as Feed[])), ...plain({ unmonitored: unmonitored.rows as Unmonitored[], checkedAt: now.rows[0].now as string }) } };
 };
 
-const KIND: Record<FeedState, ChipKind> = { ok: "good", stale: "warn", error: "bad", unknown: "unk" };
+const STAT: [FeedState, IconName, Tone][] = [["ok", "check", "good"], ["stale", "clock", "warn"], ["error", "alert", "bad"], ["unknown", "activity", "brand"]];
 
 export default function Feeds({ viewer, feeds, unmonitored, checkedAt }: Props) {
   const t = strings(viewer.lang);
   const f = t.feeds;
   const lang = viewer.lang;
   const when = (v: string | null) => (v ? formatDateTime(v, lang) : f.never);
+  const count = (s: FeedState) => feeds.filter((row) => feedState(row.health) === s).length;
+  const checked = `${t.checked}: ${formatDateTime(checkedAt, lang)}`;
   return (
-    <Page viewer={viewer} section="feeds" title={f.title}>
-      <p>{f.lead} <small>{t.checked}: {formatDateTime(checkedAt, lang)}</small></p>
+    <Page
+      viewer={viewer} section="feeds" title={f.title} subtitle={`${f.lead} ${checked}`}
+      stats={feeds.length === 0 ? undefined : (
+        <>{STAT.map(([s, icon, tone]) => <StatCard key={s} icon={icon} tone={tone} label={f.state[s]!} value={count(s)} note={t.now} />)}</>
+      )}
+    >
       {feeds.length === 0 ? <p className="note bad">{f.emptyExpect}</p> : (
-        <div className="wrap">
-          <table>
-            <caption>{f.title}</caption>
-            <thead>
-              <tr>
-                <th scope="col">{f.feed}</th><th scope="col">{f.status}</th><th scope="col">{f.lastOk}</th>
-                <th scope="col">{f.lastRun}</th><th scope="col" className="num">{f.records}</th>
-                <th scope="col" className="num">{f.failures}</th><th scope="col">{f.lastError}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {feeds.map((row) => {
-                const state = feedState(row.health);
-                const reason = row.health ? f.reason[row.health] : "";
-                return (
-                  <tr key={row.feed}>
-                    <th scope="row">{row.label}<br /><small className="nums">{row.feed} · {f.every} {durationLabel(row.interval_s, lang)}</small></th>
-                    <td>
-                      <Chip kind={KIND[state]}>{f.state[state]}</Chip>
-                      {reason ? <><br /><small>{reason}</small></> : null}
-                      {state === "unknown" && row.health && !(row.health in f.reason) ? <><br /><small>{row.health}</small></> : null}
-                      {row.running_since && <><br /><small>{f.running} {formatDateTime(row.running_since, lang)}</small></>}
-                      {(row.alert_delivery_failures_24h ?? 0) > 0 && <><br /><Chip kind="bad">{f.ownerAlertFail(row.alert_delivery_failures_24h ?? 0)}</Chip></>}
-                    </td>
-                    <td>{when(row.last_ok_at)}</td>
-                    <td>{when(row.last_attempt_at)}</td>
-                    <td className="num">
-                      {row.records_written ?? t.dash}
-                      {row.latest_result && <><br /><small>{f.result[row.latest_result] ?? row.latest_result}</small></>}
-                    </td>
-                    <td className="num">{row.failures_24h ?? t.dash}</td>
-                    <td>{row.last_error ? <>{row.last_error}<br /><small>{when(row.last_error_at)}</small></> : t.dash}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <Card title={f.expected}>
+          <div className="wrap">
+            <table>
+              <caption className="sr">{f.expected}</caption>
+              <thead>
+                <tr>
+                  <th scope="col">{f.feed}</th><th scope="col">{f.status}</th><th scope="col">{f.lastOk}</th>
+                  <th scope="col">{f.lastRun}</th><th scope="col" className="num">{f.records}</th>
+                  <th scope="col" className="num">{f.failures}</th><th scope="col">{f.lastError}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {feeds.map((row) => {
+                  const state = feedState(row.health);
+                  const reason = row.health ? f.reason[row.health] : "";
+                  return (
+                    <tr key={row.feed}>
+                      <th scope="row">{row.label}<br /><small className="nums">{row.feed} · {f.every} {durationLabel(row.interval_s, lang)}</small></th>
+                      <td>
+                        <Chip kind={FEED_CHIP[state]}>{f.state[state]}</Chip>
+                        {reason ? <><br /><small>{reason}</small></> : null}
+                        {state === "unknown" && row.health && !(row.health in f.reason) ? <><br /><small>{row.health}</small></> : null}
+                        {row.running_since && <><br /><small>{f.running} {formatDateTime(row.running_since, lang)}</small></>}
+                        {(row.alert_delivery_failures_24h ?? 0) > 0 && <><br /><Chip kind="bad">{f.ownerAlertFail(row.alert_delivery_failures_24h ?? 0)}</Chip></>}
+                      </td>
+                      <td>{when(row.last_ok_at)}</td>
+                      <td>{when(row.last_attempt_at)}</td>
+                      <td className="num">
+                        {row.records_written ?? t.dash}
+                        {row.latest_result && <><br /><small>{f.result[row.latest_result] ?? row.latest_result}</small></>}
+                      </td>
+                      <td className="num">{row.failures_24h ?? t.dash}</td>
+                      <td className="break">{row.last_error ? <>{row.last_error}<br /><small>{when(row.last_error_at)}</small></> : t.dash}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </Card>
       )}
 
       {unmonitored.length > 0 && (
-        <div className="wrap">
-          <table>
-            <caption>{f.unmonitored}<br /><small>{f.unmonitoredNote}</small></caption>
-            <thead><tr><th scope="col">{f.feed}</th><th scope="col">{f.lastRun}</th><th scope="col" className="num">{f.runs}</th></tr></thead>
-            <tbody>
-              {unmonitored.map((u) => (
-                <tr key={u.feed}><th scope="row" className="nums">{u.feed}</th><td>{when(u.last_attempt_at)}</td><td className="num">{u.runs}</td></tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Card title={f.unmonitored}>
+          <p className="note warn">{f.unmonitoredNote}</p>
+          <div className="wrap">
+            <table>
+              <caption className="sr">{f.unmonitored}</caption>
+              <thead><tr><th scope="col">{f.feed}</th><th scope="col">{f.lastRun}</th><th scope="col" className="num">{f.runs}</th></tr></thead>
+              <tbody>
+                {unmonitored.map((u) => (
+                  <tr key={u.feed}><th scope="row" className="nums">{u.feed}</th><td>{when(u.last_attempt_at)}</td><td className="num">{u.runs}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
       )}
     </Page>
   );

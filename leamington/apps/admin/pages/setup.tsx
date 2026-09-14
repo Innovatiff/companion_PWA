@@ -1,9 +1,13 @@
 /**
  * /setup?token=… — the owner sets a password with the one-time link printed by
  * scripts/create-owner.mjs. The token is checked (and used up) only on submit.
+ * A link that is invalid or already used (a double submit, say) points to the
+ * sign-in page, since the password may well be set already.
  */
 import Head from "next/head";
 import type { GetServerSideProps } from "next";
+import { AuthLayout } from "@leamington/shared/src/ui/Portal.tsx";
+import { strings } from "../lib/i18n.ts";
 
 export const config = { unstable_runtimeJS: false };
 
@@ -25,16 +29,21 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ res, query
 };
 
 export default function Setup({ token, error }: Props) {
+  const es = strings("es");
+  const en = strings("en");
   return (
     <>
       <Head>
-        <title>Leamington · Contraseña</title>
+        <title>{`Contraseña · ${es.brand} ${es.product}`}</title>
         <meta name="viewport" content="width=device-width,initial-scale=1" />
       </Head>
-      <main className="narrow">
-        <h1>Crea tu contraseña<br /><small>Set your password</small></h1>
+      <AuthLayout brand={es.brand} product={es.product}>
+        <h1>Crea tu contraseña<small>Set your password</small></h1>
         {error && (
-          <p className="err" role="alert">{ERRORS[error][0]}<br /><small>{ERRORS[error][1]}</small></p>
+          <p className="note bad" role="alert">{ERRORS[error][0]}<br /><small>{ERRORS[error][1]}</small></p>
+        )}
+        {error === "invalid_token" && (
+          <p><a href="/login">{es.auth.signInHere}</a><br /><small><a href="/login">{en.auth.signInHere}</a></small></p>
         )}
         {token && (
           <form method="post" action="/api/setup">
@@ -43,10 +52,10 @@ export default function Setup({ token, error }: Props) {
             <input id="password" name="password" type="password" required minLength={10} autoComplete="new-password" />
             <label htmlFor="confirm">Repite la contraseña · Repeat it</label>
             <input id="confirm" name="confirm" type="password" required minLength={10} autoComplete="new-password" />
-            <button type="submit">Guardar · Save</button>
+            <button type="submit" className="block">Guardar · Save</button>
           </form>
         )}
-      </main>
+      </AuthLayout>
     </>
   );
 }

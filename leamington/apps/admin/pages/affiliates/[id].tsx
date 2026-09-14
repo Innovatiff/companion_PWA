@@ -16,7 +16,7 @@ import { ownerPage, plain, type Viewer } from "../../lib/server.ts";
 import { centsToString, isUuid, percentLabel, percentInput, readFlash, setupLink, toCents, q1 } from "../../lib/rules.ts";
 import { FLASH_COOKIE, clearedFlash } from "../../lib/flash.ts";
 import { strings } from "../../lib/i18n.ts";
-import { Page, Chip, Note, Stat } from "../../lib/ui.tsx";
+import { Page, Card, HeroAction, StatCard, Chip, Note, Mini, cap } from "../../lib/ui.tsx";
 
 export const config = { unstable_runtimeJS: false };
 
@@ -92,174 +92,192 @@ export default function AffiliatePage({ viewer, a, payouts, sales, lastPayout, l
   const lang = viewer.lang;
   const self = `/affiliates/${a.id}`;
   return (
-    <Page viewer={viewer} section="affiliates" title={a.name}>
+    <Page
+      viewer={viewer} section="affiliates" title={a.name}
+      subtitle={
+        <>
+          {a.business_name ?? ""}{a.business_name ? " · " : ""}{k.commission} {percentLabel(a.rate)}
+          {a.is_house && <Chip>{t.chip.house}</Chip>}
+          {!a.active && <Chip kind="unk">{t.chip.inactive}</Chip>}
+          {a.is_test && <Chip kind="test">{t.chip.test}</Chip>}
+        </>
+      }
+      action={!a.is_house ? <HeroAction href="#payout" icon="wallet">{k.payoutSubmit}</HeroAction> : undefined}
+      stats={
+        <>
+          <StatCard icon="wallet" tone="warn" label={cap(k.owed)} value={formatMoney(a.owed)} note={t.home.today} />
+          <StatCard icon="dollar" label={cap(k.earned)} value={formatMoney(a.earned)} note={t.home.allTime} />
+          <StatCard icon="calendar" tone="good" label={cap(k.earnedMonth)} value={formatMoney(a.earned_this_month)} note={t.home.month} />
+          <StatCard icon="receipt" label={cap(k.paidOut)} value={formatMoney(a.paid_out)} note={t.home.allTime} />
+        </>
+      }
+    >
       {ok && k.ok[ok] && <Note>{k.ok[ok]}</Note>}
       {error && !["commission", "amount", "over"].includes(error) && <Note kind="bad">{k.errors[error] ?? k.errors.invalid}</Note>}
 
       {setupUrl && (
-        <div className="panel">
-          <h2>{k.setupTitle}</h2>
+        <Card title={k.setupTitle}>
           <p className="copy">{setupUrl}</p>
           <p><small>{k.setupNote}</small></p>
-        </div>
+        </Card>
       )}
 
-      <p>
-        {a.is_house && <Chip>{t.chip.house}</Chip>}{" "}
-        {!a.active && <Chip kind="unk">{t.chip.inactive}</Chip>}{" "}
-        {a.is_test && <Chip kind="test">{t.chip.test}</Chip>}
-      </p>
-      {a.is_house && <p>{k.houseNote}</p>}
+      {!a.is_house && confirm === "deactivate" && a.active && (
+        <Card title={k.deactivateTitle} className="danger form">
+          <p>{k.deactivateNote}</p>
+          <form method="post" action="/api/affiliates/update" className="actions">
+            <input type="hidden" name="affiliate_id" value={a.id} />
+            <input type="hidden" name="action" value="deactivate" />
+            <button type="submit" className="danger">{k.deactivate}</button>
+            <a className="button secondary" href={self}>{t.cancel}</a>
+          </form>
+        </Card>
+      )}
+      {!a.is_house && confirm === "reset" && (
+        <Card title={k.resetTitle} className="danger form">
+          <p>{k.resetNote}</p>
+          <form method="post" action="/api/affiliates/reset" className="actions">
+            <input type="hidden" name="affiliate_id" value={a.id} />
+            <button type="submit" className="danger">{k.reset}</button>
+            <a className="button secondary" href={self}>{t.cancel}</a>
+          </form>
+        </Card>
+      )}
 
-      <dl className="kv">
-        {login && <><dt>{k.login}</dt><dd className="nums">{login.login}</dd></>}
-        {login && <><dt>{k.lastLogin}</dt><dd>{login.setup_pending ? k.setupPending : login.last_login_at ? formatDateTime(login.last_login_at, lang) : t.dash}</dd></>}
-        <dt>{k.business}</dt><dd>{a.business_name ?? t.dash}</dd>
-        <dt>{k.contact}</dt><dd>{a.contact ?? t.dash}</dd>
-        <dt>{k.commission}</dt><dd>{percentLabel(a.rate)}</dd>
-        <dt>{k.created}</dt><dd>{formatDateTime(a.created_at, lang)}</dd>
-      </dl>
-
-      <h2>{k.earnings}</h2>
-      <div className="stats">
-        <Stat value={formatMoney(a.owed)} label={k.owed} period={t.home.today} />
-        <Stat value={formatMoney(a.earned)} label={k.earned} period={t.home.allTime} />
-        <Stat value={formatMoney(a.earned_this_month)} label={k.earnedMonth} period={t.home.month} />
-        <Stat value={formatMoney(a.paid_out)} label={k.paidOut} period={t.home.allTime} />
-        <Stat value={a.sales} label={k.sales} period={t.home.allTime} />
-        <Stat value={a.renewals} label={k.renewals} period={t.home.allTime} />
-      </div>
-
-      <h2>{k.collection}</h2>
-      <div className="stats">
-        <Stat value={formatMoney(a.sales_earned)} label={k.salesEarned} period={t.home.allTime} />
-        <Stat value={formatMoney(a.renewals_earned)} label={k.renewalsEarned} period={t.home.allTime} />
-        <Stat value={formatMoney(centsToString(toCents(a.renewals_earned) - toCents(a.renewals_other_clients_earned)))}
-              label={k.renewalsOwn(a.renewals_own_clients)} period={t.home.allTime} />
-        <Stat value={formatMoney(a.renewals_other_clients_earned)} label={k.renewalsOther(a.renewals_other_clients)} period={t.home.allTime} />
-        <Stat value={a.own_clients_renewed_elsewhere} label={k.elsewhere} period={t.home.allTime} />
-        <Stat value={formatMoney(a.cash_collected)} label={k.cash} period={t.home.allTime} />
-      </div>
-      <p><a href="/renewals/log">{k.collectionLink}</a></p>
-      {a.is_test && <p><small>{t.home.testNote}</small></p>}
-
-      {!a.is_house && (
-        <>
-          {confirm === "deactivate" && a.active && (
-            <div className="panel danger narrow">
-              <h2>{k.deactivateTitle}</h2>
-              <p>{k.deactivateNote}</p>
-              <form method="post" action="/api/affiliates/update" className="actions">
-                <input type="hidden" name="affiliate_id" value={a.id} />
-                <input type="hidden" name="action" value="deactivate" />
-                <button type="submit">{k.deactivate}</button>
-                <a className="button secondary" href={self}>{t.cancel}</a>
-              </form>
+      <div className="grid">
+        <div>
+          <Card title={k.collection} action={<a href="/renewals/log">{k.collectionLink}</a>}>
+            <div className="minis">
+              <Mini value={a.sales} label={k.sales} period={t.home.allTime} />
+              <Mini value={a.renewals} label={k.renewals} period={t.home.allTime} />
+              <Mini value={formatMoney(a.sales_earned)} label={k.salesEarned} period={t.home.allTime} />
+              <Mini value={formatMoney(a.renewals_earned)} label={k.renewalsEarned} period={t.home.allTime} />
+              <Mini value={formatMoney(centsToString(toCents(a.renewals_earned) - toCents(a.renewals_other_clients_earned)))}
+                    label={k.renewalsOwn(a.renewals_own_clients)} period={t.home.allTime} />
+              <Mini value={formatMoney(a.renewals_other_clients_earned)} label={k.renewalsOther(a.renewals_other_clients)} period={t.home.allTime} />
+              <Mini value={a.own_clients_renewed_elsewhere} label={k.elsewhere} period={t.home.allTime} />
+              <Mini value={formatMoney(a.cash_collected)} label={k.cash} period={t.home.allTime} />
             </div>
-          )}
-          {confirm === "reset" && (
-            <div className="panel danger narrow">
-              <h2>{k.resetTitle}</h2>
-              <p>{k.resetNote}</p>
-              <form method="post" action="/api/affiliates/reset" className="actions">
-                <input type="hidden" name="affiliate_id" value={a.id} />
-                <button type="submit">{k.reset}</button>
-                <a className="button secondary" href={self}>{t.cancel}</a>
-              </form>
-            </div>
+            {a.is_test && <p><small>{t.home.testNote}</small></p>}
+          </Card>
+
+          {payouts.length > 0 && (
+            <Card title={k.payouts}>
+              <div className="wrap">
+                <table>
+                  <caption className="sr">{k.payouts}</caption>
+                  <thead>
+                    <tr><th scope="col">{k.date}</th><th scope="col" className="num">{k.amountCol}</th><th scope="col">{k.method}</th><th scope="col">{k.note}</th></tr>
+                  </thead>
+                  <tbody>
+                    {payouts.map((p) => (
+                      <tr key={p.id}>
+                        <th scope="row">{formatDateTime(p.paid_at, lang)}</th>
+                        <td className="num">{formatMoney(p.amount)}</td>
+                        <td>{p.method ? k.methods[p.method] ?? p.method : t.dash}</td>
+                        <td>{p.note ?? ""}{p.voided_at && <> <Chip kind="bad">{t.chip.voided}</Chip> <small>{p.void_reason}</small></>}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
           )}
 
-          <div className="actions narrow">
-            {a.active ? (
-              <a className="button secondary" href={`${self}?confirm=deactivate`}>{k.deactivate}</a>
-            ) : (
-              <form method="post" action="/api/affiliates/update">
-                <input type="hidden" name="affiliate_id" value={a.id} />
-                <input type="hidden" name="action" value="reactivate" />
-                <button type="submit" className="secondary">{k.reactivate}</button>
-              </form>
-            )}
-            <a className="button secondary" href={`${self}?confirm=reset`}>{k.reset}</a>
-          </div>
-
-          <form method="post" action="/api/affiliates/update" className="narrow">
-            <h2>{k.changeCommission}</h2>
-            <input type="hidden" name="affiliate_id" value={a.id} />
-            <input type="hidden" name="action" value="commission" />
-            <label htmlFor="commission">{t.newAffiliate.commission}</label>
-            <input id="commission" name="commission" required inputMode="decimal" maxLength={6} defaultValue={percentInput(a.rate)} aria-describedby="commission-note" />
-            <p className="hint" id="commission-note"><small>{k.commissionNote}</small></p>
-            {error === "commission" && <p className="err hint">{k.errors.commission}</p>}
-            <button type="submit" className="secondary">{k.save}</button>
-          </form>
-
-          <form method="post" action="/api/affiliates/payout" className="narrow">
-            <h2>{k.payout}</h2>
-            <p>{formatMoney(a.owed)} — {k.owed}</p>
-            <input type="hidden" name="affiliate_id" value={a.id} />
-            <input type="hidden" name="last_payout" value={lastPayout} />
-            <label htmlFor="amount">{k.amount}</label>
-            <input id="amount" name="amount" required inputMode="decimal" maxLength={12} autoComplete="off" />
-            {(error === "amount" || error === "over") && <p className="err hint">{k.errors[error]}</p>}
-            <label htmlFor="method">{k.method}</label>
-            <select id="method" name="method" defaultValue="efectivo">
-              {Object.entries(k.methods).map(([v, label]) => <option key={v} value={v}>{label}</option>)}
-            </select>
-            <label htmlFor="note">{k.note}</label>
-            <input id="note" name="note" maxLength={200} autoComplete="off" />
-            <button type="submit">{k.payoutSubmit}</button>
-          </form>
-        </>
-      )}
-
-      {payouts.length > 0 && (
-        <div className="wrap">
-          <table>
-            <caption>{k.payouts}</caption>
-            <thead>
-              <tr><th scope="col">{k.date}</th><th scope="col" className="num">{k.amountCol}</th><th scope="col">{k.method}</th><th scope="col">{k.note}</th></tr>
-            </thead>
-            <tbody>
-              {payouts.map((p) => (
-                <tr key={p.id}>
-                  <th scope="row">{formatDateTime(p.paid_at, lang)}</th>
-                  <td className="num">{formatMoney(p.amount)}</td>
-                  <td>{p.method ? k.methods[p.method] ?? p.method : t.dash}</td>
-                  <td>{p.note ?? ""}{p.voided_at && <> <Chip kind="bad">{t.chip.voided}</Chip> <small>{p.void_reason}</small></>}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          {sales.length > 0 && (
+            <Card title={k.history} action={<small>{k.last100}</small>}>
+              <div className="wrap">
+                <table>
+                  <caption className="sr">{k.history} {k.last100}</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">{k.date}</th><th scope="col">{k.client}</th><th scope="col">{k.kind}</th>
+                      <th scope="col" className="num">{k.amountCol}</th><th scope="col" className="num">{k.commissionCol}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sales.map((s) => (
+                      <tr key={s.id}>
+                        <th scope="row">{formatDateTime(s.paid_at, lang)}</th>
+                        <td>
+                          <a href={`/clients/${s.client_id}`}>{s.full_name}</a>{" "}
+                          {s.is_test && <Chip kind="test">{t.chip.test}</Chip>}
+                        </td>
+                        <td>{t.kind[s.kind] ?? s.kind} {s.voided_at && <Chip kind="bad">{t.chip.voided}</Chip>}</td>
+                        <td className="num">{formatMoney(s.amount)}</td>
+                        <td className="num">{formatMoney(s.commission)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          )}
         </div>
-      )}
 
-      {sales.length > 0 && (
-        <div className="wrap">
-          <table>
-            <caption>{k.history} <small>{k.last100}</small></caption>
-            <thead>
-              <tr>
-                <th scope="col">{k.date}</th><th scope="col">{k.client}</th><th scope="col">{k.kind}</th>
-                <th scope="col" className="num">{k.amountCol}</th><th scope="col" className="num">{k.commissionCol}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sales.map((s) => (
-                <tr key={s.id}>
-                  <th scope="row">{formatDateTime(s.paid_at, lang)}</th>
-                  <td>
-                    <a href={`/clients/${s.client_id}`}>{s.full_name}</a>{" "}
-                    {s.is_test && <Chip kind="test">{t.chip.test}</Chip>}
-                  </td>
-                  <td>{t.kind[s.kind] ?? s.kind} {s.voided_at && <Chip kind="bad">{t.chip.voided}</Chip>}</td>
-                  <td className="num">{formatMoney(s.amount)}</td>
-                  <td className="num">{formatMoney(s.commission)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div>
+          <Card title={k.account}>
+            {a.is_house && <p>{k.houseNote}</p>}
+            <dl className="kv">
+              {login && <><dt>{k.login}</dt><dd className="nums">{login.login}</dd></>}
+              {login && <><dt>{k.lastLogin}</dt><dd>{login.setup_pending ? k.setupPending : login.last_login_at ? formatDateTime(login.last_login_at, lang) : t.dash}</dd></>}
+              <dt>{k.business}</dt><dd>{a.business_name ?? t.dash}</dd>
+              <dt>{k.contact}</dt><dd>{a.contact ?? t.dash}</dd>
+              <dt>{k.commission}</dt><dd>{percentLabel(a.rate)}</dd>
+              <dt>{k.created}</dt><dd>{formatDateTime(a.created_at, lang)}</dd>
+            </dl>
+          </Card>
+
+          {!a.is_house && (
+            <>
+              <Card title={k.actions}>
+                <div className="actions">
+                  {a.active ? (
+                    <a className="button secondary" href={`${self}?confirm=deactivate`}>{k.deactivate}</a>
+                  ) : (
+                    <form method="post" action="/api/affiliates/update">
+                      <input type="hidden" name="affiliate_id" value={a.id} />
+                      <input type="hidden" name="action" value="reactivate" />
+                      <button type="submit" className="secondary">{k.reactivate}</button>
+                    </form>
+                  )}
+                  <a className="button secondary" href={`${self}?confirm=reset`}>{k.reset}</a>
+                </div>
+              </Card>
+
+              <Card title={k.changeCommission}>
+                <form method="post" action="/api/affiliates/update">
+                  <input type="hidden" name="affiliate_id" value={a.id} />
+                  <input type="hidden" name="action" value="commission" />
+                  <label htmlFor="commission">{t.newAffiliate.commission}</label>
+                  <input id="commission" name="commission" required inputMode="decimal" maxLength={6} defaultValue={percentInput(a.rate)} aria-describedby="commission-note" />
+                  <p className="hint" id="commission-note"><small>{k.commissionNote}</small></p>
+                  {error === "commission" && <p className="note bad hint">{k.errors.commission}</p>}
+                  <button type="submit" className="secondary">{k.save}</button>
+                </form>
+              </Card>
+
+              <Card title={k.payout} id="payout">
+                <form method="post" action="/api/affiliates/payout">
+                  <p>{formatMoney(a.owed)} — {k.owed}</p>
+                  <input type="hidden" name="affiliate_id" value={a.id} />
+                  <input type="hidden" name="last_payout" value={lastPayout} />
+                  <label htmlFor="amount">{k.amount}</label>
+                  <input id="amount" name="amount" required inputMode="decimal" maxLength={12} autoComplete="off" />
+                  {(error === "amount" || error === "over") && <p className="note bad hint">{k.errors[error]}</p>}
+                  <label htmlFor="method">{k.method}</label>
+                  <select id="method" name="method" defaultValue="efectivo">
+                    {Object.entries(k.methods).map(([v, label]) => <option key={v} value={v}>{label}</option>)}
+                  </select>
+                  <label htmlFor="note">{k.note}</label>
+                  <input id="note" name="note" maxLength={200} autoComplete="off" />
+                  <button type="submit" className="block">{k.payoutSubmit}</button>
+                </form>
+              </Card>
+            </>
+          )}
         </div>
-      )}
+      </div>
     </Page>
   );
 }

@@ -5,7 +5,7 @@ import { formatMoney } from "@leamington/shared/src/format.ts";
 import { ownerPage, plain, type Viewer } from "../../lib/server.ts";
 import { lapseRateLabel, percentLabel } from "../../lib/rules.ts";
 import { strings } from "../../lib/i18n.ts";
-import { Page, Chip } from "../../lib/ui.tsx";
+import { Page, Card, HeroAction, Chip, Desc } from "../../lib/ui.tsx";
 
 export const config = { unstable_runtimeJS: false };
 
@@ -31,44 +31,49 @@ export default function Affiliates({ viewer, rows }: Props) {
   const t = strings(viewer.lang);
   const a = t.affiliates;
   return (
-    <Page viewer={viewer} section="affiliates" title={a.title}>
-      <p><a className="button inline" href="/affiliates/new">{a.add}</a></p>
-      <div className="wrap">
-        <table>
-          <caption>{a.caption}</caption>
-          <thead>
-            <tr>
-              <th scope="col">{a.name}</th><th scope="col" className="num">{a.commission}</th><th scope="col">{a.active}</th>
-              <th scope="col" className="num">{a.sales}</th><th scope="col" className="num">{a.renewals}</th>
-              <th scope="col" className="num">{a.earned}</th><th scope="col" className="num">{a.paidOut}</th>
-              <th scope="col" className="num">{a.owed}</th><th scope="col" className="num">{a.lapse}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => {
-              const lapse = lapseRateLabel(r.lapse_rate);
-              return (
-              <tr key={r.affiliate_id}>
-                <th scope="row">
-                  <a href={`/affiliates/${r.affiliate_id}`}>{r.name}</a>{" "}
-                  {r.is_house && <Chip>{t.chip.house}</Chip>}{" "}
-                  {r.is_test && <Chip kind="test">{t.chip.test}</Chip>}
-                  {r.business_name && <><br /><small>{r.business_name}</small></>}
-                </th>
-                <td className="num">{percentLabel(r.rate)}</td>
-                <td>{r.active ? a.yes : <Chip kind="unk">{t.chip.inactive}</Chip>}</td>
-                <td className="num">{r.sales}</td>
-                <td className="num">{r.renewals}</td>
-                <td className="num">{formatMoney(r.earned)}</td>
-                <td className="num">{formatMoney(r.paid_out)}</td>
-                <td className="num"><b>{formatMoney(r.owed)}</b></td>
-                {lapse ? <td className="num">{lapse}</td> : <td><small>{t.renewals.nobodyYet}</small></td>}
+    <Page viewer={viewer} section="affiliates" title={a.title} subtitle={a.subtitle}
+          action={<HeroAction href="/affiliates/new">{a.add}</HeroAction>}>
+      <Card title={a.listTitle}>
+        <Desc>{a.caption}</Desc>
+        <div className="wrap">
+          <table>
+            <caption className="sr">{a.listTitle}</caption>
+            <thead>
+              <tr>
+                <th scope="col">{a.name}</th><th scope="col" className="num">{a.commission}</th><th scope="col">{a.active}</th>
+                <th scope="col" className="num">{a.sales}</th><th scope="col" className="num">{a.renewals}</th>
+                <th scope="col" className="num">{a.earned}</th><th scope="col" className="num">{a.paidOut}</th>
+                <th scope="col" className="num">{a.owed}</th><th scope="col" className="num">{a.lapse}</th>
+                <th scope="col"><span className="sr">{t.view}</span></th>
               </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {rows.map((r) => {
+                const lapse = lapseRateLabel(r.lapse_rate);
+                return (
+                  <tr key={r.affiliate_id}>
+                    <th scope="row">
+                      <a href={`/affiliates/${r.affiliate_id}`}>{r.name}</a>{" "}
+                      {r.is_house && <Chip>{t.chip.house}</Chip>}{" "}
+                      {r.is_test && <Chip kind="test">{t.chip.test}</Chip>}
+                      {r.business_name && <><br /><small>{r.business_name}</small></>}
+                    </th>
+                    <td className="num">{percentLabel(r.rate)}</td>
+                    <td>{r.active ? a.yes : <Chip kind="unk">{t.chip.inactive}</Chip>}</td>
+                    <td className="num">{r.sales}</td>
+                    <td className="num">{r.renewals}</td>
+                    <td className="num">{formatMoney(r.earned)}</td>
+                    <td className="num">{formatMoney(r.paid_out)}</td>
+                    <td className="num"><b>{formatMoney(r.owed)}</b></td>
+                    {lapse ? <td className="num">{lapse}</td> : <td className="num"><small>{t.renewals.nobodyYet}</small></td>}
+                    <td className="num"><a className="pill" href={`/affiliates/${r.affiliate_id}`}>{t.view}</a></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </Card>
     </Page>
   );
 }

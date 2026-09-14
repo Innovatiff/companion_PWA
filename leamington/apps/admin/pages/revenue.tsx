@@ -9,7 +9,7 @@ import { formatMoney } from "@leamington/shared/src/format.ts";
 import { ownerPage, plain, type Viewer } from "../lib/server.ts";
 import { mergeRevenue, monthLabel, type RevenueLine } from "../lib/rules.ts";
 import { strings } from "../lib/i18n.ts";
-import { Page, Stat } from "../lib/ui.tsx";
+import { Page, Card, StatCard, Desc, cap } from "../lib/ui.tsx";
 
 export const config = { unstable_runtimeJS: false };
 
@@ -40,46 +40,53 @@ export default function Revenue({ viewer, lines, totals, owed }: Props) {
   const t = strings(viewer.lang);
   const r = t.revenue;
   return (
-    <Page viewer={viewer} section="revenue" title={r.title}>
-      <p className="note">{r.note}</p>
-      <div className="stats">
-        <Stat value={money(totals.gross)} label={r.grossAll} period={t.home.allTime} />
-        <Stat value={money(totals.net)} label={r.netAll} period={t.home.allTime} />
-        <Stat value={money(totals.paidOut)} label={r.paidAll} period={t.home.allTime} />
-        <Stat value={formatMoney(owed)} label={r.owed} period={t.home.allTime} />
-      </div>
-      {lines.length === 0 ? <p>{r.empty}</p> : (
-        <div className="wrap">
-          <table>
-            <caption>{r.caption}</caption>
-            <thead>
-              <tr>
-                <th scope="col">{r.month}</th><th scope="col" className="num">{r.sales}</th><th scope="col" className="num">{r.renewals}</th>
-                <th scope="col" className="num">{r.gross}</th><th scope="col" className="num">{r.commissions}</th>
-                <th scope="col" className="num">{r.net}</th><th scope="col" className="num">{r.paidOut}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {lines.map((l) => (
-                <tr key={l.month}>
-                  <th scope="row">{monthLabel(l.month, viewer.lang)}</th>
-                  <td className="num">{l.sales}</td><td className="num">{l.renewals}</td>
-                  <td className="num">{money(l.gross)}</td><td className="num">{money(l.commissions)}</td>
-                  <td className="num"><b>{money(l.net)}</b></td><td className="num">{money(l.paidOut)}</td>
+    <Page
+      viewer={viewer} section="revenue" title={r.title} subtitle={r.subtitle}
+      stats={
+        <>
+          <StatCard icon="dollar" label={cap(r.grossAll)} value={money(totals.gross)} note={t.home.allTime} />
+          <StatCard icon="trend" tone="good" label={cap(r.netAll)} value={money(totals.net)} note={t.home.allTime} />
+          <StatCard icon="receipt" label={cap(r.paidAll)} value={money(totals.paidOut)} note={t.home.allTime} />
+          <StatCard icon="wallet" tone="warn" label={cap(r.owed)} value={formatMoney(owed)} note={t.home.allTime} href="/affiliates" />
+        </>
+      }
+    >
+      <Card title={r.byMonth}>
+        <Desc>{r.caption}</Desc>
+        <p className="note warn">{r.note}</p>
+        {lines.length === 0 ? <p>{r.empty}</p> : (
+          <div className="wrap">
+            <table>
+              <caption className="sr">{r.caption}</caption>
+              <thead>
+                <tr>
+                  <th scope="col">{r.month}</th><th scope="col" className="num">{r.sales}</th><th scope="col" className="num">{r.renewals}</th>
+                  <th scope="col" className="num">{r.gross}</th><th scope="col" className="num">{r.commissions}</th>
+                  <th scope="col" className="num">{r.net}</th><th scope="col" className="num">{r.paidOut}</th>
                 </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr>
-                <th scope="row">{r.total}</th>
-                <td className="num">{totals.sales}</td><td className="num">{totals.renewals}</td>
-                <td className="num">{money(totals.gross)}</td><td className="num">{money(totals.commissions)}</td>
-                <td className="num"><b>{money(totals.net)}</b></td><td className="num">{money(totals.paidOut)}</td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-      )}
+              </thead>
+              <tbody>
+                {lines.map((l) => (
+                  <tr key={l.month}>
+                    <th scope="row">{monthLabel(l.month, viewer.lang)}</th>
+                    <td className="num">{l.sales}</td><td className="num">{l.renewals}</td>
+                    <td className="num">{money(l.gross)}</td><td className="num">{money(l.commissions)}</td>
+                    <td className="num"><b>{money(l.net)}</b></td><td className="num">{money(l.paidOut)}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th scope="row">{r.total}</th>
+                  <td className="num">{totals.sales}</td><td className="num">{totals.renewals}</td>
+                  <td className="num">{money(totals.gross)}</td><td className="num">{money(totals.commissions)}</td>
+                  <td className="num"><b>{money(totals.net)}</b></td><td className="num">{money(totals.paidOut)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        )}
+      </Card>
     </Page>
   );
 }

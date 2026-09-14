@@ -16,7 +16,7 @@ import { formatDateTime, formatMoney } from "@leamington/shared/src/format.ts";
 import { ownerPage, plain, type Viewer } from "../../lib/server.ts";
 import { collectorLabel, sortAffiliateGroups, toCents } from "../../lib/rules.ts";
 import { strings } from "../../lib/i18n.ts";
-import { Page, Chip } from "../../lib/ui.tsx";
+import { Page, Card, HeroAction, Chip, Desc } from "../../lib/ui.tsx";
 
 export const config = { unstable_runtimeJS: false };
 
@@ -64,13 +64,13 @@ export default function RenewalLog({ viewer, collection, log }: Props) {
   const k = t.renewalLog;
   const lang = viewer.lang;
   return (
-    <Page viewer={viewer} section="renewals" title={k.title}>
-      <p><a href="/renewals">{k.back}</a></p>
-
-      <section id="collection">
+    <Page viewer={viewer} section="renewals" title={k.title} subtitle={k.subtitle}
+          action={<HeroAction href="/renewals" icon="refresh">{k.back}</HeroAction>}>
+      <Card title={k.collectionTitle} id="collection">
+        <Desc>{k.collectionCaption}</Desc>
         <div className="wrap">
-          <table>
-            <caption>{k.collectionCaption}<br /><small>{k.collectionNote}</small></caption>
+          <table className="wrap-head">
+            <caption className="sr">{k.collectionCaption}</caption>
             <thead>
               <tr>
                 <th scope="col">{k.affiliate}</th>
@@ -100,14 +100,15 @@ export default function RenewalLog({ viewer, collection, log }: Props) {
             </tbody>
           </table>
         </div>
-        <p><small>{t.home.testNote}</small></p>
-      </section>
+        <p><small>{k.collectionNote} {t.home.testNote}</small></p>
+      </Card>
 
-      <section id="log">
-        {log.length === 0 ? <><h2>{k.logCaption(LOG_LIMIT)}</h2><p>{k.emptyLog}</p></> : (
+      <Card title={k.logTitle} id="log">
+        <Desc>{k.logCaption(LOG_LIMIT)}</Desc>
+        {log.length === 0 ? <p>{k.emptyLog}</p> : (
           <div className="wrap">
-            <table>
-              <caption>{k.logCaption(LOG_LIMIT)}</caption>
+            <table className="wrap-head">
+              <caption className="sr">{k.logCaption(LOG_LIMIT)}</caption>
               <thead>
                 <tr>
                   <th scope="col">{k.date}</th><th scope="col">{k.client}</th><th scope="col">{k.code}</th>
@@ -140,7 +141,7 @@ export default function RenewalLog({ viewer, collection, log }: Props) {
             </table>
           </div>
         )}
-      </section>
+      </Card>
     </Page>
   );
 }

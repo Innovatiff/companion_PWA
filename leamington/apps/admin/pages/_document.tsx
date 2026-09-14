@@ -1,20 +1,29 @@
 import Document, { Html, Head, Main, NextScript, type DocumentContext, type DocumentInitialProps } from "next/document";
 import { PORTAL_CSS } from "@leamington/shared/src/ui/css.ts";
 
-// Inline, so a cold load is one HTML response (docs/DESIGN.md). The portal
-// variant plus the few pieces only the owner portal uses.
+// Inline, so a cold load is one HTML response (docs/DESIGN.md). The shared
+// dashboard look (section 9) plus the few pieces only the owner portal uses.
 const CSS = PORTAL_CSS +
-  ".chip.bad{color:var(--danger)}.chip.warn{color:var(--warn)}.chip.good{color:var(--ok)}" +
-  ".chip.unk{color:var(--caution);border-style:dashed}.chip.test{color:#fff;background:var(--muted);border-color:var(--muted);font-weight:700}" +
-  "tr.quiet td{background:#fbeeee}tr.quiet td:first-child{box-shadow:inset 4px 0 var(--danger)}" +
-  "td form{margin:0}td button,button.inline,.button.inline{display:inline-block;width:auto;margin:0;padding:.45rem .9rem}" +
-  ".note{border-left:4px solid var(--ok);background:var(--card);padding:.6rem .8rem;margin:1rem 0}.note.bad{border-left-color:var(--danger)}" +
-  ".filters{display:flex;flex-wrap:wrap;gap:0 1rem;align-items:flex-end}.filters>div{flex:1 1 11rem}.filters button{width:auto}" +
-  ".copy{font:1rem ui-monospace,\"Roboto Mono\",monospace;word-break:break-all;-webkit-user-select:all;user-select:all;" +
-  "background:var(--card);border:2px solid var(--ink);border-radius:.5rem;padding:.75rem}" +
-  "dl.kv{display:grid;grid-template-columns:max-content 1fr;gap:.3rem 1rem;margin:.5rem 0 1rem}dl.kv dt{color:var(--muted)}dl.kv dd{margin:0}" +
-  ".panel{border:2px solid var(--line);border-radius:.5rem;padding:.25rem 1rem .5rem;margin:1rem 0;background:var(--card)}" +
-  ".panel.danger{border-color:var(--danger)}.hint{margin:.2rem 0 0}";
+  // Tables: row links without underlines until hovered; forms in cells sit flush; totals row.
+  "td form{margin:0}tbody th a,td a:not(.pill){text-decoration:none}tbody th a:hover,td a:not(.pill):hover{text-decoration:underline}" +
+  "tr.quiet>th{box-shadow:inset 3px 0 var(--bad)}tfoot th,tfoot td{border-top:1px solid var(--line);font-weight:650}" +
+  "tbody th{min-width:10rem}tbody th small{font-weight:500}td.nums{white-space:nowrap}td.break{overflow-wrap:anywhere;min-width:8rem}table.wrap-head thead th{white-space:normal;vertical-align:bottom}" +
+  ".nums{font-variant-numeric:tabular-nums;letter-spacing:.03em}.desc{color:var(--muted);font-size:.85rem;margin:-.35rem 0 .9rem}" +
+  // Forms inside cards
+  ".filters{display:flex;flex-wrap:wrap;gap:0 .9rem;align-items:flex-end;margin-bottom:.75rem}.filters>div{flex:1 1 11rem}" +
+  ".card form>button,.card form>.actions{margin-top:1.1rem}.hint{margin:.3rem 0 0}.note.hint{margin:.4rem 0 0;padding:.45rem .75rem;font-size:.85rem}" +
+  ".card.danger{border-color:var(--bad);box-shadow:inset 4px 0 var(--bad)}" +
+  ".copy{font:.95rem ui-monospace,\"Roboto Mono\",monospace;word-break:break-all;-webkit-user-select:all;user-select:all;" +
+  "background:#fafaff;border:1px dashed var(--brand);border-radius:10px;padding:.75rem;margin:0 0 .5rem}" +
+  // Details, small figures, compact lists, pipeline periods
+  "dl.kv{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:.55rem 1.25rem;margin:0}dl.kv dt{color:var(--muted)}dl.kv dd{margin:0}" +
+  ".minis{display:grid;grid-template-columns:repeat(auto-fit,minmax(9.5rem,1fr));gap:.6rem}" +
+  ".minis>div{background:#f6f7fb;border-radius:12px;padding:.8rem .9rem;font-size:.85rem}.minis b{display:block;font-size:1.3rem;font-variant-numeric:tabular-nums}" +
+  ".minis small{display:block;margin-top:.15rem}.list.compact>li{padding:.55rem .75rem}.list a.t{color:var(--ink);text-decoration:none}" +
+  ".pipeline small{display:block;font-size:.72rem;margin-top:.15rem}.hero .chip{margin-left:.4rem}" +
+  // Sign-in pages, and the printed code
+  ".auth h1{font-size:1.3rem;margin:0 0 1rem;line-height:1.3}.auth h1 small{display:block;font-size:.85rem;font-weight:500}" +
+  ".auth form>button{margin-top:1.25rem}.print-only{display:none}@media print{.print-only{display:block}}";
 
 type Props = DocumentInitialProps & { lang: string };
 

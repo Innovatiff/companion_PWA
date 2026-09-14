@@ -5,7 +5,8 @@
  *    delivery path's overall state. "Never tested" is not "working".
  * 2. Client alert notifications: per weather alert, how many were queued, sent,
  *    failed, suppressed, and stuck (5 attempts, no longer claimed). The agency's
- *    wording is shown verbatim. An empty queue is never presented as "no alerts".
+ *    wording is shown verbatim. An empty queue is never presented as "no alerts",
+ *    and then the band shows no client counts at all.
  *
  * These are operational tables read with the server connection, only after the
  * owner check has passed.
@@ -15,7 +16,7 @@ import { db } from "@leamington/shared/src/server/db.ts";
 import { formatDateTime } from "@leamington/shared/src/format.ts";
 import { ownerPage, plain, type Viewer } from "../lib/server.ts";
 import { strings } from "../lib/i18n.ts";
-import { Page, Chip, type ChipKind } from "../lib/ui.tsx";
+import { Page, Card, StatCard, Chip, Desc, type ChipKind } from "../lib/ui.tsx";
 
 export const config = { unstable_runtimeJS: false };
 
@@ -67,75 +68,90 @@ export default function Alerts({ viewer, deliveries, health, alerts, checkedAt }
   const t = strings(viewer.lang);
   const a = t.alerts;
   const lang = viewer.lang;
+  const checked = `${t.checked}: ${formatDateTime(checkedAt, lang)}`;
+  const sum = (k: "sent" | "failed" | "stuck") => alerts.reduce((n, r) => n + r[k], 0);
+  const recent = a.inRecent(alerts.length);
   return (
-    <Page viewer={viewer} section="alerts" title={a.title}>
-      <p><small>{t.checked}: {formatDateTime(checkedAt, lang)}</small></p>
+    <Page
+      viewer={viewer} section="alerts" title={a.title} subtitle={`${a.subtitle} ${checked}`}
+      stats={
+        <>
+          <StatCard icon="bell" tone={health.failures_24h > 0 ? "bad" : "brand"} label={a.ownerFailures} value={health.failures_24h} note={a.last24} />
+          {alerts.length > 0 && (
+            <>
+              <StatCard icon="check" tone="good" label={a.sent} value={sum("sent")} note={recent} />
+              <StatCard icon="alert" tone="bad" label={a.failedCol} value={sum("failed")} note={recent} />
+              <StatCard icon="clock" tone="warn" label={a.stuck} value={sum("stuck")} note={recent} />
+            </>
+          )}
+        </>
+      }
+    >
+      <Card title={a.owner} action={<Chip kind={HEALTH_KIND[health.status] ?? "unk"}>{a.ownerHealth[health.status] ?? health.status}</Chip>}>
+        {health.last_delivered_at && <Desc>{a.lastDelivered}: {formatDateTime(health.last_delivered_at, lang)}</Desc>}
+        {health.status === "failing" && health.last_failure_error && <p className="note bad">{health.last_failure_error}</p>}
+        {deliveries.length === 0 ? <p>{a.ownerEmpty}</p> : (
+          <div className="wrap">
+            <table>
+              <caption className="sr">{a.owner}</caption>
+              <thead>
+                <tr><th scope="col">{a.time}</th><th scope="col">{a.feed}</th><th scope="col">{a.kind}</th><th scope="col">{a.result}</th><th scope="col">{a.error}</th></tr>
+              </thead>
+              <tbody>
+                {deliveries.map((d) => (
+                  <tr key={d.id}>
+                    <th scope="row">{formatDateTime(d.attempted_at, lang)}</th>
+                    <td className="nums">{d.feed}</td>
+                    <td>{d.kind}{d.summary && <><br /><small>{d.summary}</small></>}</td>
+                    <td>
+                      {d.delivered ? <Chip kind="good">{a.delivered}</Chip> : <Chip kind="bad">{a.failed}</Chip>}
+                      {d.http_status !== null && <> <small>HTTP {d.http_status}</small></>}
+                    </td>
+                    <td>{d.error ?? t.dash}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
 
-      <h2>{a.owner}</h2>
-      <p>
-        <Chip kind={HEALTH_KIND[health.status] ?? "unk"}>{a.ownerHealth[health.status] ?? health.status}</Chip>{" "}
-        {health.last_delivered_at && <small>{a.lastDelivered}: {formatDateTime(health.last_delivered_at, lang)}</small>}
-      </p>
-      {health.status === "failing" && health.last_failure_error && <p className="err">{health.last_failure_error}</p>}
-      {deliveries.length === 0 ? <p>{a.ownerEmpty}</p> : (
-        <div className="wrap">
-          <table>
-            <caption>{a.owner}</caption>
-            <thead>
-              <tr><th scope="col">{a.time}</th><th scope="col">{a.feed}</th><th scope="col">{a.kind}</th><th scope="col">{a.result}</th><th scope="col">{a.error}</th></tr>
-            </thead>
-            <tbody>
-              {deliveries.map((d) => (
-                <tr key={d.id}>
-                  <th scope="row">{formatDateTime(d.attempted_at, lang)}</th>
-                  <td className="nums">{d.feed}</td>
-                  <td>{d.kind}{d.summary && <><br /><small>{d.summary}</small></>}</td>
-                  <td>
-                    {d.delivered ? <Chip kind="good">{a.delivered}</Chip> : <Chip kind="bad">{a.failed}</Chip>}
-                    {d.http_status !== null && <> <small>HTTP {d.http_status}</small></>}
-                  </td>
-                  <td>{d.error ?? t.dash}</td>
+      <Card title={a.clients}>
+        <Desc>{a.clientsCaption}</Desc>
+        {alerts.length === 0 ? <p className="note bad">{a.clientsEmpty}</p> : (
+          <div className="wrap">
+            <table>
+              <caption className="sr">{a.clientsCaption}</caption>
+              <thead>
+                <tr>
+                  <th scope="col">{a.event}</th><th scope="col">{a.level}</th><th scope="col">{a.agency}</th><th scope="col">{a.issued}</th>
+                  <th scope="col" className="num">{a.queued}</th><th scope="col" className="num">{a.sent}</th>
+                  <th scope="col" className="num">{a.failedCol}</th><th scope="col" className="num">{a.suppressed}</th>
+                  <th scope="col" className="num">{a.stuck}</th><th scope="col">{a.lastError}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      <h2>{a.clients}</h2>
-      {alerts.length === 0 ? <p className="note bad">{a.clientsEmpty}</p> : (
-        <div className="wrap">
-          <table>
-            <caption>{a.clientsCaption}</caption>
-            <thead>
-              <tr>
-                <th scope="col">{a.event}</th><th scope="col">{a.level}</th><th scope="col">{a.agency}</th><th scope="col">{a.issued}</th>
-                <th scope="col" className="num">{a.queued}</th><th scope="col" className="num">{a.sent}</th>
-                <th scope="col" className="num">{a.failedCol}</th><th scope="col" className="num">{a.suppressed}</th>
-                <th scope="col" className="num">{a.stuck}</th><th scope="col">{a.lastError}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {alerts.map((r) => (
-                <tr key={`${r.alert_id ?? "x"}-${r.cap_identifier ?? ""}`}>
-                  <th scope="row">
-                    {r.event ?? a.deleted}
-                    {r.msg_type && r.msg_type !== "Alert" && <> <small>({r.msg_type})</small></>}
-                    {r.cap_identifier && <><br /><small className="nums">{r.cap_identifier}</small></>}
-                  </th>
-                  <td>{r.level ? <Chip kind={LEVEL_KIND[r.level] ?? "plain"}>{t.level[r.level] ?? r.level}</Chip> : t.dash}</td>
-                  <td>{r.source_url && r.agency ? <a href={r.source_url} rel="noreferrer">{r.agency}</a> : r.agency ?? t.dash}</td>
-                  <td>{r.issued_at ? formatDateTime(r.issued_at, lang) : t.dash}</td>
-                  <td className="num">{r.queued}</td><td className="num">{r.sent}</td>
-                  <td className="num">{r.failed}</td><td className="num">{r.suppressed}</td>
-                  <td className="num">{r.stuck > 0 ? <Chip kind="bad">{r.stuck}</Chip> : 0}</td>
-                  <td>{r.last_error ?? t.dash}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+              </thead>
+              <tbody>
+                {alerts.map((r) => (
+                  <tr key={`${r.alert_id ?? "x"}-${r.cap_identifier ?? ""}`}>
+                    <th scope="row">
+                      {r.event ?? a.deleted}
+                      {r.msg_type && r.msg_type !== "Alert" && <> <small>({r.msg_type})</small></>}
+                      {r.cap_identifier && <><br /><small className="nums">{r.cap_identifier}</small></>}
+                    </th>
+                    <td>{r.level ? <Chip kind={LEVEL_KIND[r.level] ?? "plain"}>{t.level[r.level] ?? r.level}</Chip> : t.dash}</td>
+                    <td>{r.source_url && r.agency ? <a href={r.source_url} rel="noreferrer">{r.agency}</a> : r.agency ?? t.dash}</td>
+                    <td>{r.issued_at ? formatDateTime(r.issued_at, lang) : t.dash}</td>
+                    <td className="num">{r.queued}</td><td className="num">{r.sent}</td>
+                    <td className="num">{r.failed}</td><td className="num">{r.suppressed}</td>
+                    <td className="num">{r.stuck > 0 ? <Chip kind="bad">{r.stuck}</Chip> : 0}</td>
+                    <td className="break">{r.last_error ?? t.dash}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
     </Page>
   );
 }

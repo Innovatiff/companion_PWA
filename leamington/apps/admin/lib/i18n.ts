@@ -5,7 +5,8 @@
 import type { Lang } from "./rules.ts";
 
 const es = {
-  brand: "Leamington · Propietario",
+  brand: "Hoy", product: "Admin", role: "Dueño",
+  view: "Ver", viewAll: "Ver todos", now: "ahora",
   nav: { sales: "Ventas", clients: "Clientes", renewals: "Renovaciones", affiliates: "Afiliados", revenue: "Ingresos", feeds: "Fuentes", alerts: "Alertas", logout: "Salir" },
   chip: { test: "PRUEBA", house: "Directo", inactive: "Inactivo", quiet: "Sin ventas en 30 días", voided: "Anulado", stuck: "Atascada" },
   status: { active: "Activo", due: "Por vencer", lapsed: "Vencido", none: "Sin pago vigente" } as Record<string, string>,
@@ -25,9 +26,11 @@ const es = {
   home: {
     title: "Ventas por afiliado",
     caption: "Quién está vendiendo. Ventas pagadas; los afiliados sin ventas en 30 días están marcados.",
-    affiliate: "Afiliado", d7: "7 días", d30: "30 días", all: "Total", renewals: "Renovaciones (30 d / total)",
+    affiliate: "Afiliado", d7: "7 días", d30: "30 días", all: "Total", renewals: "Renov. (30 d / total)",
     lastSale: "Última venta", active: "Al día", due: "Por vencer", lapsed: "Vencidos", never: "Nunca",
-    stats: "Resumen",
+    subtitle: (today: string) => `Quién está vendiendo y quién no. Datos de hoy, ${today}.`,
+    reactivated: "Reactivados", last90: "últimos 90 días, clientes reales",
+    dueSoon: "Vencen pronto", feeds: "Fuentes de datos",
     gross: "ingresos brutos", commissions: "comisiones de afiliados", net: "neto", owed: "adeudado a afiliados",
     renewalsDue: "renovaciones por vencer", lapsedClients: "clientes vencidos",
     thisMonth: (m: string) => `este mes (${m})`, allTime: "a la fecha", now: "hoy, clientes reales", today: "hoy", month: "este mes",
@@ -36,6 +39,7 @@ const es = {
   },
   clients: {
     title: "Clientes", register: "Registrar cliente",
+    subtitle: "Todos los clientes de todos los afiliados. Filtra por afiliado, estado, nombre o código.",
     affiliate: "Afiliado", status: "Estado", search: "Nombre o código", filter: "Filtrar",
     name: "Nombre", code: "Código", countryCol: "País", regionCol: "Región", periodEnd: "Pagado hasta",
     caption: (shown: number, total: number) => (shown < total ? `Mostrando ${shown} de ${total}. Filtra para ver el resto.` : `${total} clientes`),
@@ -77,6 +81,11 @@ const es = {
   },
   renewals: {
     title: "Renovaciones",
+    subtitle: "Quién vence pronto, quién ya venció y quién volvió a pagar.",
+    logAction: "Cobro y registro",
+    dueTitle: "Por vencer", dueDesc: "El período termina en 30 días o menos. Primero el más próximo.",
+    lapsedTitle: "Vencidos", lapsedDesc: "Sin período pagado vigente. Primero el más reciente.",
+    reactivatedTitle: "Reactivados", reactivatedDesc: "Pagaron después de haber vencido, últimos 90 días. Primero el más reciente.",
     dueCaption: "Por vencer: el período termina en 30 días o menos (primero el más próximo)",
     lapsedCaption: "Vencidos: sin período pagado vigente (primero el más reciente)",
     client: "Cliente", affiliate: "Afiliado", when: "Plazo", periodEnd: "Pagado hasta", markPaid: "Marcar pagado",
@@ -97,6 +106,8 @@ const es = {
   },
   renewalLog: {
     title: "Cobro y registro de renovaciones", back: "Volver a Renovaciones",
+    subtitle: "Qué negocio cobra cada renovación y quién gana la comisión.",
+    collectionTitle: "Cobro vs comisión", logTitle: "Registro de renovaciones",
     collectionCaption: "Cobro vs comisión, a la fecha: qué negocios ganan renovaciones, también de clientes de otros negocios, y qué clientes propios renuevan en otro lugar. Pagos anulados excluidos.",
     collectionNote: "Cada renovación la gana el negocio que la cobra; el registro sigue siendo del negocio que registró al cliente. Renovadas por el dueño: sin comisión. Efectivo cobrado: registros y renovaciones recibidos en persona.",
     affiliate: "Negocio", collected: "Renovaciones cobradas", own: "De clientes propios", other: "De clientes de otros negocios",
@@ -110,12 +121,14 @@ const es = {
   },
   affiliates: {
     title: "Afiliados", add: "Nuevo afiliado",
+    subtitle: "Comisión, ventas, lo adeudado y la tasa de vencimiento de cada afiliado.", listTitle: "Todos los afiliados",
     name: "Nombre", commission: "Comisión", active: "Activo", sales: "Ventas", renewals: "Renovaciones",
     earned: "Ganado", paidOut: "Pagado", owed: "Adeudado", yes: "Sí", no: "No", lapse: "Tasa de vencimiento",
     caption: "Ganado: comisiones de pagos no anulados. Adeudado = ganado − pagado. Tasa de vencimiento: vencidos hoy ÷ clientes reales cuyo primer período ya terminó.",
   },
   newAffiliate: {
     title: "Nuevo afiliado",
+    subtitle: "Crea el afiliado y su usuario para el portal de afiliados.",
     name: "Nombre", business: "Negocio (opcional)", contact: "Contacto (teléfono o WhatsApp, opcional)",
     commission: "Comisión (%)", commissionHint: "40% = $8.00 de cada $20.00.",
     login: "Usuario para entrar", loginHint: "3 a 40 caracteres: letras minúsculas, números, punto, guion.",
@@ -129,6 +142,7 @@ const es = {
   affiliate: {
     setupTitle: "Enlace para crear la contraseña",
     setupNote: "Se muestra una sola vez. Cópialo y envíaselo al afiliado. Vence en 72 horas y sirve una vez.",
+    actions: "Acciones",
     account: "Cuenta", login: "Usuario", lastLogin: "Último ingreso", setupPending: "Contraseña pendiente (enlace enviado)",
     business: "Negocio", contact: "Contacto", commission: "Comisión", created: "Alta",
     earnings: "Dinero", earned: "ganado a la fecha", earnedMonth: "ganado este mes", paidOut: "pagado a la fecha", owed: "adeudado hoy",
@@ -163,6 +177,7 @@ const es = {
   },
   revenue: {
     title: "Ingresos",
+    subtitle: "Lo que entra, lo que ganan los afiliados y lo que queda.", byMonth: "Por mes",
     note: "Solo clientes reales: los clientes y afiliados de prueba no cuentan. Pagos anulados excluidos. Mes según la hora de Leamington.",
     month: "Mes", sales: "Ventas", renewals: "Renov.", gross: "Bruto", commissions: "Comisiones", net: "Neto", paidOut: "Pagado a afiliados",
     caption: "Por mes. Neto = bruto − comisiones ganadas por afiliados.",
@@ -171,7 +186,7 @@ const es = {
     empty: "La base de datos no tiene pagos registrados.",
   },
   feeds: {
-    title: "Fuentes",
+    title: "Fuentes", expected: "Fuentes esperadas",
     lead: "Una fila por fuente esperada, la más grave primero. \"No determinado\" nunca es correcto.",
     state: { ok: "Correcto", stale: "Desactualizada", error: "Error", unknown: "No determinado" } as Record<string, string>,
     reason: {
@@ -190,6 +205,9 @@ const es = {
   },
   alerts: {
     title: "Alertas",
+    subtitle: "Si los avisos llegan: al propietario y a los clientes.",
+    ownerFailures: "Avisos al propietario fallidos", last24: "últimas 24 h",
+    inRecent: (n: number) => `en ${n === 1 ? "el aviso más reciente" : `los ${n} avisos más recientes`}`,
     owner: "Avisos al propietario (Telegram)",
     ownerHealth: { ok: "Entrega correcta", failing: "La última entrega falló", untested: "Nunca probada: no se sabe si funciona" } as Record<string, string>,
     lastDelivered: "Última entrega exitosa", time: "Hora", feed: "Fuente", kind: "Tipo", result: "Resultado", error: "Error",
@@ -203,12 +221,14 @@ const es = {
     deleted: "Aviso ya no está en la base de datos",
     clientsEmpty: "La cola de alertas no tiene notificaciones. Esto no significa que no haya avisos vigentes: revisa Fuentes.",
   },
+  auth: { signInHere: "Si ya creaste tu contraseña, entra aquí" },
 };
 
 export type Strings = typeof es;
 
 const en: Strings = {
-  brand: "Leamington · Owner",
+  brand: "Hoy", product: "Admin", role: "Owner",
+  view: "View", viewAll: "View all", now: "now",
   nav: { sales: "Sales", clients: "Clients", renewals: "Renewals", affiliates: "Affiliates", revenue: "Revenue", feeds: "Feeds", alerts: "Alerts", logout: "Sign out" },
   chip: { test: "TEST", house: "Direct", inactive: "Inactive", quiet: "No sales in 30 days", voided: "Voided", stuck: "Stuck" },
   status: { active: "Active", due: "Due", lapsed: "Lapsed", none: "No current payment" },
@@ -228,9 +248,11 @@ const en: Strings = {
   home: {
     title: "Sales per affiliate",
     caption: "Who is selling. Paid sales; affiliates with no sales in 30 days are marked.",
-    affiliate: "Affiliate", d7: "7 days", d30: "30 days", all: "All", renewals: "Renewals (30 d / all)",
+    affiliate: "Affiliate", d7: "7 days", d30: "30 days", all: "All", renewals: "Renew. (30 d / all)",
     lastSale: "Last sale", active: "Current", due: "Due", lapsed: "Lapsed", never: "Never",
-    stats: "Summary",
+    subtitle: (today: string) => `Who is selling and who isn't. Figures for today, ${today}.`,
+    reactivated: "Reactivated", last90: "last 90 days, real clients",
+    dueSoon: "Due soon", feeds: "Data feeds",
     gross: "gross revenue", commissions: "affiliate commissions", net: "net", owed: "owed to affiliates",
     renewalsDue: "renewals due", lapsedClients: "lapsed clients",
     thisMonth: (m: string) => `this month (${m})`, allTime: "to date", now: "today, real clients", today: "today", month: "this month",
@@ -239,6 +261,7 @@ const en: Strings = {
   },
   clients: {
     title: "Clients", register: "Register client",
+    subtitle: "Every client of every affiliate. Filter by affiliate, status, name or code.",
     affiliate: "Affiliate", status: "Status", search: "Name or code", filter: "Filter",
     name: "Name", code: "Code", countryCol: "Country", regionCol: "Region", periodEnd: "Paid until",
     caption: (shown: number, total: number) => (shown < total ? `Showing ${shown} of ${total}. Filter to see the rest.` : `${total} clients`),
@@ -280,6 +303,11 @@ const en: Strings = {
   },
   renewals: {
     title: "Renewals",
+    subtitle: "Who is due soon, who has lapsed and who came back and paid.",
+    logAction: "Collection and log",
+    dueTitle: "Due", dueDesc: "The period ends within 30 days. Soonest first.",
+    lapsedTitle: "Lapsed", lapsedDesc: "No current paid period. Most recent first.",
+    reactivatedTitle: "Reactivated", reactivatedDesc: "Paid after lapsing, last 90 days. Most recent first.",
     dueCaption: "Due: the period ends within 30 days (soonest first)",
     lapsedCaption: "Lapsed: no current paid period (most recent first)",
     client: "Client", affiliate: "Affiliate", when: "Timing", periodEnd: "Paid until", markPaid: "Mark paid",
@@ -300,6 +328,8 @@ const en: Strings = {
   },
   renewalLog: {
     title: "Renewal collection and log", back: "Back to Renewals",
+    subtitle: "Which business collects each renewal and who earns the commission.",
+    collectionTitle: "Collection vs commission", logTitle: "Renewal log",
     collectionCaption: "Collection vs commission, to date: which businesses win renewals, including other businesses' clients, and whose clients renew elsewhere. Voided payments excluded.",
     collectionNote: "Each renewal is earned by the business that collects it; the registration stays with the business that registered the client. Renewed by the owner: no commission. Cash collected: registrations and renewals taken in person.",
     affiliate: "Business", collected: "Renewals collected", own: "Of own clients", other: "Of other businesses' clients",
@@ -313,12 +343,14 @@ const en: Strings = {
   },
   affiliates: {
     title: "Affiliates", add: "New affiliate",
+    subtitle: "Commission, sales, amount owed and lapse rate for each affiliate.", listTitle: "All affiliates",
     name: "Name", commission: "Commission", active: "Active", sales: "Sales", renewals: "Renewals",
     earned: "Earned", paidOut: "Paid", owed: "Owed", yes: "Yes", no: "No", lapse: "Lapse rate",
     caption: "Earned: commissions on payments not voided. Owed = earned − paid. Lapse rate: lapsed today ÷ real clients whose first period has ended.",
   },
   newAffiliate: {
     title: "New affiliate",
+    subtitle: "Creates the affiliate and their sign-in for the affiliate portal.",
     name: "Name", business: "Business (optional)", contact: "Contact (phone or WhatsApp, optional)",
     commission: "Commission (%)", commissionHint: "40% = $8.00 of every $20.00.",
     login: "Sign-in name", loginHint: "3 to 40 characters: lowercase letters, digits, dot, hyphen.",
@@ -332,6 +364,7 @@ const en: Strings = {
   affiliate: {
     setupTitle: "Link to set the password",
     setupNote: "Shown only once. Copy it and send it to the affiliate. It expires in 72 hours and works once.",
+    actions: "Actions",
     account: "Account", login: "Sign-in name", lastLogin: "Last sign-in", setupPending: "Password not set yet (link sent)",
     business: "Business", contact: "Contact", commission: "Commission", created: "Added",
     earnings: "Money", earned: "earned to date", earnedMonth: "earned this month", paidOut: "paid to date", owed: "owed today",
@@ -366,6 +399,7 @@ const en: Strings = {
   },
   revenue: {
     title: "Revenue",
+    subtitle: "What comes in, what affiliates earn and what is left.", byMonth: "By month",
     note: "Real clients only: test clients and test affiliates are not counted. Voided payments excluded. Months in Leamington time.",
     month: "Month", sales: "Sales", renewals: "Renew.", gross: "Gross", commissions: "Commissions", net: "Net", paidOut: "Paid to affiliates",
     caption: "By month. Net = gross − commissions earned by affiliates.",
@@ -374,7 +408,7 @@ const en: Strings = {
     empty: "The database has no recorded payments.",
   },
   feeds: {
-    title: "Feeds",
+    title: "Feeds", expected: "Expected feeds",
     lead: "One row per expected feed, most severe first. \"Could not determine\" is never healthy.",
     state: { ok: "OK", stale: "Stale", error: "Error", unknown: "Could not determine" },
     reason: {
@@ -393,6 +427,9 @@ const en: Strings = {
   },
   alerts: {
     title: "Alerts",
+    subtitle: "Whether alerts get through: to the owner and to clients.",
+    ownerFailures: "Failed owner alerts", last24: "last 24 h",
+    inRecent: (n: number) => (n === 1 ? "in the most recent alert" : `across the ${n} most recent alerts`),
     owner: "Owner alerts (Telegram)",
     ownerHealth: { ok: "Delivering", failing: "The latest delivery failed", untested: "Never tested: unknown whether it works" },
     lastDelivered: "Last successful delivery", time: "Time", feed: "Feed", kind: "Kind", result: "Result", error: "Error",
@@ -406,6 +443,7 @@ const en: Strings = {
     deleted: "Alert no longer in the database",
     clientsEmpty: "The alert queue has no notifications. This does not mean no alerts are in force: check Feeds.",
   },
+  auth: { signInHere: "If you already set your password, sign in here" },
 };
 
 export const strings = (lang: Lang): Strings => (lang === "en" ? en : es);

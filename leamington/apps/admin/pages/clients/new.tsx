@@ -14,7 +14,7 @@ import { generateCode } from "@leamington/shared/src/code.ts";
 import { ownerPage, plain, type Viewer } from "../../lib/server.ts";
 import { COUNTRIES, isCountry, q1 } from "../../lib/rules.ts";
 import { strings } from "../../lib/i18n.ts";
-import { Page } from "../../lib/ui.tsx";
+import { Page, Card, Note } from "../../lib/ui.tsx";
 
 export const config = { unstable_runtimeJS: false };
 
@@ -51,12 +51,11 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
 export default function NewClient({ viewer, country, regions, teams, code, values, error }: Props) {
   const t = strings(viewer.lang);
   const n = t.newClient;
-  const err = (key: string) => (error === key ? <p className="err hint" id={`${key}-err`}>{n.errors[key]}</p> : null);
+  const err = (key: string) => (error === key ? <p className="note bad hint" id={`${key}-err`}>{n.errors[key]}</p> : null);
   return (
-    <Page viewer={viewer} section="clients" title={n.title}>
-      <div className="narrow">
-        <p>{n.lead}</p>
-        {error && !["name", "region", "team"].includes(error) && <p className="err" role="alert">{n.errors[error] ?? n.errors.invalid}</p>}
+    <Page viewer={viewer} section="clients" title={n.title} subtitle={n.lead}>
+      <Card className="form">
+        {error && !["name", "region", "team"].includes(error) && <Note kind="bad">{n.errors[error] ?? n.errors.invalid}</Note>}
         {!country ? (
           <form method="get" action="/clients/new">
             <label htmlFor="country">{n.country}</label>
@@ -95,7 +94,7 @@ export default function NewClient({ viewer, country, regions, teams, code, value
             <button type="submit">{n.submit}</button>
           </form>
         )}
-      </div>
+      </Card>
     </Page>
   );
 }

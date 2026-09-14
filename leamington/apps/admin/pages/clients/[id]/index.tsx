@@ -9,7 +9,7 @@ import { formatDate, formatDateTime, formatMoney } from "@leamington/shared/src/
 import { ownerPage, plain, type Viewer } from "../../../lib/server.ts";
 import { isUuid, percentLabel, q1 } from "../../../lib/rules.ts";
 import { strings } from "../../../lib/i18n.ts";
-import { Page, Chip, Note, StatusChip } from "../../../lib/ui.tsx";
+import { Page, Card, HeroAction, Chip, Note, StatusChip } from "../../../lib/ui.tsx";
 
 export const config = { unstable_runtimeJS: false };
 
@@ -76,103 +76,119 @@ export default function ClientPage({ viewer, client: c, subs, voidId, ok, end, r
   const lang = viewer.lang;
   const voiding = subs.find((s) => s.id === voidId);
   return (
-    <Page viewer={viewer} section="clients" title={c.full_name}>
+    <Page
+      viewer={viewer} section="clients" title={c.full_name}
+      subtitle={
+        <>
+          {t.clients.code} <span className="nums">{formatCode(c.code)}</span> · {c.affiliate_name}
+          {c.is_house ? ` (${t.chip.house})` : ""}
+          <StatusChip status={c.status} daysLeft={c.days_left} lang={lang} />
+          {c.is_test && <Chip kind="test">{t.chip.test}</Chip>}
+          {!c.active && <Chip kind="unk">{t.chip.inactive}</Chip>}
+        </>
+      }
+      action={<HeroAction href={`/clients/${c.client_id}/code`} icon="printer">{k.viewCode}</HeroAction>}
+    >
       {ok === "renewed" && end && <Note>{(re ? k.reactivated : k.renewed)(formatDate(end, lang, true))}</Note>}
       {ok === "voided" && <Note>{k.voidedOk}</Note>}
       {error && error !== "reason" && <Note kind="bad">{k.errors[error] ?? k.errors.invalid}</Note>}
 
-      <p>
-        <StatusChip status={c.status} daysLeft={c.days_left} lang={lang} />{" "}
-        {c.is_test && <Chip kind="test">{t.chip.test}</Chip>}{" "}
-        {!c.active && <Chip kind="unk">{t.chip.inactive}</Chip>}
-      </p>
-      <h2>{k.details}</h2>
-      <dl className="kv">
-        <dt>{t.clients.code}</dt><dd className="nums">{formatCode(c.code)} · <a href={`/clients/${c.client_id}/code`}>{k.viewCode}</a></dd>
-        <dt>{k.affiliate}</dt>
-        <dd>
-          <a href={`/affiliates/${c.affiliate_id}`}>{c.affiliate_name}</a>
-          {c.is_house ? ` (${t.chip.house})` : ""}{c.affiliate_is_test ? ` (${t.chip.test})` : ""}
-        </dd>
-        <dt>{k.country}</dt><dd>{t.country[c.country] ?? c.country}</dd>
-        <dt>{t.region[c.country] ?? t.clients.regionCol}</dt><dd>{c.admin_region ?? t.dash}</dd>
-        <dt>{k.municipality}</dt><dd>{c.municipality ?? t.dash}</dd>
-        <dt>{k.team}</dt><dd>{c.team ?? t.dash}</dd>
-        <dt>{k.language}</dt><dd>{k.langName[c.language] ?? c.language}</dd>
-        <dt>{k.periodEnd}</dt><dd>{c.period_end ? formatDate(c.period_end, lang, true) : t.dash}</dd>
-        <dt>{k.created}</dt><dd>{formatDateTime(c.created_at, lang)}</dd>
-        <dt>{k.lastSeen}</dt><dd>{c.last_seen_at ? formatDateTime(c.last_seen_at, lang) : t.dash}</dd>
-      </dl>
+      <div className="grid">
+        <Card title={k.details}>
+          <dl className="kv">
+            <dt>{t.clients.code}</dt><dd className="nums">{formatCode(c.code)} · <a href={`/clients/${c.client_id}/code`}>{k.viewCode}</a></dd>
+            <dt>{k.affiliate}</dt>
+            <dd>
+              <a href={`/affiliates/${c.affiliate_id}`}>{c.affiliate_name}</a>
+              {c.is_house ? ` (${t.chip.house})` : ""}{c.affiliate_is_test ? ` (${t.chip.test})` : ""}
+            </dd>
+            <dt>{k.country}</dt><dd>{t.country[c.country] ?? c.country}</dd>
+            <dt>{t.region[c.country] ?? t.clients.regionCol}</dt><dd>{c.admin_region ?? t.dash}</dd>
+            <dt>{k.municipality}</dt><dd>{c.municipality ?? t.dash}</dd>
+            <dt>{k.team}</dt><dd>{c.team ?? t.dash}</dd>
+            <dt>{k.language}</dt><dd>{k.langName[c.language] ?? c.language}</dd>
+            <dt>{k.status}</dt><dd><StatusChip status={c.status} daysLeft={c.days_left} lang={lang} /></dd>
+            <dt>{k.periodEnd}</dt><dd>{c.period_end ? formatDate(c.period_end, lang, true) : t.dash}</dd>
+            <dt>{k.created}</dt><dd>{formatDateTime(c.created_at, lang)}</dd>
+            <dt>{k.lastSeen}</dt><dd>{c.last_seen_at ? formatDateTime(c.last_seen_at, lang) : t.dash}</dd>
+          </dl>
+        </Card>
 
-      <form method="post" action="/api/clients/renew" className="narrow">
-        <input type="hidden" name="client_id" value={c.client_id} />
-        <input type="hidden" name="expect_end" value={c.period_end ?? "none"} />
-        <input type="hidden" name="back" value={`/clients/${c.client_id}`} />
-        <button type="submit">{k.renew}</button>
-        <p className="hint"><small>{k.renewNote}</small></p>
-      </form>
+        <div>
+          {voiding && (
+            <Card title={k.voidTitle} id="void" className="danger">
+              <p>
+                {t.kind[voiding.kind] ?? voiding.kind} · {formatMoney(voiding.amount)} ·{" "}
+                {formatDate(voiding.period_start, lang, true)} – {formatDate(voiding.period_end, lang, true)}
+              </p>
+              <p><small>{k.voidNote}</small></p>
+              <form method="post" action="/api/clients/void">
+                <input type="hidden" name="client_id" value={c.client_id} />
+                <input type="hidden" name="subscription_id" value={voiding.id} />
+                <label htmlFor="reason">{k.reason}</label>
+                <input id="reason" name="reason" required maxLength={200} autoComplete="off"
+                       aria-describedby={error === "reason" ? "reason-err" : undefined} />
+                {error === "reason" && <p className="note bad hint" id="reason-err">{k.errors.reason}</p>}
+                <div className="actions">
+                  <button type="submit" className="danger">{k.voidConfirm}</button>
+                  <a className="button secondary" href={`/clients/${c.client_id}`}>{t.cancel}</a>
+                </div>
+              </form>
+            </Card>
+          )}
 
-      {voiding && (
-        <div className="panel danger narrow" id="void">
-          <h2>{k.voidTitle}</h2>
-          <p>
-            {t.kind[voiding.kind] ?? voiding.kind} · {formatMoney(voiding.amount)} ·{" "}
-            {formatDate(voiding.period_start, lang, true)} – {formatDate(voiding.period_end, lang, true)}
-          </p>
-          <p><small>{k.voidNote}</small></p>
-          <form method="post" action="/api/clients/void">
-            <input type="hidden" name="client_id" value={c.client_id} />
-            <input type="hidden" name="subscription_id" value={voiding.id} />
-            <label htmlFor="reason">{k.reason}</label>
-            <input id="reason" name="reason" required maxLength={200} autoComplete="off"
-                   aria-describedby={error === "reason" ? "reason-err" : undefined} />
-            {error === "reason" && <p className="err hint" id="reason-err">{k.errors.reason}</p>}
-            <div className="actions">
-              <button type="submit">{k.voidConfirm}</button>
-              <a className="button secondary" href={`/clients/${c.client_id}`}>{t.cancel}</a>
-            </div>
-          </form>
+          <Card title={k.renew}>
+            <form method="post" action="/api/clients/renew">
+              <input type="hidden" name="client_id" value={c.client_id} />
+              <input type="hidden" name="expect_end" value={c.period_end ?? "none"} />
+              <input type="hidden" name="back" value={`/clients/${c.client_id}`} />
+              <p className="hint"><small>{k.renewNote}</small></p>
+              <button type="submit" className="block">{k.renew}</button>
+            </form>
+          </Card>
         </div>
-      )}
-
-      <div className="wrap">
-        <table>
-          <caption>{k.history}</caption>
-          <thead>
-            <tr>
-              <th scope="col">{k.kind}</th><th scope="col" className="num">{k.amount}</th>
-              <th scope="col" className="num">{k.commission}</th><th scope="col">{k.period}</th>
-              <th scope="col">{k.paid}</th><th scope="col">{k.collector}</th><th scope="col">{k.voided}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {subs.map((s) => (
-              <tr key={s.id}>
-                <th scope="row">
-                  {t.kind[s.kind] ?? s.kind}
-                  {s.reactivation && <> <Chip kind="good">{t.reactivation(s.lapsed_days)}</Chip></>}
-                </th>
-                <td className="num">{formatMoney(s.amount)}</td>
-                <td className="num">{formatMoney(s.commission)}{s.rate !== null && <><br /><small>{percentLabel(s.rate)}</small></>}</td>
-                <td>{formatDate(s.period_start, lang, true)} – {formatDate(s.period_end, lang, true)}</td>
-                <td>{s.paid_at ? formatDateTime(s.paid_at, lang) : t.dash}</td>
-                <td>
-                  {!s.paid_at ? t.dash
-                    : s.collected_by_affiliate_id ? s.collector_name ?? t.dash
-                    : s.affiliate_is_house || s.affiliate_name === null ? t.ownerNoCommission : s.affiliate_name}
-                </td>
-                <td>
-                  {s.voided_at ? (
-                    <><Chip kind="bad">{t.chip.voided}</Chip> {formatDateTime(s.voided_at, lang)}<br /><small>{s.void_reason}</small></>
-                  ) : s.paid_at ? (
-                    <a href={`/clients/${c.client_id}?void=${s.id}#void`}>{k.void}</a>
-                  ) : t.dash}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
       </div>
+
+      <Card title={k.history}>
+        <div className="wrap">
+          <table>
+            <caption className="sr">{k.history}</caption>
+            <thead>
+              <tr>
+                <th scope="col">{k.kind}</th><th scope="col" className="num">{k.amount}</th>
+                <th scope="col" className="num">{k.commission}</th><th scope="col">{k.period}</th>
+                <th scope="col">{k.paid}</th><th scope="col">{k.collector}</th><th scope="col">{k.voided}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {subs.map((s) => (
+                <tr key={s.id}>
+                  <th scope="row">
+                    {t.kind[s.kind] ?? s.kind}
+                    {s.reactivation && <> <Chip kind="good">{t.reactivation(s.lapsed_days)}</Chip></>}
+                  </th>
+                  <td className="num">{formatMoney(s.amount)}</td>
+                  <td className="num">{formatMoney(s.commission)}{s.rate !== null && <><br /><small>{percentLabel(s.rate)}</small></>}</td>
+                  <td>{formatDate(s.period_start, lang, true)} – {formatDate(s.period_end, lang, true)}</td>
+                  <td>{s.paid_at ? formatDateTime(s.paid_at, lang) : t.dash}</td>
+                  <td>
+                    {!s.paid_at ? t.dash
+                      : s.collected_by_affiliate_id ? s.collector_name ?? t.dash
+                      : s.affiliate_is_house || s.affiliate_name === null ? t.ownerNoCommission : s.affiliate_name}
+                  </td>
+                  <td>
+                    {s.voided_at ? (
+                      <><Chip kind="bad">{t.chip.voided}</Chip> {formatDateTime(s.voided_at, lang)}<br /><small>{s.void_reason}</small></>
+                    ) : s.paid_at ? (
+                      <a className="pill" href={`/clients/${c.client_id}?void=${s.id}#void`}>{k.void}</a>
+                    ) : t.dash}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
     </Page>
   );
 }
