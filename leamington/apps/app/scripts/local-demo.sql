@@ -291,3 +291,44 @@ select 'ON', v.d::date, v.name, v.name_es, date '2026-09-14',
                ('2027-09-06', 'Labour Day', 'Día del Trabajo'), ('2027-10-11', 'Thanksgiving Day', 'Día de Acción de Gracias'),
                ('2027-12-25', 'Christmas Day', 'Navidad'), ('2027-12-26', 'Boxing Day', 'Día de San Esteban (Boxing Day)')) v(d, name, name_es)
 on conflict (province, holiday_date, name) do nothing;
+
+-- LOCAL ONLY, round 4 (0044): Leamington's next hours from three providers and
+-- air quality from two, fetched now, so they count for 5 hours (air: 2 hours).
+-- Invented local demo numbers. Re-run just before screenshots:
+--   psql -f ... (normal)  |  psql -v variant=heat -f ...  |  psql -v variant=air_range -f ...
+--   heat:      feels-like about 34° at midday (heat "caution")
+--   air_range: the providers two EPA categories apart (a range, no single value)
+--   tomorrow:  every row stamped 8 hours ahead, for a preview clock (?at=) after 6pm
+-- The third hour from now has providers far apart (no temperature for it); the
+-- second hour from now is a rain hour (about 64%).
+\if :{?variant}
+\else
+\set variant normal
+\endif
+delete from local_hourly where place_id = (select id from local_places where key = 'leamington');
+insert into local_hourly (place_id, provider, hour_start, temp_c, feels_like_c, precip_prob, uv_index, condition, is_day, fetched_at)
+select lp.id, p.provider::forecast_provider, g.h + make_interval(hours => case when :'variant' = 'tomorrow' then 8 else 0 end),
+       round((g.base + p.off + case when g.i = 3 then p.dis else 0 end)::numeric, 1),
+       round((g.base + p.off + case when :'variant' = 'heat' then 14 else 1 end)::numeric, 1),
+       least(100, greatest(0, case when g.i = 2 then 64 else 12 + (g.i % 4) * 5 end + p.poff)),
+       case when g.lh between 7 and 19 then round((7.2 * sin(pi() * (g.lh - 7) / 12.0))::numeric, 1) else 0 end,
+       case when g.i = 2 then 'rain' when g.lh between 7 and 19 then (case when g.i % 3 = 0 then 'partly_cloudy' else 'clear' end) else 'cloudy' end,
+       g.lh between 7 and 19, now() + make_interval(hours => case when :'variant' = 'tomorrow' then 8 else 0 end)
+  from local_places lp
+  cross join (values ('open-meteo', 0.0, -4.0, 0), ('openweather', 0.6, 0.0, 4), ('weatherapi', -0.4, 4.5, -4)) p(provider, off, dis, poff)
+  cross join lateral (
+    select i, app.hour_floor(now()) + make_interval(hours => i) as h,
+           extract(hour from (app.hour_floor(now()) + make_interval(hours => i + case when :'variant' = 'tomorrow' then 8 else 0 end)) at time zone lp.timezone)::int as lh,
+           case when extract(hour from (app.hour_floor(now()) + make_interval(hours => i + case when :'variant' = 'tomorrow' then 8 else 0 end)) at time zone lp.timezone) between 6 and 20
+                then 9 + 11 * sin(pi() * (extract(hour from (app.hour_floor(now()) + make_interval(hours => i + case when :'variant' = 'tomorrow' then 8 else 0 end)) at time zone lp.timezone) - 6) / 14.0)
+                else 8 end as base
+      from generate_series(0, 26) i) g
+ where lp.key = 'leamington';
+
+insert into local_air_quality (place_id, provider, observed_at, us_aqi, pm2_5, fetched_at)
+select lp.id, v.provider::forecast_provider, now() - interval '20 minutes',
+       case when :'variant' = 'air_range' then v.range_aqi else v.aqi end, v.pm, now()
+  from local_places lp, (values ('open-meteo', 38, 8.2, 42), ('weatherapi', 46, 9.6, 162)) v(provider, aqi, pm, range_aqi)
+ where lp.key = 'leamington'
+on conflict (place_id, provider) do update
+  set observed_at = excluded.observed_at, us_aqi = excluded.us_aqi, pm2_5 = excluded.pm2_5, fetched_at = now();

@@ -13,7 +13,7 @@ import { formatCode } from "@leamington/shared/src/code.ts";
 import { formatDate, formatTime12, localDate, type Lang } from "@leamington/shared/src/format.ts";
 import { t } from "./t";
 import type { Now } from "./now";
-import { Art, Credit, LEAMINGTON, Num, Pic, TownPhoto, sunTimes, type ArtName, type Photo, type SkyPhase } from "./ui";
+import { Art, Credit, LEAMINGTON, Num, Pic, TownPhoto, offsetMinutes, sunTimes, type ArtName, type Photo, type SkyPhase } from "./ui";
 import { WELCOME_CSS } from "./page-css";
 
 export type MemberCard = {
@@ -199,14 +199,6 @@ export function SeasonCard({ s, lang, until }: { s: Season; lang: Lang; until: s
 // ---------------------------------------------------------------------------
 // Allá y aquí (home)
 // ---------------------------------------------------------------------------
-/** A timezone's UTC offset in minutes at a moment. */
-function offsetMinutes(timeZone: string, at: Date): number {
-  const name = new Intl.DateTimeFormat("en-US", { timeZone, timeZoneName: "longOffset" }).formatToParts(at)
-    .find((p) => p.type === "timeZoneName")?.value ?? "GMT";
-  const m = /GMT([+-])(\d{2}):?(\d{2})?/.exec(name);
-  return m ? (m[1] === "-" ? -1 : 1) * (Number(m[2]) * 60 + Number(m[3] ?? 0)) : 0;
-}
-
 type Place = { key: "home" | "leam"; name: string; tz: string; lat: number | null; lng: number | null; now: Now | null };
 
 /**

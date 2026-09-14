@@ -49,8 +49,9 @@ export const rateText = (n: number) => Number(n).toFixed(2);
 const W = 320, TOP = 12, BOT = 118, TICK = 136;
 const f1 = (n: number) => n.toFixed(1);
 
-/** Catmull-Rom through the points, as cubic Béziers (one C per step). */
-function smooth(p: [number, number][]): string {
+/** Catmull-Rom through the points, as cubic Béziers (one C per step); `whole` rounds to integers to save bytes. */
+export function smooth(p: [number, number][], whole = false): string {
+  const f1 = whole ? (n: number) => String(Math.round(n)) : (n: number) => n.toFixed(1);
   let d = `M${f1(p[0][0])},${f1(p[0][1])}`;
   for (let i = 0; i < p.length - 1; i++) {
     const p0 = p[i - 1] ?? p[i], p1 = p[i], p2 = p[i + 1], p3 = p[i + 2] ?? p2;
@@ -94,12 +95,12 @@ export function RateChart({ h, lang }: { h: FxHistory; lang: Lang }) {
 
   const step = n > 1 ? (W - 16) / (n - 1) : 0;
   const xy = pts.map((p, i) => [8 + i * step, y(Number(p.rate))] as [number, number]);
-  const line = n > 1 ? smooth(xy) : "";
+  const line = n > 1 ? smooth(xy, true) : "";
   const hiI = pts.findIndex((p) => p.date === h.high?.date);
   const loI = pts.findIndex((p) => p.date === h.low?.date);
   return (
     <svg className="chart" viewBox={`0 0 ${W} 144`} role="img" aria-label={label} data-kind="line" data-n={n}>
-      {n > 1 && <path className="ar" d={`${line}L${f1(xy[n - 1][0])},${BOT}L${f1(xy[0][0])},${BOT}Z`} />}
+      {n > 1 && <path className="ar" d={`${line}L${Math.round(xy[n - 1][0])},${BOT}L${Math.round(xy[0][0])},${BOT}Z`} />}
       {n > 1 && <path className="ln" d={line} pathLength={1} />}
       {[hiI, loI].filter((i, k, a) => i >= 0 && a.indexOf(i) === k).map((i) => (
         <circle key={i} className="dt2" cx={f1(xy[i][0])} cy={f1(xy[i][1])} r="5" />

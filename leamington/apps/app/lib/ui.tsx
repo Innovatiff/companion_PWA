@@ -51,6 +51,7 @@ export const ART_NAMES = [
   "plane", "warning", "settings", "clock", "pin",
   "badge-fundador", "badge-pueblo", "badge-avisos", "badge-vigia", "badge-explorador", "badge-fiel", "badge-renovo", "badge-temporada",
   "globe", "wave", "chart", "calculator", "bell-reminder", "canada",
+  "jacket", "umbrella", "sunscreen", "water", "leaf",
 ] as const;
 export type ArtName = (typeof ART_NAMES)[number];
 
@@ -234,6 +235,50 @@ export function moonPhase(at: Date): number {
   const synodic = 29.530588853;
   const age = ((at.getTime() / 86_400_000 + 2440587.5 - 2451550.1) % synodic + synodic) % synodic;
   return Math.floor((age / synodic) * 8 + 0.5) % 8;
+}
+
+// ---------------------------------------------------------------------------
+// Timezone rules (Intl, no tables)
+// ---------------------------------------------------------------------------
+const OFFSET_FORMAT = new Map<string, Intl.DateTimeFormat>();
+
+/** A timezone's UTC offset in minutes at a moment. */
+export function offsetMinutes(timeZone: string, at: Date): number {
+  let f = OFFSET_FORMAT.get(timeZone);
+  if (!f) {
+    f = new Intl.DateTimeFormat("en-US", { timeZone, timeZoneName: "longOffset" });
+    OFFSET_FORMAT.set(timeZone, f);
+  }
+  const name = f.formatToParts(at).find((p) => p.type === "timeZoneName")?.value ?? "GMT";
+  const m = /GMT([+-])(\d{2}):?(\d{2})?/.exec(name);
+  return m ? (m[1] === "-" ? -1 : 1) * (Number(m[2]) * 60 + Number(m[3] ?? 0)) : 0;
+}
+
+/**
+ * The next moment a timezone's UTC offset changes (daylight saving), within
+ * `days` of `from`, to the minute; null when there is none. From the
+ * timezone rules the runtime carries, never a table of dates.
+ */
+export function nextOffsetChange(timeZone: string, from: Date, days = 400): { at: Date; before: number; after: number } | null {
+  const before = offsetMinutes(timeZone, from);
+  for (let h = 1; h <= days * 24; h++) {
+    const t = from.getTime() + h * 3_600_000;
+    if (offsetMinutes(timeZone, new Date(t)) !== before) {
+      let a = t - 3_600_000, b = t;
+      while (b - a > 60_000) {
+        const mid = Math.floor((a + b) / 2);
+        if (offsetMinutes(timeZone, new Date(mid)) === before) a = mid; else b = mid;
+      }
+      return { at: new Date(b), before, after: offsetMinutes(timeZone, new Date(b)) };
+    }
+  }
+  return null;
+}
+
+/** Minutes of daylight (sunrise to sunset) on a local date at a place; null in polar day or night. */
+export function daylightMinutes(lat: number, lng: number, date: string): number | null {
+  const s = sunTimes(lat, lng, date);
+  return s ? Math.round((s.set.getTime() - s.rise.getTime()) / 60_000) : null;
 }
 
 /** Leamington, Ontario: where the members are. */

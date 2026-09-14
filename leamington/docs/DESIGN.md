@@ -32,29 +32,30 @@ Hoy's budgets were raised on 2026-09-14 (from 15 KB cold and 5 KB warm) for the
 round-1 look the owner asked for: pictures, motion and bigger type cost about
 1.5 KB more CSS and markup per page, while the pictures themselves are cached files.
 
-Measured 2026-09-14 after round 3 ("Tu dinero"; local, demo client DEMXHN42,
-the fullest home):
+Measured 2026-09-14 after round 4 ("Tu día de trabajo"; local, demo client
+DEMXHN42, the fullest home). Every warm page keeps at least 1 KB under its budget:
 
 | Hoy page | Bytes |
 | --- | --- |
-| Cold: sign-in plus home (redirect, login, sign-in, home, sw.js, manifest, open ping) | 21,183 |
-| Tasa, 3 meses (the heaviest page: 90-day line and every stored day in the table) | 11,521 |
-| Tasa, Mes | 10,186 |
-| Home (warm) | 10,136 |
-| Clima | 9,750 |
-| Tasa, Semana | 9,623 |
-| Feriados | 8,462 |
-| Miembro | 8,406 |
-| Fútbol | 8,272 |
-| Transporte | 8,033 |
-| Consulado | 7,992 |
-| Emergencias | 7,699 |
-| Más | 7,551 |
-| Lotería | 7,307 |
-| Setup step | 7,297 |
-| Notificaciones | 7,179 |
-| Escuela | 7,004 |
-| Illustrations, largest | 523 gzipped (badge-temporada.svg); first load of the 31 used: 33,264 |
+| Cold: sign-in plus home (redirect, login, sign-in, home, sw.js, manifest, open ping) | 22,109 |
+| Home (warm) | 10,767 |
+| Tasa, 3 meses | 10,695 |
+| Tasa, Mes | 10,466 |
+| Clima | 10,099 |
+| Hoy en Leamington | 9,974 |
+| Tasa, Semana | 9,908 |
+| Feriados | 8,788 |
+| Miembro | 8,702 |
+| Fútbol | 8,584 |
+| Transporte | 8,341 |
+| Consulado | 8,299 |
+| Emergencias | 8,004 |
+| Más | 7,854 |
+| Lotería | 7,615 |
+| Setup step | 7,602 |
+| Notificaciones | 7,487 |
+| Escuela | 7,310 |
+| Illustrations, largest | 523 gzipped (badge-temporada.svg); first load of the 33 used: 35,590 |
 
 Every page is measured with `scripts/measure.mjs` and the numbers are reported.
 
@@ -288,6 +289,45 @@ and keeps every page within a 360 px screen.
   home flag, a countdown chip and "Verificado"; pills filter Todos / Ontario /
   {País}; the home country's full 12 months, with sources, stay in a
   `<details>`. Home's "Próximo feriado" is the next of either, with its flag.
+- **Tu día de trabajo (round 4, 0044).** Every number from two or more
+  providers under 0044's rules; nothing renders without its data, and each block
+  carries its own `data-until` (dropped on an open or restored page).
+  - **Hoy en Leamington** (`/clima/aqui`, from Clima's Leamington card and
+    home's workday card): Ahora, the clock change when near, Por horas, Sol y
+    calor, Aire, and Luz del día (`apps/app/lib/workday.tsx`).
+  - **Por horas:** one column per hour the providers gave (up to 12): a smooth
+    indigo line with a dot and the value only where the hour has a
+    temperature (an hour the providers disagree on is a gap, never a guess),
+    the sky's picture, a thin blue rain bar where there is a rain chance
+    (solid for rain hours, 50% or more), and the hour. The line draws on, dots
+    pop, bars grow; the row scrolls sideways when it does not fit.
+  - **Sol y calor:** a UV semicircle with the WHO bands in their standard
+    colours, the needle sweeping once to uv_max, the number big, the category,
+    and "Máximo a las {hora}". Heat appears only from "Precaución" up, as "Se
+    siente como 34°" with its category; below that nothing is said.
+  - **Aire:** an AQI semicircle with the EPA category colours, the AQI big, the
+    category, PM2.5 and the time measured. When the providers are more than one
+    category apart: both numbers, "Buena a Dañina a la salud", the span
+    outlined, and no needle.
+  - **Tu día de trabajo** (home): "Tu día de trabajo" (or "Mañana en el
+    trabajo" after 6pm) for 6am–6pm in Leamington: the 6–7am and high
+    temperatures big, then one tile per flag and only for flags present: a
+    jacket (cold morning), an umbrella and the rain hours, sunscreen and the UV
+    category, a water bottle and "Se siente 34°". A missing flag is not a
+    finding, so there is never a word that the day is fine.
+  - **Próximas horas** (home): Leamington's next 6 hours as a horizontal strip
+    with scroll-snap: the hour, the sky, the temperature where there is one.
+  - **Cambio de hora:** within 14 days of Toronto's next UTC offset change,
+    computed from the timezone rules (never a table): "El domingo 1 de
+    noviembre la hora se atrasa 1 hora en Ontario", and when their hometown
+    does not change its clocks, "La diferencia con Morelia será de 1 h". On home
+    and the detail page, valid until the change.
+  - **Luz del día:** today's daylight in Leamington from sunrise and sunset
+    ("12 h 20 min", "3 min menos que ayer") and tomorrow's sunrise.
+- **Feriados, shorter:** the next 8 of the chosen filter, the rest under "Ver
+  más feriados".
+- **Tasa at 3 meses:** no day table (the line, high and low show the window);
+  the table stays for Semana and Mes.
 - **Clima's today, once.** A town's forecast card is today; the three-day strip
   under it starts with tomorrow.
 - **Section header.** A bold title, and an indigo "Ver todo" link on the right

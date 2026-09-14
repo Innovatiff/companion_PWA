@@ -56,6 +56,16 @@ export default function Feriados({ lang, country, today, merged, holidays, ontar
   const home = COUNTRY[country]?.[lang === "en" ? 1 : 0] ?? country;
   const soon = (n: number) => (n === 0 ? t(lang, "Hoy", "Today") : n === 1 ? t(lang, "Mañana", "Tomorrow") : t(lang, `En ${n} días`, `In ${n} days`));
   const rows = merged.filter((h) => f === "todos" || (f === "on" ? h.where === "ON" : h.where !== "ON"));
+  const row = (h: Merged) => (
+    <div className="tile hol" key={h.date + h.where + h.name} data-where={h.where} data-d={h.date}>
+      <DateBlock date={h.date} lang={lang} />
+      <span>
+        <small>{`${h.where === "ON" ? `${FLAG.CA} Ontario` : `${FLAG[h.where] ?? ""} ${home}`} · ${formatWeekdayDate(h.date, lang).split(" ")[0]}`}</small>
+        <p className="line">{h.name}</p>
+        <small><span className="chip">{soon(h.days_left)}</span>{` ${t(lang, "Verificado", "Verified")}: ${formatDate(h.verified_at, lang)}`}</small>
+      </span>
+    </div>
+  );
   const pills: [Filter, string][] = [["todos", t(lang, "Todos", "All")], ["on", `${FLAG.CA} Ontario`], ["pais", `${FLAG[country] ?? ""} ${home}`]];
   return (
     <>
@@ -70,16 +80,13 @@ export default function Feriados({ lang, country, today, merged, holidays, ontar
             <a key={key} href={key === "todos" ? "/mas/feriados" : `/mas/feriados?f=${key}`} aria-current={key === f ? "page" : undefined}>{label}</a>
           ))}
         </nav>
-        {rows.map((h) => (
-          <div className="tile hol" key={h.date + h.where + h.name} data-where={h.where} data-d={h.date}>
-            <DateBlock date={h.date} lang={lang} />
-            <span>
-              <small>{`${h.where === "ON" ? `${FLAG.CA} Ontario` : `${FLAG[h.where] ?? ""} ${home}`} · ${formatWeekdayDate(h.date, lang).split(" ")[0]}`}</small>
-              <p className="line">{h.name}</p>
-              <small><span className="chip">{soon(h.days_left)}</span>{` ${t(lang, "Verificado", "Verified")}: ${formatDate(h.verified_at, lang)}`}</small>
-            </span>
-          </div>
-        ))}
+        {rows.slice(0, 8).map(row)}
+        {rows.length > 8 && (
+          <details className="morehol">
+            <summary>{t(lang, `Ver más feriados (${rows.length - 8})`, `More holidays (${rows.length - 8})`)}</summary>
+            {rows.slice(8).map(row)}
+          </details>
+        )}
         {ontarioSource && f !== "pais" && rows.some((h) => h.where === "ON") && (
           <p><small>{t(lang, "Ontario: ", "Ontario: ")}<a href={ontarioSource} rel="noopener">{t(lang, "Ley de Normas de Empleo (fuente)", "Employment Standards Act (source)")}</a></small></p>
         )}

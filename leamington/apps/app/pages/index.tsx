@@ -37,6 +37,7 @@ import { t } from "../lib/t";
 import { HomeTop, TabBar } from "../lib/frame";
 import { AllaAqui, BadgesRow, SeasonCard, WelcomeScreen, type MemberCard, type Season } from "../lib/member";
 import { WeekDots, type WeekPoint } from "../lib/money";
+import { DstCard, HoursStrip, WorkdayCard, type Hourly, type Workday } from "../lib/workday";
 import {
   Art, Balls, Credit, Crest, DateBlock, FLAG, Icon, Num, Pic, Ring, SKY_PHASES, TownPhoto, dayArt, drawTime, localDayEnd, skyPhase, tel,
   type ArtName, type Photo, type SkyPhase,
@@ -73,6 +74,8 @@ type More = {
   // Round 2 (0041): the member card, the season ring, badge counts, the welcome flag, the hometown's timezone.
   member?: MemberCard | null; season?: Season | null; badges_earned?: number; badges_total?: number;
   welcomed?: boolean; home_timezone?: string | null;
+  // Round 4 (0044): Leamington's working day in icons.
+  workday?: Workday | null;
 };
 // Today's forecast at their home town, for the high and low beside "Ahora".
 type HomeDay = { timezone: string; name: string; lat: number | null; lng: number | null; d: { temp: string; low: number | null; rain?: boolean } | null };
@@ -85,7 +88,7 @@ type Props =
       renderId: string; renderedAt: string; language: "es" | "en"; lines: Line[]; prompt: string | null;
       extras: Extras | null; more: More | null; watchPhotos: Photo[]; pushReady: boolean; here: Here | null;
       name: string; sky: SkyPhase; homeDay: HomeDay | null; welcome: boolean; allaAt: string;
-      week: WeekPoint[]; holNext: HolidayNext | null; expired?: undefined;
+      week: WeekPoint[]; holNext: HolidayNext | null; hours: Hourly | null; expired?: undefined;
     }
   | { expired: Expired };
 
@@ -106,7 +109,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
     return { props: { expired: { language: a.language, access: a.access } } };
   }
 
-  const [home, extras, moreRow, hereRow, homeDayRow, weekRow, holRow] = await Promise.all([
+  const [home, extras, moreRow, hereRow, homeDayRow, weekRow, holRow, hoursRow] = await Promise.all([
     db().query("select app.render_home($1) as m", [clientId]),
     db().query("select app.home_extras($1) as x", [clientId]),
     db().query("select app.home_more($1) as h", [clientId]),
@@ -122,6 +125,8 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
     // Round 3 (0042): the rate's last seven real days, and the next holiday here or there.
     db().query("select app.fx_history($1, 7)->'week' as w", [clientId]),
     db().query("select app.holidays_here_and_there($1, now(), 1)->0 as n", [clientId]),
+    // Round 4 (0044): Leamington's next 6 hours for the strip.
+    db().query("select app.hourly_outlook('leamington', now(), 6, c.language::text) as h from clients c where c.id = $1", [clientId]),
   ]);
   const m = home.rows[0]?.m;
   if (!m) {
@@ -148,6 +153,14 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
   const forced = preview && typeof query.sky === "string"
     && (SKY_PHASES as readonly string[]).includes(query.sky) ? (query.sky as SkyPhase) : null;
   const clock = preview && typeof query.at === "string" && Number.isFinite(Date.parse(query.at)) ? new Date(query.at).toISOString() : null;
+  // LOCAL ONLY, same guard: the workday card and next hours asked for at that moment.
+  if (clock && more) {
+    const { rows } = await db().query(
+      `select app.workday_outlook('leamington', $2::timestamptz, language::text) as w, app.hourly_outlook('leamington', $2::timestamptz, 6, language::text) as h
+         from clients where id = $1`, [clientId, clock]);
+    more.workday = rows[0]?.w ?? null;
+    hoursRow.rows[0] = { h: rows[0]?.h ?? null };
+  }
 
   (req as { appLang?: string }).appLang = m.language;
   return {
@@ -167,6 +180,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
       allaAt: clock ?? m.rendered_at,
       week: weekRow.rows[0]?.w ?? [],
       holNext: holRow.rows[0]?.n ?? null,
+      hours: hoursRow.rows[0]?.h ?? null,
     },
   };
 };
@@ -510,8 +524,16 @@ export default function Home(props: Props) {
           </section>
         )}
 
+        {h?.workday && live(h.workday.valid_until) && <WorkdayCard w={h.workday} lang={lang} />}
+        {props.hours && live(props.hours.valid_until) && (
+          <section data-line="hours" data-until={props.hours.valid_until}>
+            <div className="sh"><h2>{t(lang, "Próximas horas", "Next hours")}</h2><a href="/clima/aqui">{seeAll}</a></div>
+            <HoursStrip h={props.hours} />
+          </section>
+        )}
         {season && <SeasonCard s={season} lang={lang} until={dayEnd} />}
         {badgesTotal > 0 && <BadgesRow earned={h!.badges_earned ?? 0} total={badgesTotal} lang={lang} until={dayEnd} />}
+        <DstCard at={new Date(allaAt)} lang={lang} homeTz={h?.home_timezone} homeName={homeDay?.name} />
         {h?.home_timezone && homeDay && (
           <AllaAqui lang={lang} at={allaAt} until={allaUntil} leamNow={leamNow}
                     home={{ name: homeDay.name, tz: h.home_timezone, lat: homeDay.lat, lng: homeDay.lng, now: homeNow }} />

@@ -39,7 +39,15 @@ export const FUTBOL_CSS = TABLE +
   ".fx b{font-weight:700}.fx .sc{font-size:1.15rem;font-weight:800;font-variant-numeric:tabular-nums;padding:0 .2rem}.fx>small{grid-column:1/-1;text-align:center;margin-top:-.25rem;font-size:.76rem}" +
   ".team{display:flex;align-items:center;gap:1rem}.team h1{margin:0}.team p{margin:.15rem 0 0}";
 
-export const CLIMA_CSS =
+// "Ahora" (0040) blocks, used by Clima and Hoy en Leamington: the sky's picture,
+// the temperature big, its word and the chips.
+const AHORA =
+  ".ahora{display:flex;flex-wrap:wrap;align-items:center;gap:.3rem .9rem}.ahora>span{flex:1;min-width:0}.ahora small{display:block}.ahora .nc{flex-basis:100%;margin-top:.2rem}" +
+  ".ahora.card{padding:1rem 1.1rem;background:linear-gradient(135deg,#e6e9fd,#fff 70%)}" +
+  ".ahora.in{margin:.55rem 0 .4rem;padding:.55rem 0;border-block:1px solid var(--line)}.ahora.in .art{width:3.2rem;height:3.2rem}.ahora.in .nc>span{padding:.2rem .5rem;font-size:.76rem}" +
+  ".tn{display:block;font-size:3.3rem;font-weight:800;letter-spacing:-.03em;line-height:1.05;font-variant-numeric:tabular-nums}.ahora.in .tn{font-size:2.2rem}.lab{display:block;font-size:1.05rem}";
+
+export const CLIMA_CSS = AHORA +
   // Town headers: a photo under a dark overlay, or the indigo gradient
   ".townhead{position:relative;isolation:isolate;display:flex;align-items:flex-end;min-height:9rem;margin:1.4rem 0 .6rem;border-radius:var(--r);overflow:hidden;background:#1d2147;box-shadow:var(--shadow)}" +
   ".townhead img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}" +
@@ -49,11 +57,6 @@ export const CLIMA_CSS =
   // Today: the picture, the big temperature, the low, and the rain-chance ring
   ".now{display:flex;align-items:center;gap:.8rem;padding:1rem}.now>span:not(.ring){flex:1;min-width:0}.now small{display:block}" +
   ".now.rain,.here.rain{background:linear-gradient(135deg,#e3edff,#fff 70%)}.now.sun,.here.sun{background:linear-gradient(135deg,#fff3d6,#fff 70%)}" +
-  // "Ahora": the sky's picture, the temperature big, its word and the chips
-  ".ahora{display:flex;flex-wrap:wrap;align-items:center;gap:.3rem .9rem}.ahora>span{flex:1;min-width:0}.ahora small{display:block}.ahora .nc{flex-basis:100%;margin-top:.2rem}" +
-  ".ahora.card{padding:1rem 1.1rem;background:linear-gradient(135deg,#e6e9fd,#fff 70%)}" +
-  ".ahora.in{margin:.55rem 0 .4rem;padding:.55rem 0;border-block:1px solid var(--line)}.ahora.in .art{width:3.2rem;height:3.2rem}.ahora.in .nc>span{padding:.2rem .5rem;font-size:.76rem}" +
-  ".tn{display:block;font-size:3.3rem;font-weight:800;letter-spacing:-.03em;line-height:1.05;font-variant-numeric:tabular-nums}.ahora.in .tn{font-size:2.2rem}.lab{display:block;font-size:1.05rem}" +
   // The day's forecast, secondary: high and low as arrow chips
   ".hl{display:flex;flex-wrap:wrap;align-items:center;gap:.3rem;margin:.3rem 0}.hl b{display:inline-block;padding:.15rem .6rem;border-radius:999px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}" +
   ".hl .tp{background:#fff0d6;color:#8a3b00;font-size:1.15rem}.hl .lo{background:#e3edff;color:#1d4f9a;font-size:1.15rem}.hl .rn{background:var(--tile);color:var(--brand-ink);font-size:.85rem}" +
@@ -73,6 +76,7 @@ export const CLIMA_CSS =
   ".mini{list-style:none;display:grid;gap:.2rem;margin:.5rem 0 0;padding:.45rem 0 0;border-top:1px solid var(--line)}.mini li{display:flex;align-items:center;gap:.3rem;font-size:.86rem}.mini small{flex:1}.mini .art{width:1.5rem;height:1.5rem}" +
   // Letra grande: the three-day strip fits a 360px screen
   "html.big .strip li{grid-template-columns:2.6rem 1.5rem 2.4rem 1.7rem minmax(1rem,1fr) 2.9rem;gap:.2rem;font-size:.8rem}html.big .strip .art{width:1.5rem;height:1.5rem}" +
+  ".aquilink{display:inline-flex;align-items:center;min-height:44px;margin-top:.3rem;font-weight:750;text-decoration:none}" +
   "#aqui,#avisos{scroll-margin-top:1rem}#aqui{margin-bottom:.75rem}" +
   "main>details{background:var(--card);border-radius:var(--r);padding:.2rem 1rem;margin:.75rem 0;box-shadow:var(--shadow)}" +
   "details{margin:.5rem 0}summary{min-height:48px;padding:.7rem 0;cursor:pointer;font-weight:700}";
@@ -145,6 +149,29 @@ export const WELCOME_CSS =
   ".go{display:grid;place-items:center;flex:none;width:5.25rem;height:5.25rem;min-height:0;margin:.4rem .4rem .4rem 0;padding:0;border-radius:50%;box-shadow:0 0 0 10px rgba(79,91,213,.16),0 14px 28px rgba(79,91,213,.45)}" +
   ".go svg{width:2.2rem;height:2.2rem;fill:none;stroke:#fff;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}" +
   ".wskip{width:auto;min-height:48px;margin:0;padding:.5rem .9rem;background:transparent;color:var(--muted);box-shadow:none;font-weight:700;text-decoration:underline}";
+
+// Hoy en Leamington (0044): the hours chart, the UV and air gauges, daylight.
+export const AQUI_CSS = AHORA +
+  ".ch{display:flex;align-items:center;gap:.7rem}.ch h2{margin:0}" +
+  // Hours: the line draws on, dots pop, rain bars grow from the bottom
+  ".hscroll{overflow-x:auto;margin:.5rem -.4rem 0;padding:0 .4rem}.hgrid{position:relative;display:grid;grid-template-columns:repeat(var(--n),minmax(2.5rem,1fr));min-width:calc(var(--n)*2.5rem)}" +
+  ".hsvg{position:absolute;left:0;top:0;width:100%;height:96px;overflow:visible;pointer-events:none}" +
+  ".hl2{fill:none;stroke:var(--brand);stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:1;animation:draw 1.3s .2s ease-out both}@keyframes draw{from{stroke-dashoffset:1}}" +
+  ".hc{display:flex;flex-direction:column;align-items:center;gap:.15rem;min-width:0;text-align:center}.hp{position:relative;display:block;width:100%;height:96px}" +
+  ".hd{position:absolute;left:50%;width:11px;height:11px;margin:-5.5px 0 0 -5.5px;border-radius:50%;background:#fff;border:3px solid var(--brand);animation:pop .4s .9s cubic-bezier(.3,1.5,.5,1) both}" +
+  "@keyframes pop{from{transform:scale(0)}}.hv{position:absolute;left:0;right:0;margin-top:-1.8rem;font-size:.86rem;font-weight:800}" +
+  ".hc .art{width:1.75rem;height:1.75rem}.rb{display:flex;align-items:flex-end;width:.6rem;height:2.6rem;margin-top:.2rem;border-radius:9px;background:#e3edff;overflow:hidden}" +
+  ".rb i{display:block;width:100%;border-radius:9px;background:#a9c8f3;transform-origin:bottom;animation:rise .7s .3s cubic-bezier(.2,.7,.3,1) both}@keyframes rise{from{transform:scaleY(0)}}" +
+  ".rh .rb i{background:var(--rain)}.rp2{min-height:1.1em;font-size:.7rem;font-weight:650}.rh .rp2{color:var(--rain);font-weight:800}.hh{font-size:.7rem;font-weight:750;color:var(--ink)}" +
+  // Gauges: the needle sweeps once
+  ".gw{display:flex;flex-direction:column;align-items:center;text-align:center;margin-top:.5rem}.gauge{display:block;width:100%;max-width:15rem;height:auto;overflow:visible}" +
+  ".gauge .ndl{transform-origin:100px 100px;transform:rotate(var(--a));animation:sweep 1.1s .2s cubic-bezier(.2,.7,.3,1) both}@keyframes sweep{from{transform:rotate(0deg)}}" +
+  ".gauge .nd{stroke:var(--ink);stroke-width:5;stroke-linecap:round}.gauge .hub{fill:var(--ink)}.gauge .rg2{fill:none;stroke:var(--ink);stroke-width:28}" +
+  ".gv{display:flex;align-items:baseline;justify-content:center;gap:.3rem;margin:-.6rem 0 0;font-variant-numeric:tabular-nums}.gv b{font-size:2.9rem;font-weight:800;line-height:1}.gv span{font-weight:750;color:var(--muted)}" +
+  ".gl{margin:.25rem 0 .1rem;font-weight:750;font-size:1.05rem}" +
+  ".heat{display:flex;align-items:center;gap:.8rem;margin:.9rem 0 0;padding:.7rem .85rem;border-radius:16px;background:var(--warn-soft)}.heat b{display:block}.heat .chip{margin-top:.3rem;background:#fff;color:var(--warn)}" +
+  ".light .gv{justify-content:flex-start;margin:.6rem 0 .1rem}.light .gv b{font-size:2.3rem}.rise{margin:.5rem 0 0}" +
+  "html.big .gv b{font-size:2.3rem}html.big .hgrid{grid-template-columns:repeat(var(--n),minmax(3rem,1fr));min-width:calc(var(--n)*3rem)}";
 
 export const LOGIN_CSS =
   ".feat{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.5rem;list-style:none;padding:0;margin:0 0 1rem}" +

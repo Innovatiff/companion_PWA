@@ -115,6 +115,18 @@ export const APP_CSS = BASE +
   "-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 12px),#000 calc(100% - 11px));mask:radial-gradient(farthest-side,transparent calc(100% - 12px),#000 calc(100% - 11px));animation:fill 1.3s .2s cubic-bezier(.2,.7,.3,1) both}" +
   ".sring b{display:block;font-size:1.65rem;font-weight:800}.sring small{font-size:.76rem}.sring .art{width:3.4rem;height:3.4rem}" +
   ".brow .bar{margin-top:.35rem}" +
+  // Round 4 on home (0044): the workday card, the next hours strip, the clock change
+  ".work{display:block;background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:1rem 1.1rem;margin:0 0 .75rem;color:var(--ink);text-decoration:none}" +
+  ".wtop2{display:flex;align-items:center;justify-content:space-between;gap:.4rem;flex-wrap:wrap}.work .lbl{background:var(--brand);color:#fff}" +
+  ".wnum{display:flex;gap:1.75rem;margin:.6rem 0 .1rem}.wnum small{display:block;font-weight:650}.wnum b{font-size:2.4rem;font-weight:800;line-height:1.05;font-variant-numeric:tabular-nums}" +
+  ".wflags{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.5rem;margin:.7rem 0 0}" +
+  ".wf{display:flex;flex-direction:column;align-items:flex-start;gap:.1rem;min-width:0;padding:.65rem .75rem;border-radius:16px;background:var(--tile)}.wf small{overflow-wrap:anywhere}" +
+  ".wf .art{animation:hop .6s .3s ease-out both}@keyframes hop{40%{transform:translateY(-6px)}}" +
+  ".hstrip{display:flex;gap:.5rem;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -1rem .75rem;padding:.2rem 1rem .6rem;text-decoration:none;color:var(--ink)}" +
+  ".hs{flex:none;scroll-snap-align:start;display:flex;flex-direction:column;align-items:center;gap:.1rem;min-width:4.5rem;padding:.6rem .4rem;background:var(--card);border-radius:18px;box-shadow:var(--shadow)}" +
+  ".hs b{font-size:1.25rem;font-weight:800}.hs small{font-weight:650}.hsr{color:var(--rain)}" +
+  ".dst{display:flex;align-items:center;gap:.9rem}.dst b{display:block;line-height:1.3}.dst small{display:block;margin-top:.25rem}" +
+  "details.morehol>summary{display:flex;align-items:center;min-height:48px;padding:.6rem 1.1rem;margin:0 0 .75rem;border-radius:999px;background:var(--card);box-shadow:var(--shadow);font-weight:750;color:var(--brand-ink);cursor:pointer}" +
   // Home's rate row: the week of the rate as seven dots (0042)
   ".wd{display:flex;gap:.3rem;margin-top:.4rem}.wd i{width:.72rem;height:.72rem;border-radius:50%;border:2px solid var(--brand)}.wd i.up{background:var(--brand)}.wd i.same{border-color:#8f98f5}.wd i.nd{border-style:dashed;border-color:#aab2e6}" +
   ".alla{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:.85rem 1rem 1rem;margin:0 0 .75rem}.alla>header{display:flex;align-items:center;gap:.5rem;font-weight:750}" +

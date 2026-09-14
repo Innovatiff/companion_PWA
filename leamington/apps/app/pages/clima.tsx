@@ -290,6 +290,7 @@ export default function Clima({ w, country, today, now, photos }: Props) {
                       </ul>
                     )}
                     {sky(p.lat, p.lng, p.timezone, placeToday, undefined, true)}
+                    {p.key === "leamington" && <a className="aquilink" href="/clima/aqui">{t(lang, "Hoy en Leamington →", "Today in Leamington →")}</a>}
                   </div>
                 );
               })}

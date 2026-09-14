@@ -234,7 +234,8 @@ export default function Tasa({ lang, r, h, rem, start, pushOff, calc, e, ok }: P
           )}
         </section>
 
-        {latest && h.points.length > 0 && (
+        {/* At 3 meses the chart, high and low already show the window; the table stays for Semana and Mes. */}
+        {latest && h.points.length > 0 && r !== 90 && (
           <details className="card days">
             <summary>{t(lang, `Todos los días (${h.points.length})`, `Every day (${h.points.length})`)}</summary>
             <table>

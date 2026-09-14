@@ -69,7 +69,7 @@ async function page(path, cookie, label = path) {
   const bad = FORBIDDEN.find((re) => re.test(visible(r.text)));
   check(!bad, `${label} has no reassurance-from-silence or placeholder text`, String(bad));
   if (r.status === 200 && !path.startsWith("/setup/") && !label.includes("(expired)")) {
-    tabs(r.text, label, path === "/" ? "/" : path.startsWith("/mas/tasa") ? "/mas/tasa" : path.startsWith("/mas") ? "/mas" : path);
+    tabs(r.text, label, path === "/" ? "/" : path.startsWith("/clima") ? "/clima" : path.startsWith("/mas/tasa") ? "/mas/tasa" : path.startsWith("/mas") ? "/mas" : path);
   }
   if (r.status === 200) await images(r.text, label);
   return r.text;
@@ -466,6 +466,9 @@ async function money(cookie, code, label) {
     check(rows.map((m) => `${attr(m[0], "data-where")}@${attr(m[0], "data-d")}`).join() === want.map((x) => `${x.where}@${x.date}`).join(),
       `${label} ${path}: the holidays and their order are the database's`, `${rows.length} rows, ${want.length} expected`);
     check(rows.every((m, i) => /(Verificado|Verified): /.test(html.slice(m.index, rows[i + 1]?.index ?? html.indexOf("</main>")))), `${label} ${path}: every holiday shows when it was verified`);
+    const more = html.indexOf('<details class="morehol">');
+    check(rows.filter((m) => more < 0 || m.index < more).length === Math.min(8, want.length) && (want.length > 8) === (more >= 0),
+      `${label} ${path}: the first 8 holidays show, the rest under "Ver más feriados"`);
     check(Boolean(tag(html, "a", { href: path })?.includes('aria-current="page"')), `${label} ${path}: its filter pill is the active one`);
   }
 
@@ -482,6 +485,129 @@ async function money(cookie, code, label) {
     const card = /<a class="tile holiday"[^>]*>([\s\S]*?)<\/a>/.exec(home)?.[1] ?? "";
     check(card.includes(`dateTime="${next.date}"`) && card.includes(`>${esc(next.name)}<`) && (next.where !== "ON" || card.includes("🇨🇦 Ontario")),
       `${label}: home's holiday is the next one in Ontario or at home, with its flag`);
+  }
+}
+
+// Round 4, "Tu día de trabajo" (0044): Hoy en Leamington and home's workday
+// card, held to app.hourly_outlook, app.sun_and_heat, app.air_quality and
+// app.workday_outlook. A missing flag is not a finding: no reassurance words.
+const REASSURE = /sin lluvia|todo bien|no hay riesgo|sin riesgo|all clear|no rain|nothing to worry|sin peligro|no risk/i;
+function tzOffset(timeZone, at) {
+  const name = new Intl.DateTimeFormat("en-US", { timeZone, timeZoneName: "longOffset" }).formatToParts(at).find((p) => p.type === "timeZoneName")?.value ?? "GMT";
+  const m = /GMT([+-])(\d{2}):?(\d{2})?/.exec(name);
+  return m ? (m[1] === "-" ? -1 : 1) * (Number(m[2]) * 60 + Number(m[3] ?? 0)) : 0;
+}
+function nextTorontoChange(from) {
+  const base = tzOffset("America/Toronto", from);
+  for (let h = 1; h <= 24 * 400; h++) {
+    const at = new Date(from.getTime() + h * 3_600_000);
+    if (tzOffset("America/Toronto", at) !== base) return at;
+  }
+  return null;
+}
+const sectionOf = (html, cls) => {
+  const i = html.indexOf(`<section class="card ${cls}"`);
+  return i < 0 ? "" : html.slice(i, html.indexOf("</section>", i) + 10);
+};
+const untilOf = (chunk) => Date.parse(attr(chunk.slice(0, chunk.indexOf(">") + 1), "data-until"));
+
+async function workday(cookie, code, label) {
+  const [aqui, home] = await Promise.all(["/clima/aqui", "/"].map(async (p) => (await send(p, { cookie })).text));
+  const words = (html) => visible(html).replace(/<[^>]+>/g, " ");
+  check(!REASSURE.test(words(aqui)) && !REASSURE.test(words(home)), `${label}: no reassurance words on home or "Hoy en Leamington"`, REASSURE.exec(words(aqui) + words(home))?.[0]);
+
+  // Cambio de hora: only within 14 days of Toronto's next real offset change.
+  const change = nextTorontoChange(new Date());
+  const soon = Boolean(change) && change.getTime() - Date.now() <= 14 * 86_400_000;
+  check(home.includes('data-line="dst"') === soon && aqui.includes('data-line="dst"') === soon,
+    `${label}: the time-change card shows exactly within 14 days of a real Toronto change`, String(change));
+  if (process.env.SKY_PREVIEW === "1") {
+    for (const [at, show, when] of [["2026-10-25T16:00:00Z", true, /domingo 1 de noviembre la hora se atrasa 1 hora|Sunday 1 November clocks go back 1 hour/],
+                                     ["2026-10-10T16:00:00Z", false], ["2026-11-02T16:00:00Z", false],
+                                     ["2027-03-05T16:00:00Z", true, /domingo 14 de marzo la hora se adelanta 1 hora|Sunday 14 March clocks go forward 1 hour/]]) {
+      const page = (await send(`/clima/aqui?at=${at}`, { cookie })).text;
+      const card = sectionOf(page, "dst");
+      check(Boolean(card) === show && (!show || (when.test(card) && untilOf(card) > Date.parse(at))),
+        `${label}: at ${at.slice(0, 10)} the time-change card ${show ? "names the real day and holds until it" : "is absent"}`);
+    }
+  }
+
+  if (!DB) { console.log(`SKIP ${label}: hours, sun and heat, air and workday vs database (set DATABASE_URL)`); return; }
+  const { rows: [x] } = await q(
+    `select app.hourly_outlook('leamington', now(), 12, c.language::text) as h, app.hourly_outlook('leamington', now(), 6, c.language::text) as h6,
+            app.sun_and_heat('leamington', now(), c.language::text) as s, app.air_quality('leamington', now(), c.language::text) as a,
+            app.workday_outlook('leamington', now(), c.language::text) as w
+       from clients c where c.code = $1`, [code]);
+
+  // Por horas: a dot and label exactly where there is a temperature, a gap where not; rain bars; rain hours.
+  const hrs = sectionOf(aqui, "hrs");
+  check(Boolean(hrs) === Boolean(x.h), `${label}: "Por horas" shows exactly when the hourly outlook exists`);
+  if (x.h && hrs) {
+    const hours = x.h.hours;
+    check(untilOf(hrs) === Date.parse(x.h.valid_until), `${label}: "Por horas" carries its validity`);
+    const cols = hrs.split('<div class="hc').slice(1).map((c) => `<div class="hc${c}`);
+    check(cols.length === hours.length && cols.every((c, i) => attr(c.slice(0, c.indexOf(">") + 1), "data-h") === hours[i].hour_start),
+      `${label}: one column per hour the providers gave, in order`, `${cols.length} vs ${hours.length}`);
+    check(cols.every((c, i) => c.includes('class="hd"') === (hours[i].temp_c != null) && (hours[i].temp_c == null || c.includes(`>${hours[i].temp_c}°<`))),
+      `${label}: a dot and label exactly where the hour has a temperature, a gap where it does not`);
+    check(cols.every((c, i) => {
+      const open = c.slice(0, c.indexOf(">") + 1);
+      return attr(open, "data-rain") === (hours[i].rain_prob == null ? undefined : String(hours[i].rain_prob))
+        && open.startsWith('<div class="hc rh"') === x.h.rain_hours.includes(hours[i].hour);
+    }), `${label}: rain bars match each hour's rain chance, rain hours highlighted`);
+    let runs = 0;
+    hours.forEach((hr, i) => { if (hr.temp_c != null && hours[i - 1]?.temp_c != null && hours[i - 2]?.temp_c == null) runs++; });
+    const d = attr(tag(hrs, "path", { class: "hl2" }), "d") ?? "";
+    check((d.match(/M/g) ?? []).length === runs, `${label}: the line breaks where an hour has no temperature`, `${(d.match(/M/g) ?? []).length} vs ${runs}`);
+  }
+
+  // Sol y calor: the UV gauge's value, label and peak; heat only from caution up.
+  const s = x.s;
+  const heatOn = ["caution", "high", "extreme"].includes(s?.heat_level) && s?.feels_max != null;
+  const uv = sectionOf(aqui, "uvc");
+  check(Boolean(uv) === Boolean(s && (s.uv_max != null || heatOn)), `${label}: "Sol y calor" shows exactly with UV or heat to show`);
+  if (uv && s) {
+    check(untilOf(uv) === Date.parse(s.valid_until), `${label}: "Sol y calor" carries its validity`);
+    if (s.uv_max != null) {
+      const g = tag(uv, "div", { class: "gw" });
+      check(attr(g, "data-uv") === String(s.uv_max) && uv.includes(`>${esc(s.uv_label)}<`) && (!s.uv_peak_hour || uv.includes(s.uv_peak_hour)),
+        `${label}: the UV gauge shows the database's value, label and peak hour`);
+    }
+    check(uv.includes('class="heat"') === heatOn && (!heatOn || (uv.includes(`${s.feels_max}°`) && uv.includes(esc(s.heat_label)))),
+      `${label}: the heat chip shows exactly when heat is caution or above`, s.heat_level);
+  }
+
+  // Aire: the gauge's AQI, category and PM2.5, or the range with no single value.
+  const air = sectionOf(aqui, "airc");
+  check(Boolean(air) === Boolean(x.a), `${label}: "Aire" shows exactly when air quality exists`);
+  if (air && x.a) {
+    check(untilOf(air) === Date.parse(x.a.valid_until), `${label}: "Aire" carries its validity`);
+    const g = tag(air, "div", { class: "gw" });
+    if (x.a.range) {
+      check(attr(g, "data-aqi") === undefined && !air.includes('class="ndl"') && air.includes(`${x.a.aqi_min}–${x.a.aqi_max}`)
+        && air.includes(esc(x.a.label_min)) && air.includes(esc(x.a.label_max)), `${label}: providers far apart show the range, with no single value`);
+    } else {
+      check(attr(g, "data-aqi") === String(x.a.us_aqi) && air.includes('class="ndl"') && air.includes(`>${esc(x.a.label)}<`)
+        && (x.a.pm2_5 == null || air.includes(`PM2.5 ${x.a.pm2_5}`)), `${label}: the air gauge shows the database's AQI, category and PM2.5`);
+    }
+  }
+
+  // Home: the workday card's tiles are exactly its flags; the next hours strip.
+  const w = x.w;
+  const card = /<a class="work"[^>]*>([\s\S]*?)<\/a>/.exec(home);
+  check(Boolean(card) === Boolean(w && (w.morning_temp != null || w.high != null || (w.flags ?? []).length)), `${label}: the workday card shows exactly with something to show`);
+  if (card && w) {
+    const open = card[0].slice(0, card[0].indexOf(">") + 1);
+    check(attr(open, "data-day") === w.day && Date.parse(attr(open, "data-until")) === Date.parse(w.valid_until), `${label}: the workday card says which day and carries its validity`);
+    check([...card[1].matchAll(/data-flag="([a-z_]+)"/g)].map((m) => m[1]).join() === (w.flags ?? []).join(), `${label}: the workday tiles are exactly its flags`, (w.flags ?? []).join());
+    check((w.morning_temp == null || card[1].includes(`>${w.morning_temp}°<`)) && (w.high == null || card[1].includes(`>${w.high}°<`)), `${label}: the workday numbers are the database's`);
+  }
+  const strip = /<section data-line="hours" data-until="([^"]+)">([\s\S]*?)<\/section>/.exec(home);
+  check(Boolean(strip) === Boolean(x.h6), `${label}: "Próximas horas" shows exactly when the next hours exist`);
+  if (strip && x.h6) {
+    const cells = [...strip[2].matchAll(/<span class="hs" data-h="([^"]+)">([\s\S]*?)<\/span>/g)];
+    check(Date.parse(strip[1]) === Date.parse(x.h6.valid_until) && cells.map((c) => c[1]).join() === x.h6.hours.map((hr) => hr.hour_start).join()
+      && cells.every((c, i) => c[2].includes("<b>") === (x.h6.hours[i].temp_c != null)), `${label}: "Próximas horas" is the database's hours, temperatures only where they exist`);
   }
 }
 
@@ -580,7 +706,7 @@ check(login.status === 303 && Boolean(login.cookie), "the code signs in", `${log
 const cookie = login.cookie;
 await welcome(cookie, CODE, CODE);
 
-for (const path of ["/", "/futbol", "/mas", "/mas/miembro", "/mas/tasa", "/mas/feriados", "/mas/escuela", "/mas/consulado",
+for (const path of ["/", "/futbol", "/clima/aqui", "/mas", "/mas/miembro", "/mas/tasa", "/mas/feriados", "/mas/escuela", "/mas/consulado",
   "/mas/emergencias", "/mas/transporte", "/mas/loteria", "/mas/avisos",
   "/setup/municipality?edit=1", "/setup/watch?edit=1", "/setup/segment?edit=1", "/setup/kids?edit=1", "/setup/corridor?edit=1"]) {
   await page(path, cookie);
@@ -591,6 +717,7 @@ await more(cookie, CODE);
 await arrival(cookie, CODE, CODE);
 await round2(cookie, CODE, CODE);
 await money(cookie, CODE, CODE);
+await workday(cookie, CODE, CODE);
 await teamVisuals(cookie, CODE);
 await richer(cookie, CODE);
 for (const path of ["/crest/999999999999", "/crest/abc", "/photo/999999999999", "/photo/abc", "/league-crest/999999999999", "/league-crest/abc"]) {
@@ -689,6 +816,7 @@ if (process.env.CREST_CODE) {
   await arrival(k.cookie, process.env.CREST_CODE, process.env.CREST_CODE);
   await round2(k.cookie, process.env.CREST_CODE, process.env.CREST_CODE);
   await money(k.cookie, process.env.CREST_CODE, process.env.CREST_CODE);
+  await workday(k.cookie, process.env.CREST_CODE, process.env.CREST_CODE);
 }
 
 // A client whose paid period has ended: the expiry screen, and only the

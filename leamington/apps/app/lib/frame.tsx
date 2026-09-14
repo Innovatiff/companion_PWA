@@ -74,11 +74,12 @@ export function HomeTop({ lang, name, warnings, until }: { lang: Lang; name: str
  * A section page's header: a round back button (section pages under Más), the
  * title, and its picture.
  */
-export function PageHead({ lang, title, art, back }: { lang: Lang; title: string; art: ArtName; back?: boolean }) {
+export function PageHead({ lang, title, art, back }: { lang: Lang; title: string; art: ArtName; back?: boolean | "/clima" }) {
   return (
     <header className={back ? "ph" : "ph tab"}>
       {back && (
-        <a className="back" href="/mas" aria-label={t(lang, "Volver a Más", "Back to More")}>
+        <a className="back" href={back === "/clima" ? "/clima" : "/mas"}
+           aria-label={back === "/clima" ? t(lang, "Volver a Clima", "Back to Weather") : t(lang, "Volver a Más", "Back to More")}>
           <Svg d='<path d="M15 5l-7 7 7 7"/>' />
         </a>
       )}
