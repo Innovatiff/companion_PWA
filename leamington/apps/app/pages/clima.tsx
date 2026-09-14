@@ -111,7 +111,7 @@ export default function Clima({ w, country, today }: Props) {
         {w.alerts_state === "current" && (
           <>
             {w.alerts_here?.map(card)}
-            <p><small>
+            <p className="card"><small>
               {t(lang, `Revisamos los avisos de ${w.agency} a las ${moment(w.alerts_checked_at!)}.`,
                        `We checked ${w.agency} warnings at ${moment(w.alerts_checked_at!)}.`)}
             </small></p>
@@ -124,7 +124,7 @@ export default function Clima({ w, country, today }: Props) {
           </>
         )}
         {w.alerts_state === "stale" && (
-          <>
+          <section className="card">
             <p>
               {w.alerts_checked_at
                 ? t(lang, `No hemos podido revisar los avisos de ${w.agency} desde las ${moment(w.alerts_checked_at)}.`,
@@ -132,14 +132,14 @@ export default function Clima({ w, country, today }: Props) {
                 : t(lang, `No hemos podido revisar los avisos de ${w.agency}.`, `We have not been able to check ${w.agency} warnings.`)}
             </p>
             {agencyLink}
-          </>
+          </section>
         )}
         {w.alerts_state === "not_monitored" && (
-          <>
+          <section className="card">
             <p>{t(lang, `Hoy todavía no recibe los avisos de ${w.agency ?? "tu país"}. Consúltalos en su página.`,
                         `Hoy does not receive ${w.agency ?? "your country's"} warnings yet. Check their page.`)}</p>
             {agencyLink}
-          </>
+          </section>
         )}
 
         {!w.has_home && (

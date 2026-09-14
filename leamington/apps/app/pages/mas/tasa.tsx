@@ -43,12 +43,14 @@ export default function Tasa({ r }: { r: Rate }) {
         <h1>{t(lang, "Tasa de referencia", "Reference rate")}</h1>
         {r.current && r.latest && (
           <>
-            <p className="line">1 CAD = {fmt(r.latest.rate)} {r.currency}</p>
-            <p><small>{r.note} · {formatDate(r.latest.date, lang)}</small></p>
-            <p>
-              {t(lang, "Más alta en 30 días", "30-day high")}: {fmt(r.high_30d)}<br />
-              {t(lang, "Más baja en 30 días", "30-day low")}: {fmt(r.low_30d)}
-            </p>
+            <section className="card">
+              <small>{r.note} · {formatDate(r.latest.date, lang)}</small>
+              <p className="big">1 CAD = {fmt(r.latest.rate)} {r.currency}</p>
+            </section>
+            <div className="pair">
+              <section className="card"><small>{t(lang, "Más alta en 30 días", "30-day high")}</small><p className="line">{fmt(r.high_30d)}</p></section>
+              <section className="card"><small>{t(lang, "Más baja en 30 días", "30-day low")}</small><p className="line">{fmt(r.low_30d)}</p></section>
+            </div>
             <div className="wrap">
               <table>
                 <thead><tr><th>{t(lang, "Día", "Day")}</th><th className="n">{r.currency}</th></tr></thead>

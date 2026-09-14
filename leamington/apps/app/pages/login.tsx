@@ -37,18 +37,21 @@ export default function Login({ error }: Props) {
         <meta name="viewport" content="width=device-width,initial-scale=1" />
       </Head>
       <main>
-        <h1>Escribe tu código<br /><small>Enter your code</small></h1>
-        {error && (
-          <p className="err" role="alert">
-            {ERRORS[error][0]}<br /><small>{ERRORS[error][1]}</small>
-          </p>
-        )}
-        <form method="post" action="/api/login">
-          <label htmlFor="code">Código · Code</label>
-          <input id="code" name="code" className="codein" required autoComplete="off" autoCapitalize="characters"
-                 spellCheck={false} inputMode="text" maxLength={12} />
-          <button type="submit">Entrar · Enter</button>
-        </form>
+        <div className="brandmark">Hoy</div>
+        <section className="card">
+          <h1>Escribe tu código<br /><small>Enter your code</small></h1>
+          {error && (
+            <p className="err" role="alert">
+              {ERRORS[error][0]}<br /><small>{ERRORS[error][1]}</small>
+            </p>
+          )}
+          <form method="post" action="/api/login">
+            <label htmlFor="code">Código · Code</label>
+            <input id="code" name="code" className="codein" required autoComplete="off" autoCapitalize="characters"
+                   spellCheck={false} inputMode="text" maxLength={12} />
+            <button type="submit">Entrar · Enter</button>
+          </form>
+        </section>
       </main>
     </>
   );

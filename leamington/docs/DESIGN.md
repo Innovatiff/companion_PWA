@@ -59,17 +59,24 @@ Inline CSS only. The canonical values live in `packages/shared/src/ui/tokens.ts`
 
 ### Colour
 
+Hoy (owner's direction, 2026-09-13): white rounded cards with soft shadows on
+a pale ground, with the same indigo accent as the portals. Each home line is a
+card with an icon, a small label and the sentence; Más is a two-column grid of
+tiles; the greeting sits in a gradient box. `APP_CSS` in
+`packages/shared/src/ui/css.ts` holds the canonical values.
+
 | Token | Value | Use |
 | --- | --- | --- |
-| `--ink` | `#10231c` | Text, primary buttons, tab bar |
-| `--paper` | `#f6f3ea` | Page background |
-| `--card` | `#ffffff` | Inputs, cards |
-| `--muted` | `#566860` | Secondary text (AA on paper) |
-| `--line` | `#d9d3c3` | Borders, dividers |
-| `--danger` | `#9b1c1c` | Errors, the red alert level |
-| `--warn` | `#8a4b00` | The orange alert level |
-| `--caution` | `#6b5a00` | The yellow alert level |
-| `--ok` | `#1f5e3b` | Confirmations in the portals |
+| `--ink` | `#1b1f3b` | Text |
+| `--paper` | `#f1f3f9` | Page background |
+| `--card` | `#ffffff` | Cards, inputs, tab bar |
+| `--muted` | `#5d6382` | Secondary text and labels (AA on paper and card) |
+| `--line` | `#e4e7f0` | Dividers |
+| `--brand` / `--brand-2` | `#3533cd` / `#5b5bf0` | Primary buttons, current tab, links |
+| `--danger` | `#b42318` | Errors, the red alert level |
+| `--warn` | `#9a4a00` | The orange alert level |
+| `--caution` | `#7a5f00` | The yellow alert level |
+| `--ok` | `#0f7a55` | Confirmations |
 | `--focus` | `#1a56db` | Focus outline |
 
 Colour is never the only signal. An alert level is written in words ("Rojo",
