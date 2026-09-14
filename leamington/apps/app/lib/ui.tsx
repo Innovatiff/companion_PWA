@@ -204,11 +204,16 @@ export function LeagueLogo({ id, has, size }: { id?: number | null; has?: boolea
     : null;
 }
 
-/** "Regular Season - 8" as "Jornada 8" / "Matchday 8"; other rounds as the provider wrote them. */
+/**
+ * "Regular Season - 8" as "Jornada 8" / "Matchday 8", and "Apertura - 8" as
+ * "Apertura · Jornada 8"; other rounds as the provider wrote them.
+ */
 export function roundName(round: string | null | undefined, lang: Lang): string | null {
   if (!round) return null;
-  const m = /^Regular Season\s*-\s*(\d+)$/i.exec(round.trim());
-  return m ? `${lang === "en" ? "Matchday" : "Jornada"} ${m[1]}` : round;
+  const m = /^(Regular Season|Apertura|Clausura)\s*-\s*(\d+)$/i.exec(round.trim());
+  if (!m) return round;
+  const day = `${lang === "en" ? "Matchday" : "Jornada"} ${m[2]}`;
+  return /^regular season$/i.test(m[1]) ? day : `${m[1]} · ${day}`;
 }
 
 /** Whole days from one "YYYY-MM-DD" to another. */

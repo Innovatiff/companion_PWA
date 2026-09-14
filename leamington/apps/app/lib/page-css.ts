@@ -35,7 +35,7 @@ export const FUTBOL_CSS = TABLE +
   ".grp{padding:.8rem 1rem .4rem}.grp>header{display:flex;align-items:center;gap:.6rem;padding-bottom:.6rem;border-bottom:1px solid var(--line)}" +
   ".grp h3{flex:1;margin:0;font-size:.95rem}.grp .flag{font-size:1.2rem;margin:0}" +
   ".fxs{list-style:none;margin:0;padding:0}.fx{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:.5rem;padding:.65rem 0;border-bottom:1px solid var(--line);font-size:.88rem}" +
-  ".fx:last-child{border-bottom:0}.fx>span.h,.fx>span.a{display:flex;align-items:center;gap:.45rem;min-width:0;line-height:1.2;overflow-wrap:anywhere}.fx>span.a{justify-content:flex-end;text-align:right}" +
+  ".fx:last-child{border-bottom:0}.fx>span.h,.fx>span.a{display:flex;align-items:center;gap:.45rem;min-width:0;line-height:1.2;overflow-wrap:break-word;hyphens:auto}.fx>span.a{justify-content:flex-end;text-align:right}" +
   ".fx b{font-weight:650}.fx .sc{font-size:1.1rem;font-weight:800;font-variant-numeric:tabular-nums;padding:0 .2rem}.fx>small{grid-column:1/-1;text-align:center;margin-top:-.25rem;font-size:.75rem}" +
   ".team{display:flex;align-items:center;gap:1rem}.team h1{margin:0}.team p{margin:.15rem 0 0}";
 
@@ -57,8 +57,8 @@ export const CLIMA_CSS =
   ".sky.sm{margin:.55rem 0 0;gap:.3rem}.sky.sm span{padding:.12rem .45rem;box-shadow:none;background:rgba(27,31,59,.06);font-size:.72rem}" +
   // Three days with temperature range bars
   ".strip{list-style:none;margin:0 0 .75rem;padding:.2rem 1rem;background:var(--card);border-radius:18px;box-shadow:var(--shadow)}" +
-  ".strip li{display:grid;grid-template-columns:3.9rem 1.4rem 3.5rem 1.9rem minmax(2rem,1fr) 3.3rem;align-items:center;gap:.3rem;padding:.6rem 0;border-bottom:1px solid var(--line);font-size:.92rem}" +
-  ".strip li:last-child{border-bottom:0}.strip .pr{color:#1d5fd1;font-weight:600;white-space:nowrap;font-size:.8rem}.strip .lo{color:var(--muted);text-align:right}.strip b{text-align:right}" +
+  ".strip li{display:grid;grid-template-columns:3.9rem 1.4rem 3.5rem 1.9rem minmax(2rem,1fr) 3.9rem;align-items:center;gap:.3rem;padding:.6rem 0;border-bottom:1px solid var(--line);font-size:.92rem}" +
+  ".strip li:last-child{border-bottom:0}.strip .pr{color:#1d5fd1;font-weight:600;white-space:nowrap;font-size:.8rem}.strip .lo{color:var(--muted);text-align:right}.strip b{text-align:right;white-space:nowrap}" +
   ".rng{position:relative;display:block;height:.42rem;border-radius:9px;background:var(--line)}.rng i{position:absolute;top:0;bottom:0;border-radius:9px;background:linear-gradient(90deg,#7ab3ff,#fdb813,#f0703c)}" +
   // Here in Canada
   ".here{margin:0 0 .75rem;padding:.9rem .85rem}.pair .here{margin:0}.here .nm{display:block;font-size:1.05rem}.here small{display:block}" +
