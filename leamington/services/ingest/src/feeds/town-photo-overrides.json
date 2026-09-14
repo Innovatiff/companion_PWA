@@ -2,5 +2,17 @@
   "_note": "Photos chosen by a person for a town, when the automatic pick is poor. Each file must be a landscape JPEG on Wikimedia Commons with a free license and a named author; scripts/fetch-town-photos.mjs still checks all of that. Kept in src/feeds (copied into the ingest image) and out of data/, which the static feed reads.",
   "photos": {
     "HN:Cortés:San Pedro Sula": "File:Boulevard Micheletti SPS.jpg"
+  },
+  "_gallery_note": "Photos 2-6 per town ('COUNTRY:Region:Town'). 'exclude' lists files a person rejected after looking at them (never used); 'include' lists files a person chose, tried first, each still passing every check. Review with: node scripts/fetch-town-photos.mjs --dry-run <dir> --town <key>.",
+  "gallery": {
+    "HN:Cortés:San Pedro Sula": {
+      "_why": "2026-09-14 review: the stadium complex photo shows a dirt lot and an unfinished structure",
+      "exclude": ["File:Complejo del Estadio Olimpico San Pedro Sula.jpg", "File:San Pedro Sula Building 1.jpg"],
+      "_why_2": "2026-09-14 review: 'San Pedro Sula Building 1' is an unnamed office building at a street corner, not a view of the town"
+    },
+    "GT:Huehuetenango:Huehuetenango": {
+      "_why": "2026-09-14 review: a night photo that is almost entirely black",
+      "exclude": ["File:ANOCHECER EN HUEHUETENANGO.jpg"]
+    }
   }
 }
