@@ -40,8 +40,9 @@ export function parseCurrencyApi(j) {
 
 export async function ingestFx(ctx) {
   const { log } = ctx;
+  // Each currency keeps the date its own source published it under: sources
+  // publish on different days (the ECB not at weekends).
   const collected = {};
-  let rateDate = null;
   const failures = [];
 
   for (const p of PROVIDERS) {
@@ -51,11 +52,11 @@ export async function ingestFx(ctx) {
     try {
       const { body } = await fetchText(p.url);
       const { date, rates } = p.parse(JSON.parse(body));
-      rateDate = rateDate || date;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date ?? ""))) throw new Error(`no rate date in the response`);
       let added = 0;
       for (const c of missing) {
         const v = Number(rates[c]);
-        if (Number.isFinite(v) && v > 0) { collected[c] = v; added++; }
+        if (Number.isFinite(v) && v > 0) { collected[c] = { rate: v, date }; added++; }
       }
       log.info("provider.ok", { provider: p.name, added, stillMissing: CURRENCIES.filter((c) => collected[c] == null) });
     } catch (err) {
@@ -74,17 +75,16 @@ export async function ingestFx(ctx) {
   }
   if (missing.length) ctx.warnings.push(`no provider quoted: ${missing.join(", ")}`);
 
-  const day = rateDate || new Date().toISOString().slice(0, 10);
   let written = 0;
-  for (const [quote, rate] of Object.entries(collected)) {
+  for (const [quote, { rate, date }] of Object.entries(collected)) {
     await query(
       `insert into fx_rates (rate_date, base, quote, rate)
        values ($1,'CAD',$2::fx_currency,$3)
        on conflict (rate_date, quote) do update set rate = excluded.rate, fetched_at = now()`,
-      [day, quote, rate],
+      [date, quote, rate],
     );
     written++;
   }
-  log.info("stored", { rateDate: day, written, missing });
+  log.info("stored", { dates: Object.fromEntries(Object.entries(collected).map(([q, v]) => [q, v.date])), written, missing });
   return { recordsWritten: written };
 }

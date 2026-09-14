@@ -45,6 +45,9 @@ test("ECB covers MXN and the open dataset fills the rest", { skip }, async () =>
     assert.equal(got.HNL, 19.3974);
     assert.equal(got.GTQ, 5.5004);
     assert.equal(got.JMD, 113.8601);
+    const dates = Object.fromEntries((await db.query("select quote::text, to_char(rate_date, 'YYYY-MM-DD') as d from fx_rates")).rows.map((r) => [r.quote, r.d]));
+    assert.deepEqual(dates, { MXN: "2026-09-11", HNL: "2026-09-13", GTQ: "2026-09-13", JMD: "2026-09-13" },
+      "each currency is stored under the date its own source published");
     assert.ok(!f.requested.includes(MIRROR), "the mirror is not called when not needed");
   } finally { f.restore(); }
 });
