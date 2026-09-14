@@ -10,6 +10,7 @@ import { requirePerson } from "@leamington/shared/src/server/portal.ts";
 import { asPerson } from "@leamington/shared/src/server/db.ts";
 import { formatCode } from "@leamington/shared/src/code.ts";
 import { formatDate, formatDateTime, formatMoney } from "@leamington/shared/src/format.ts";
+import { Card, Hero, HeroAction } from "@leamington/shared/src/ui/Portal.tsx";
 import { Page, setPageLang, viewerOf, type Viewer } from "../../../lib/layout.tsx";
 import { strings } from "../../../lib/strings.ts";
 import { isUuid } from "../../../lib/clients.ts";
@@ -60,37 +61,46 @@ export default function RenewDone({ viewer, r }: Props) {
   const printButton = `<button type="button" class="secondary" onclick="print()">${t.print}</button>`;
   // The collecting business earns (0031); a receipt seen by anyone else carries no commission for them.
   const commission = r.earning_affiliate.is_you ? commissionLabel(r.commission, t) : t.noCommission;
+  const active = !r.voided && (r.status_now === "active" || r.status_now === "due");
 
   return (
     <Page title={r.voided ? t.voidedTitle : t.renewedTitle} viewer={viewer} nav="renew">
-      <div className="narrow">
-        <div className="noprint">
-          <h1>{r.voided ? t.voidedTitle : t.renewedTitle}</h1>
-          {r.voided && <p className="err" role="alert">{t.voidedNote}</p>}
-          <p className="big">{t.newPeriod(day(r.period_start), day(r.period_end))}</p>
-          {!r.voided && (r.status_now === "active" || r.status_now === "due") && <p className="ok big">{t.accountActive}</p>}
-          {r.reactivation && <p>{t.reactivated}</p>}
-          <p className="note">
-            {commission}<br />
-            {registeredByLabel(r.registered_by, t)}<br />
-            {r.collected_by_you && <>{t.collectedByYou}<br /></>}
-            {t.amountPaid(formatMoney(r.amount))}<br />
-            {t.paidAt(formatDateTime(r.paid_at, lang))}
+      <Hero
+        title={r.voided ? t.voidedTitle : t.renewedTitle}
+        subtitle={t.receiptFor(r.full_name)}
+        action={<>
+          <HeroAction href="/renew" icon="refresh">{t.renewAnother}</HeroAction>
+          <HeroAction href="/" icon="users">{t.backToClients}</HeroAction>
+        </>}
+      />
+
+      <div className={r.voided ? "note bad noprint" : "note noprint"} role={r.voided ? "alert" : "status"}>
+        {r.voided && <p>{t.voidedNote}</p>}
+        <p className="big">{t.newPeriod(day(r.period_start), day(r.period_end))}</p>
+        {active && <p>{t.accountActive}</p>}
+        {r.reactivation && <p>{t.reactivated}</p>}
+      </div>
+
+      <div className="grid">
+        <Card>
+          <p className="client">{r.full_name}</p>
+          <div className="code" aria-label={`${t.codeFor} ${r.full_name}`}>{formatCode(r.code)}</div>
+          <p lang={client}>
+            {tc.periodEnds}: <b>{formatDate(r.period_end, client, true)}</b><br />
+            {formatMoney(r.amount)} · {formatDateTime(r.paid_at, client)}
           </p>
-        </div>
+          <div className="noprint" dangerouslySetInnerHTML={{ __html: printButton }} />
+        </Card>
 
-        <p className="who">{r.full_name}</p>
-        <div className="code" aria-label={`${t.codeFor} ${r.full_name}`}>{formatCode(r.code)}</div>
-        <p lang={client}>
-          {tc.periodEnds}: <b>{formatDate(r.period_end, client, true)}</b><br />
-          {formatMoney(r.amount)} · {formatDateTime(r.paid_at, client)}
-        </p>
-
-        <div className="noprint" dangerouslySetInnerHTML={{ __html: printButton }} />
-        <div className="actions noprint">
-          <a className="button" href="/renew">{t.renewAnother}</a>
-          <a className="button secondary" href="/">{t.backToClients}</a>
-        </div>
+        <Card title={t.receiptDetails} className="noprint">
+          <ul className="list">
+            <li className="t">{commission}</li>
+            <li>{registeredByLabel(r.registered_by, t)}</li>
+            {r.collected_by_you && <li>{t.collectedByYou}</li>}
+            <li>{t.amountPaid(formatMoney(r.amount))}</li>
+            <li>{t.paidAt(formatDateTime(r.paid_at, lang))}</li>
+          </ul>
+        </Card>
       </div>
     </Page>
   );

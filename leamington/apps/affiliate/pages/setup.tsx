@@ -3,7 +3,7 @@
  * password (at least 10 characters, typed twice), then signs in.
  */
 import type { GetServerSideProps } from "next";
-import { Page } from "../lib/layout.tsx";
+import { AuthPage } from "../lib/layout.tsx";
 import { STRINGS, type Strings } from "../lib/strings.ts";
 
 export const config = { unstable_runtimeJS: false };
@@ -36,21 +36,24 @@ function Both({ k }: { k: keyof Strings }) {
 export default function Setup({ token, error }: Props) {
   const unusable = error === "invalid_token" || error === "expired";
   return (
-    <Page title={es.setupTitle} viewer={null}>
-      <div className="narrow">
-        <h1>{es.setupTitle} <small lang="en">· {en.setupTitle}</small></h1>
-        {error && <p className="err" role="alert"><Both k={ERRORS[error]} /></p>}
-        {!unusable && (
-          <form method="post" action="/api/setup">
-            <input type="hidden" name="token" value={token} />
-            <label htmlFor="password">{es.newPassword} <small lang="en">· {en.newPassword}</small></label>
-            <input id="password" name="password" type="password" required minLength={10} autoComplete="new-password" />
-            <label htmlFor="password2">{es.repeatPassword} <small lang="en">· {en.repeatPassword}</small></label>
-            <input id="password2" name="password2" type="password" required minLength={10} autoComplete="new-password" />
-            <button type="submit">{es.savePassword} · {en.savePassword}</button>
-          </form>
-        )}
-      </div>
-    </Page>
+    <AuthPage title={es.setupTitle}>
+      <h1>{es.setupTitle} <small lang="en">· {en.setupTitle}</small></h1>
+      {error && <p className="note bad" role="alert"><Both k={ERRORS[error]} /></p>}
+      {unusable ? (
+        <p>
+          <a href="/login">{es.setupSignIn}</a><br />
+          <small lang="en"><a href="/login">{en.setupSignIn}</a></small>
+        </p>
+      ) : (
+        <form className="form" method="post" action="/api/setup">
+          <input type="hidden" name="token" value={token} />
+          <label htmlFor="password">{es.newPassword} <small lang="en">· {en.newPassword}</small></label>
+          <input id="password" name="password" type="password" required minLength={10} autoComplete="new-password" />
+          <label htmlFor="password2">{es.repeatPassword} <small lang="en">· {en.repeatPassword}</small></label>
+          <input id="password2" name="password2" type="password" required minLength={10} autoComplete="new-password" />
+          <button type="submit" className="block">{es.savePassword} · {en.savePassword}</button>
+        </form>
+      )}
+    </AuthPage>
   );
 }

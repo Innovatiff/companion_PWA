@@ -120,7 +120,7 @@ async function signInAs(who, { tryWrongPassword }) {
     r = await post("/api/setup", { token: who.token, password: "short", password2: "short" });
     check(`${who.login}: a short password is weak_password`, r.location.includes("e=weak_password"), r.location);
     r = await get(r.location);
-    check(`${who.login}: the weak password message is shown`, /class="err"/.test(r.text));
+    check(`${who.login}: the weak password message is shown`, /class="note bad" role="alert"/.test(r.text));
     r = await post("/api/setup", { token: who.token, password: who.password, password2: who.password + "x" });
     check(`${who.login}: two different passwords are refused`, r.location.includes("e=mismatch"), r.location);
     r = await post("/api/setup", { token: "not-the-token", password: who.password, password2: who.password });
@@ -130,7 +130,7 @@ async function signInAs(who, { tryWrongPassword }) {
     r = await post("/api/setup", { token: who.token, password: who.password, password2: who.password });
     check(`${who.login}: setup succeeds and goes to /login with a message`, r.status === 303 && r.location.startsWith("/login?ok=setup"), r.location);
     r = await get(r.location);
-    check(`${who.login}: /login shows the success message and the login name`, /class="ok"/.test(r.text) && r.text.includes(`value="${who.login}"`));
+    check(`${who.login}: /login shows the success message and the login name`, /class="note" role="status"/.test(r.text) && r.text.includes(`value="${who.login}"`));
     r = await post("/api/setup", { token: who.token, password: who.password, password2: who.password });
     check(`${who.login}: the setup link works once`, r.location.includes("e=invalid_token"), r.location);
   }
@@ -227,8 +227,8 @@ check("A: <html lang=\"es\"> for a Spanish affiliate", /<html lang="es"/.test(r.
 r = await get("/earnings", cookieA);
 check("A: earnings list both sales at $8.00 and show the payout history",
   r.status === 200 && r.text.includes(jm.name) && r.text.includes(mx.name) && r.text.includes("$8.00") && r.text.includes("Pagos que has recibido"));
-const earned = /<b>(\$[\d.]+)<\/b>Ganado</.exec(r.text)?.[1];
-check("A: earned total is shown with its period", Boolean(earned) && r.text.includes("desde tu primer registro"), earned);
+const earned = /<div class="t">Ganado<\/div><div class="meta">desde tu primer registro<\/div><\/div><b[^>]*>(\$[\d.]+)<\/b>/.exec(r.text)?.[1];
+check("A: earned total is shown with its period", Boolean(earned), earned);
 
 // ---------------------------------------------------------------------------
 // Affiliate B: row-level security through the running app
@@ -282,10 +282,10 @@ const endAfter = plus6(endBefore);
 r = await get(statusUrl, cookieB);
 let p = plain(r.text);
 check("renew 2: the status page shows name, country in words, formatted code, period end and an Active chip",
-  r.status === 200 && p.includes(jm.name) && p.includes("Jamaica") && p.includes(jmCode) && p.includes(`Paid until: <b>${longDate(endBefore, "en")}</b>`)
+  r.status === 200 && p.includes(jm.name) && p.includes("Jamaica") && p.includes(jmCode) && p.includes(`Paid until</span><b>${longDate(endBefore, "en")}</b>`)
   && p.includes(">Active<"), p.slice(0, 400));
 check(`renew 2: "Registered by: ${registrant}" as information, and "Your commission: $8.00" for B`,
-  p.includes(`Registered by: ${registrant}`) && p.includes("Your commission: $8.00") && !p.includes("on their behalf") && !p.includes("goes to"));
+  p.includes(`Registered by</span><span>${registrant}</span>`) && p.includes("Your commission: $8.00") && !p.includes("on their behalf") && !p.includes("goes to"));
 check("renew 2: an early renewal extends from the current end",
   p.includes(`New period: ${longDate(endBefore, "en")} – ${longDate(endAfter, "en")}`) && p.includes("It adds on to the current period"));
 check("renew 2: one primary button 'I collected $20.00 — renew', no confirmation box yet",
@@ -306,7 +306,7 @@ check("renew 3: the receipt says Renewed, with the period extended from the old 
 check(`renew 3: "Your commission: $8.00", "Registered by: ${registrant}", "Collected by: you", $20.00, a 24 h time, and the account is active`,
   p.includes("Your commission: $8.00") && p.includes(`Registered by: ${registrant}`) && p.includes("Collected by: you") && p.includes("Amount: $20.00")
   && /Date: [^<]*\b([01]\d|2[0-3]):[0-5]\d\b/.test(p) && p.includes("The account is active now."));
-check("renew 3: the receipt is printable and offers Renew another", r.text.includes('onclick="print()"') && p.includes('href="/renew">Renew another<'));
+check("renew 3: the receipt is printable and offers Renew another", r.text.includes('onclick="print()"') && /href="\/renew"[^>]*>(<svg[\s\S]*?<\/svg>)?Renew another</.test(p));
 check("renew 3: the period in the database is the one the receipt shows",
   sql(`select period_start || ' ' || period_end from subscriptions where request_key = '${form1.request_key}'`) === `${endBefore} ${endAfter}`);
 check("renew 3: B, the collecting business, earns the $8.00", earnedBy(form1.request_key, B.login));
@@ -338,7 +338,7 @@ check("renew 5: ?recent=1 shows the warning and the box", r.status === 200 && pl
 r = await get(`/renew/${bClient.id}`, cookieB);
 p = plain(r.text);
 check("renew 5b: B's own client says 'Registered by: you' and 'Your commission: $8.00'",
-  r.status === 200 && p.includes("Registered by: you") && p.includes("Your commission: $8.00"));
+  r.status === 200 && p.includes("Registered by</span><span>you</span>") && p.includes("Your commission: $8.00"));
 const ownForm = { client_id: hidden(r.text, "client_id"), request_key: hidden(r.text, "request_key") };
 r = await post("/api/renew/record", ownForm, cookieB);
 r = await get(r.location, cookieB);
@@ -360,7 +360,7 @@ if (A.token) check("renew 6: on this fresh run, A has 0 renewals and 1 renewal o
 r = await get("/earnings", cookieA);
 p = plain(r.text);
 check("renew 6: A's renewals stat counts only what she collected, and B's renewal of her client is not in her list",
-  r.status === 200 && p.includes(`<b>${money(aRenEarned)}</b>ganado en ${aRen} ${aRen === "1" ? "renovación" : "renovaciones"}`)
+  r.status === 200 && p.includes(`<span class="value">${money(aRenEarned)}</span><div class="sub">ganado en ${aRen} ${aRen === "1" ? "renovación" : "renovaciones"} · desde tu primer registro</div>`)
   && !table(r.text, "renewals").includes(jm.name), `${aRen} ${aRenEarned}`);
 check("renew 6: A sees, as information and not money, that her client renewed elsewhere",
   p.includes(aElsewhere === "1" ? "<p>1 renovación de tus clientes se hizo en otro negocio o con Hoy." : `<p>${aElsewhere} renovaciones de tus clientes se hicieron en otro negocio o con Hoy.`));
@@ -368,7 +368,7 @@ check("renew 6: nothing says a renewal elsewhere still pays her", !p.includes("i
 check("renew 6: the incentive: any Hoy client can renew with you and the commission is yours",
   p.includes("Cualquier cliente de Hoy puede renovar contigo, y la comisión es tuya: $8.00 por cada renovación que cobras"));
 check("renew 6: registrations and renewals are separate stat blocks, and the registration is listed",
-  /<b>\$[\d.]+<\/b>ganado en \d+ registros?<br\/?>/.test(p) && /<b>\$[\d.]+<\/b>ganado en \d+ renovaci(ón|ones)<br\/?>/.test(p)
+  /<span class="value">\$[\d.]+<\/span><div class="sub">ganado en \d+ registros? · /.test(p) && /<span class="value">\$[\d.]+<\/span><div class="sub">ganado en \d+ renovaci(ón|ones) · /.test(p)
   && rowWith(table(r.text, "registrations"), jm.name).includes("$8.00"));
 
 const [, , bOwn, bOther, bOtherEarned] = earningsOf(B.login);
@@ -397,7 +397,7 @@ check("renew 8: A's list shows the lapsed client with a Renovar link", r.text.in
 r = await get(`/renew/${jm.id}`, cookieA);
 p = plain(r.text);
 check("renew 8: lapsed: Vencido, 'Registrado por: ti', your commission, and the new period starts today",
-  r.status === 200 && p.includes(">Vencido<") && p.includes("Registrado por: ti") && p.includes("Tu comisión: $8.00")
+  r.status === 200 && p.includes(">Vencido<") && p.includes("Registrado por</span><span>ti</span>") && p.includes("Tu comisión: $8.00")
   && p.includes(`Nuevo periodo: ${longDate(today, "es")} – ${longDate(plus6(today), "es")}`) && p.includes("Empieza hoy, porque el periodo anterior ya terminó")
   && !/name="confirm_repeat"/.test(r.text), p.slice(0, 800));
 const lapsedForm = { client_id: hidden(r.text, "client_id"), request_key: hidden(r.text, "request_key") };

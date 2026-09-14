@@ -8,6 +8,7 @@
  */
 import type { GetServerSideProps } from "next";
 import { requirePerson } from "@leamington/shared/src/server/portal.ts";
+import { Card, Hero } from "@leamington/shared/src/ui/Portal.tsx";
 import { Page, setPageLang, viewerOf, type Viewer } from "../../lib/layout.tsx";
 import { strings } from "../../lib/strings.ts";
 import { isRenewError, type RenewError } from "../../lib/renew.ts";
@@ -31,18 +32,18 @@ export default function Renew({ viewer, error }: Props) {
   const message = error === "invalid" ? t.errLookupInvalid : error === "not_found" ? t.errLookupNotFound : error === "throttled" ? t.errLookupThrottled : null;
   return (
     <Page title={t.renewTitle} viewer={viewer} nav="renew">
-      <div className="narrow">
-        <h1>{t.renewTitle}</h1>
+      <Hero title={t.renewTitle} subtitle={t.renewSub} />
+      <Card className="form">
         <p>{t.renewIntro}</p>
         <form method="post" action="/api/renew/lookup">
           <label htmlFor="code">{t.renewCodeLabel}</label>
           <input id="code" name="code" className="codein" required autoComplete="off" autoCapitalize="characters"
                  spellCheck={false} inputMode="text" maxLength={16}
                  {...(message ? { "aria-invalid": true, "aria-describedby": "code-err" } : {})} />
-          {message && <p id="code-err" className="err fielderr" role="alert">{message}</p>}
-          <button type="submit">{t.renewFind}</button>
+          {message && <p id="code-err" className="fielderr" role="alert">{message}</p>}
+          <button type="submit" className="block">{t.renewFind}</button>
         </form>
-      </div>
+      </Card>
     </Page>
   );
 }

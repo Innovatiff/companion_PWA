@@ -6,7 +6,7 @@
  */
 import type { GetServerSideProps } from "next";
 import { currentPerson } from "@leamington/shared/src/server/portal.ts";
-import { Page } from "../lib/layout.tsx";
+import { AuthPage } from "../lib/layout.tsx";
 import { STRINGS, type Strings } from "../lib/strings.ts";
 
 export const config = { unstable_runtimeJS: false };
@@ -40,20 +40,18 @@ function Both({ k }: { k: keyof Strings }) {
 
 export default function Login({ error, setupDone, login }: Props) {
   return (
-    <Page title={es.loginTitle} viewer={null}>
-      <div className="narrow">
-        <h1>{es.portal} <small lang="en">· {en.portal}</small></h1>
-        {setupDone && <p className="ok" role="status"><Both k="setupDone" /></p>}
-        {error && <p className="err" role="alert"><Both k={ERRORS[error]} /></p>}
-        <form method="post" action="/api/login">
-          <label htmlFor="login">{es.login} <small lang="en">· {en.login}</small></label>
-          <input id="login" name="login" required maxLength={40} autoComplete="username" autoCapitalize="none"
-                 spellCheck={false} defaultValue={login} />
-          <label htmlFor="password">{es.password} <small lang="en">· {en.password}</small></label>
-          <input id="password" name="password" type="password" required autoComplete="current-password" />
-          <button type="submit">{es.enter} · {en.enter}</button>
-        </form>
-      </div>
-    </Page>
+    <AuthPage title={es.loginTitle}>
+      <h1>{es.loginTitle} <small lang="en">· {en.loginTitle}</small></h1>
+      {setupDone && <p className="note" role="status"><Both k="setupDone" /></p>}
+      {error && <p className="note bad" role="alert"><Both k={ERRORS[error]} /></p>}
+      <form className="form" method="post" action="/api/login">
+        <label htmlFor="login">{es.login} <small lang="en">· {en.login}</small></label>
+        <input id="login" name="login" required maxLength={40} autoComplete="username" autoCapitalize="none"
+               spellCheck={false} defaultValue={login} />
+        <label htmlFor="password">{es.password} <small lang="en">· {en.password}</small></label>
+        <input id="password" name="password" type="password" required autoComplete="current-password" />
+        <button type="submit" className="block">{es.enter} · {en.enter}</button>
+      </form>
+    </AuthPage>
   );
 }

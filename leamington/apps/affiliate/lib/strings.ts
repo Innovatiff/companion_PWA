@@ -14,8 +14,19 @@ const es = {
   navEarnings: "Ganancias",
   signOut: "Salir",
   test: "PRUEBA",
+  brand: "Hoy",
+  role: "Afiliado",
 
   // Clients
+  navMyClients: "Mis clientes",
+  clientsSub: (name: string, due: number) =>
+    due === 0 ? `Hola, ${name}.` : `Hola, ${name}. ${due === 1 ? "1 cliente para renovar pronto." : `${due} clientes para renovar pronto.`}`,
+  statActive: "Activos",
+  statLapsed: "Vencidos",
+  today: "hoy",
+  next30Days: "vencen en los próximos 30 días",
+  renewWithCode: "Renovar con código",
+  colAction: "Acción",
   clientsTitle: "Mis clientes",
   registerClient: "Registrar cliente",
   dueCaption: "Renovar pronto",
@@ -40,6 +51,8 @@ const es = {
   // Register
   registerTitle: "Registrar cliente",
   chooseCountry: "¿De qué país es el cliente?",
+  registerStep1: "Paso 1 de 2: el país del cliente.",
+  registerStep2: (country: string) => `Paso 2 de 2: los datos del cliente de ${country}.`,
   changeCountry: "Cambiar país",
   fullName: "Nombre completo",
   team: "Equipo de fútbol",
@@ -57,6 +70,8 @@ const es = {
   // Code page
   codeTitle: "Código del cliente",
   codeFor: "Código de",
+  codeSub: "Dale este código al cliente: es su cuenta de Hoy.",
+  codeDetails: "Datos del cliente",
   neverUsed: "Nunca usamos las letras O, I, L, S, U ni los números 0, 1, 5, 8.",
   periodEnds: "Pagado hasta",
   print: "Imprimir",
@@ -65,6 +80,8 @@ const es = {
 
   // Renew: enter the code
   renewTitle: "Renovar cliente",
+  renewSub: "Cualquier cliente de Hoy, con el código de su recibo.",
+  renewStatusSub: "Revisa los datos con el cliente antes de cobrar.",
   renewIntro: "Escribe el código del recibo del cliente. Sirve para cualquier cliente de Hoy, aunque lo haya registrado otro negocio. La comisión de la renovación es tuya.",
   renewCodeLabel: "Código del cliente",
   renewFind: "Buscar cliente",
@@ -104,6 +121,8 @@ const es = {
   amountPaid: (money: string) => `Cantidad: ${money}`,
   paidAt: (when: string) => `Fecha: ${when}`,
   renewAnother: "Renovar otro",
+  receiptFor: (name: string) => `Recibo de ${name}.`,
+  receiptDetails: "Detalles del cobro",
 
   // Earnings
   earningsTitle: "Mis ganancias",
@@ -111,6 +130,9 @@ const es = {
   earnedThisMonth: "Ganado este mes",
   paidOut: "Pagado a ti",
   owed: "Por pagarte",
+  statRegistrationsLabel: "Registros",
+  statRenewalsLabel: "Renovaciones",
+  totalsTitle: "Totales",
   sinceStart: "desde tu primer registro",
   asOfToday: "a hoy",
   statRegistrations: (n: number) => `ganado en ${plural(n, "registro", "registros")}`,
@@ -161,6 +183,7 @@ const es = {
   errMismatch: "Las dos contraseñas no coinciden.",
   errInvalidToken: "Este enlace no es válido o ya se usó. Pide uno nuevo al propietario.",
   errExpired: "Este enlace venció. Pide uno nuevo al propietario.",
+  setupSignIn: "Si ya creaste tu contraseña, entra aquí",
 
   notFound: "No encontramos esta página.",
   serverError: "Algo falló. No mostramos datos que no pudimos confirmar. Inténtalo otra vez.",
@@ -176,7 +199,18 @@ const en: Strings = {
   navEarnings: "Earnings",
   signOut: "Sign out",
   test: "TEST",
+  brand: "Hoy",
+  role: "Affiliate",
 
+  navMyClients: "My clients",
+  clientsSub: (name: string, due: number) =>
+    due === 0 ? `Hello, ${name}.` : `Hello, ${name}. ${due === 1 ? "1 client to renew soon." : `${due} clients to renew soon.`}`,
+  statActive: "Active",
+  statLapsed: "Lapsed",
+  today: "today",
+  next30Days: "ending in the next 30 days",
+  renewWithCode: "Renew with a code",
+  colAction: "Action",
   clientsTitle: "My clients",
   registerClient: "Register client",
   dueCaption: "Renew soon",
@@ -200,6 +234,8 @@ const en: Strings = {
 
   registerTitle: "Register client",
   chooseCountry: "Which country is the client from?",
+  registerStep1: "Step 1 of 2: the client's country.",
+  registerStep2: (country: string) => `Step 2 of 2: the details of the client from ${country}.`,
   changeCountry: "Change country",
   fullName: "Full name",
   team: "Football team",
@@ -216,6 +252,8 @@ const en: Strings = {
 
   codeTitle: "Client code",
   codeFor: "Code for",
+  codeSub: "Give this code to the client: it is their Hoy account.",
+  codeDetails: "Client details",
   neverUsed: "We never use the letters O, I, L, S, U or the digits 0, 1, 5, 8.",
   periodEnds: "Paid until",
   print: "Print",
@@ -223,6 +261,8 @@ const en: Strings = {
   backToClients: "See my clients",
 
   renewTitle: "Renew client",
+  renewSub: "Any Hoy client, by the code on their receipt.",
+  renewStatusSub: "Check the details with the client before collecting.",
   renewIntro: "Type the code from the client's receipt. It works for any Hoy client, even one another business registered. The renewal commission is yours.",
   renewCodeLabel: "Client code",
   renewFind: "Find client",
@@ -260,12 +300,17 @@ const en: Strings = {
   amountPaid: (money: string) => `Amount: ${money}`,
   paidAt: (when: string) => `Date: ${when}`,
   renewAnother: "Renew another",
+  receiptFor: (name: string) => `Receipt for ${name}.`,
+  receiptDetails: "Payment details",
 
   earningsTitle: "My earnings",
   earned: "Earned",
   earnedThisMonth: "Earned this month",
   paidOut: "Paid to you",
   owed: "Owed to you",
+  statRegistrationsLabel: "Registrations",
+  statRenewalsLabel: "Renewals",
+  totalsTitle: "Totals",
   sinceStart: "since your first registration",
   asOfToday: "as of today",
   statRegistrations: (n: number) => `earned from ${plural(n, "registration", "registrations")}`,
@@ -315,6 +360,7 @@ const en: Strings = {
   errMismatch: "The two passwords do not match.",
   errInvalidToken: "This link is not valid or was already used. Ask the owner for a new one.",
   errExpired: "This link has expired. Ask the owner for a new one.",
+  setupSignIn: "If you already set your password, sign in here",
 
   notFound: "We could not find this page.",
   serverError: "Something failed. We do not show data we could not confirm. Try again.",

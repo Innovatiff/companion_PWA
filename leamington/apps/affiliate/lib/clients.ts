@@ -35,6 +35,11 @@ export function statusLabel(status: string, t: Strings): string {
   }
 }
 
+/** The chip colour for a status. The chip always carries the status in words too. */
+export function statusTone(status: string): "good" | "warn" | "bad" | "unk" {
+  return status === "active" ? "good" : status === "due" ? "warn" : status === "lapsed" ? "bad" : "unk";
+}
+
 export type ClientRow = {
   id: string;
   fullName: string;

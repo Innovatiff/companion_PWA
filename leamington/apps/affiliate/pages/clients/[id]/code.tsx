@@ -10,6 +10,7 @@ import { requirePerson } from "@leamington/shared/src/server/portal.ts";
 import { asPerson } from "@leamington/shared/src/server/db.ts";
 import { formatCode } from "@leamington/shared/src/code.ts";
 import { formatDate } from "@leamington/shared/src/format.ts";
+import { Card, Hero, HeroAction } from "@leamington/shared/src/ui/Portal.tsx";
 import { Page, setPageLang, viewerOf, type Viewer } from "../../../lib/layout.tsx";
 import { strings } from "../../../lib/strings.ts";
 import { clientInstruction, countryName, isUuid } from "../../../lib/clients.ts";
@@ -44,22 +45,29 @@ export default function Code({ viewer, client, hoyUrl }: Props) {
   const printButton = `<button type="button" class="secondary" onclick="print()">${t.print}</button>`;
   return (
     <Page title={t.codeTitle} viewer={viewer}>
-      <div className="narrow">
-        <h1 className="noprint">{t.codeTitle}</h1>
-        <p className="who">{client.fullName}</p>
-        <div className="code" aria-label={`${t.codeFor} ${client.fullName}`}>{formatCode(client.code)}</div>
-        <p lang={client.language === "en" ? "en" : "es"}>{clientInstruction(client.language, hoyUrl)}</p>
-        <p className="muted noprint">{t.neverUsed}</p>
-        <p className="noprint">
-          {countryName(client.country, viewer.lang)}{client.adminRegion ? ` · ${client.adminRegion}` : ""}
-          <br />
-          {t.periodEnds}: <b>{client.periodEnd ? formatDate(client.periodEnd, viewer.lang, true) : t.statusNone}</b>
-        </p>
-        <div className="noprint" dangerouslySetInnerHTML={{ __html: printButton }} />
-        <div className="actions noprint">
-          <a className="button" href="/register">{t.registerAnother}</a>
-          <a className="button secondary" href="/">{t.backToClients}</a>
-        </div>
+      <Hero
+        title={t.codeTitle}
+        subtitle={t.codeSub}
+        action={<>
+          <HeroAction href="/register" icon="userPlus">{t.registerAnother}</HeroAction>
+          <HeroAction href="/" icon="users">{t.backToClients}</HeroAction>
+        </>}
+      />
+      <div className="grid">
+        <Card>
+          <p className="client">{client.fullName}</p>
+          <div className="code" aria-label={`${t.codeFor} ${client.fullName}`}>{formatCode(client.code)}</div>
+          <p lang={client.language === "en" ? "en" : "es"}>{clientInstruction(client.language, hoyUrl)}</p>
+          <div className="noprint" dangerouslySetInnerHTML={{ __html: printButton }} />
+        </Card>
+        <Card title={t.codeDetails} className="noprint">
+          <ul className="list rows">
+            <li><span>{t.colCountry}</span><span>{countryName(client.country, viewer.lang)}</span></li>
+            {client.adminRegion && <li><span>{t.colRegion}</span><span>{client.adminRegion}</span></li>}
+            <li><span>{t.periodEnds}</span><b>{client.periodEnd ? formatDate(client.periodEnd, viewer.lang, true) : t.statusNone}</b></li>
+          </ul>
+          <p className="muted">{t.neverUsed}</p>
+        </Card>
       </div>
     </Page>
   );

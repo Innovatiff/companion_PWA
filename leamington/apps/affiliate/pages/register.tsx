@@ -10,6 +10,7 @@
 import type { GetServerSideProps } from "next";
 import { requirePerson } from "@leamington/shared/src/server/portal.ts";
 import { asPerson } from "@leamington/shared/src/server/db.ts";
+import { Card, Hero } from "@leamington/shared/src/ui/Portal.tsx";
 import { Page, setPageLang, viewerOf, type Viewer } from "../lib/layout.tsx";
 import { strings } from "../lib/strings.ts";
 import { COUNTRIES, countryName, isCountry, regionLabel, type Country } from "../lib/clients.ts";
@@ -49,30 +50,30 @@ export default function Register({ viewer, country, input, error, options }: Pro
   if (!country) {
     return (
       <Page title={t.registerTitle} viewer={viewer} nav="register">
-        <h1>{t.registerTitle}</h1>
-        <p>{t.chooseCountry}</p>
-        {error === "country" && <p className="err" role="alert">{t.errCountry}</p>}
-        <div className="countries">
-          {COUNTRIES.map((c) => (
-            <a key={c} className="button" href={`/register?country=${c}`}>{countryName(c, lang)}</a>
-          ))}
-        </div>
+        <Hero title={t.registerTitle} subtitle={t.registerStep1} />
+        {error === "country" && <p className="note bad" role="alert">{t.errCountry}</p>}
+        <Card title={t.chooseCountry}>
+          <div className="countries">
+            {COUNTRIES.map((c) => (
+              <a key={c} className="button secondary" href={`/register?country=${c}`}>{countryName(c, lang)}</a>
+            ))}
+          </div>
+        </Card>
       </Page>
     );
   }
 
   const fieldError = (field: RegisterError, message: string) =>
-    error === field ? <p id={`${field}-err`} className="err fielderr">{message}</p> : null;
+    error === field ? <p id={`${field}-err`} className="fielderr">{message}</p> : null;
   const invalid = (field: RegisterError) => (error === field ? { "aria-invalid": true, "aria-describedby": `${field}-err` } : {});
 
   return (
     <Page title={t.registerTitle} viewer={viewer} nav="register">
-      <div className="narrow">
-        <h1>{t.registerTitle}</h1>
-        <p><b>{countryName(country, lang)}</b> · <a href="/register">{t.changeCountry}</a></p>
-        {error === "code" && <p className="err" role="alert">{t.errCode}</p>}
-        {error === "rejected" && <p className="err" role="alert">{t.errRejected}</p>}
+      <Hero title={t.registerTitle} subtitle={t.registerStep2(countryName(country, lang))} />
+      {error === "code" && <p className="note bad" role="alert">{t.errCode}</p>}
+      {error === "rejected" && <p className="note bad" role="alert">{t.errRejected}</p>}
 
+      <Card className="form" title={countryName(country, lang)} action={<a href="/register">{t.changeCountry}</a>}>
         <form method="post" action="/api/register">
           <input type="hidden" name="country" value={country} />
 
@@ -102,10 +103,10 @@ export default function Register({ viewer, country, input, error, options }: Pro
             </>
           )}
 
-          <p className="muted">{t.saleNote}</p>
-          <button type="submit">{t.submitRegister}</button>
+          <p className="note warn">{t.saleNote}</p>
+          <button type="submit" className="block">{t.submitRegister}</button>
         </form>
-      </div>
+      </Card>
     </Page>
   );
 }

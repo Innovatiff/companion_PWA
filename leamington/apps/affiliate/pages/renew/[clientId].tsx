@@ -17,11 +17,12 @@ import { requirePerson } from "@leamington/shared/src/server/portal.ts";
 import { asPerson } from "@leamington/shared/src/server/db.ts";
 import { formatCode } from "@leamington/shared/src/code.ts";
 import { formatDate, formatDateTime, formatMoney } from "@leamington/shared/src/format.ts";
+import { Card, Hero, HeroAction } from "@leamington/shared/src/ui/Portal.tsx";
 import { Page, setPageLang, viewerOf, type Viewer } from "../../lib/layout.tsx";
 import { strings } from "../../lib/strings.ts";
-import { countryName, isUuid } from "../../lib/clients.ts";
+import { countryName, isUuid, statusTone } from "../../lib/clients.ts";
 import {
-  commissionLabel, periodPlacement, refusedAffiliate, registeredByLabel, renewStatusLabel, type Registrant,
+  commissionLabel, periodPlacement, refusedAffiliate, registrantName, renewStatusLabel, type Registrant,
 } from "../../lib/renew.ts";
 
 export const config = { unstable_runtimeJS: false };
@@ -78,27 +79,26 @@ export default function RenewClient({ viewer, s, requestKey, recent }: Props) {
 
   return (
     <Page title={t.renewTitle} viewer={viewer} nav="renew">
-      <div className="narrow">
-        <h1>{t.renewTitle}</h1>
-        <p className="who">
-          {s.full_name}
-          {s.is_test && <> <span className="chip">{t.test}</span></>}
-        </p>
-        <p>{countryName(s.country, lang)} · <span className="mono">{formatCode(s.code)}</span></p>
-        <p>
-          <span className={`chip s-${s.status}`}>{renewStatusLabel(s.status, s.days_left, t)}</span>
-          {s.period_end && <> · {t.periodEnds}: <b>{day(s.period_end)}</b></>}
-        </p>
-        <p>{registeredByLabel(s.original_affiliate, t)}</p>
+      <Hero title={t.renewTitle} subtitle={t.renewStatusSub}
+            action={<HeroAction href="/renew" icon="search">{t.findAnother}</HeroAction>} />
+      <div className="grid">
+        <Card title={<>{s.full_name}{s.is_test && <> <span className="chip test">{t.test}</span></>}</>}>
+          <ul className="list rows">
+            <li><span>{t.colStatus}</span><span className={`chip ${statusTone(s.status)}`}>{renewStatusLabel(s.status, s.days_left, t)}</span></li>
+            {s.period_end && <li><span>{t.periodEnds}</span><b>{day(s.period_end)}</b></li>}
+            <li><span>{t.colCountry}</span><span>{countryName(s.country, lang)}</span></li>
+            <li><span>{t.colCode}</span><span className="mono">{formatCode(s.code)}</span></li>
+            <li><span>{t.colRegisteredBy}</span><span>{registrantName(s.original_affiliate, t)}</span></li>
+          </ul>
+        </Card>
 
         {!s.client_active ? (
-          <p className="err" role="alert">{t.clientInactive}</p>
+          <p className="note bad" role="alert">{t.clientInactive}</p>
         ) : (
-          <>
-            <h2>{t.whatItBuys}</h2>
-            <p className="big">{t.newPeriod(day(s.next_period_start), day(s.next_period_end))}</p>
-            <p>{placement === "lapsed" ? t.startsTodayLapsed : placement === "none" ? t.startsTodayNone : t.extendsFromEnd}</p>
+          <Card title={t.whatItBuys}>
             <p className="note big">{commissionLabel(s.your_commission, t)}</p>
+            <p className="big">{t.newPeriod(day(s.next_period_start), day(s.next_period_end))}</p>
+            <p className="muted">{placement === "lapsed" ? t.startsTodayLapsed : placement === "none" ? t.startsTodayNone : t.extendsFromEnd}</p>
 
             <form method="post" action="/api/renew/record">
               <input type="hidden" name="client_id" value={s.client_id} />
@@ -117,13 +117,10 @@ export default function RenewClient({ viewer, s, requestKey, recent }: Props) {
                 </div>
               )}
               <p className="muted">{t.renewNote}</p>
-              <button type="submit">{t.collectButton(formatMoney(s.amount))}</button>
+              <button type="submit" className="block big">{t.collectButton(formatMoney(s.amount))}</button>
             </form>
-          </>
+          </Card>
         )}
-        <div className="actions">
-          <a className="button secondary" href="/renew">{t.findAnother}</a>
-        </div>
       </div>
     </Page>
   );

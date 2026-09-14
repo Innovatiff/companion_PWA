@@ -192,3 +192,38 @@ Colour is never the only signal. An alert level is written in words ("Rojo",
 4. Never show a league table from a previous season as current.
 5. Test clients and test affiliates are marked "Prueba" in the portals and
    excluded from sales, revenue and payouts.
+
+## 9. Portal look: the dashboard frame (owner's direction, 2026-09-13)
+
+The affiliate portal and admin share one dashboard look: `PORTAL_CSS` in
+`packages/shared/src/ui/css.ts` and the components in
+`packages/shared/src/ui/Portal.tsx`. It replaces the portal parts of section 3
+(the ink header bar and paper background). Hoy keeps its own look.
+
+- **Frame (`Shell`).**
+  - A white sidebar with the brand ("Hoy" plus "Admin" or "Afiliados"),
+    icon + label links, and a count badge where a real count exists.
+  - Secondary links sit below a divider; the signed-in person and a sign-out
+    icon button sit at the bottom.
+  - On phones the sidebar becomes a top card whose links wrap onto as many rows
+    of links.
+- **Header band (`Hero`).**
+  - A blue gradient band with the page title, one line of context, and the
+    page's main action as a white button (`HeroAction`).
+  - When a page has headline numbers, `StatCard`s overlap the bottom of the
+    band: icon, label, big number, and its period in small text. The period
+    rule from section 4 still holds.
+- **Content.** White rounded `Card`s with a title and an optional "Ver todos"
+  link.
+  - Tables inside cards: uppercase column headers, row hover, and a caption
+    kept for screen readers (`.sr`) when the card title already says it.
+  - `.list` rows for short lists, `.pipeline` for counts across stages, and
+    `.grid` for a main column plus a side column.
+- **Controls.**
+  - Primary buttons: indigo gradient. Secondary buttons: white with a border.
+  - `.pill` for small in-row actions ("Ver", "Renovar").
+  - Chips are soft pills in words: good, warn, bad, test.
+- **Sign-in pages (`AuthLayout`).** A single centred card on a soft gradient.
+- **Unchanged rules:** system fonts, no framework JavaScript, inline icons (no
+  icon font), 44 px targets, every number with its period, absent means absent,
+  and the byte budgets in section 1.

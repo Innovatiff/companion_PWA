@@ -20,6 +20,7 @@ import type { GetServerSideProps } from "next";
 import { requirePerson } from "@leamington/shared/src/server/portal.ts";
 import { asPerson } from "@leamington/shared/src/server/db.ts";
 import { formatDate, formatDateTime, formatMoney } from "@leamington/shared/src/format.ts";
+import { Card, Hero, HeroAction, StatCard } from "@leamington/shared/src/ui/Portal.tsx";
 import { Page, setPageLang, viewerOf, type Viewer } from "../lib/layout.tsx";
 import { monthLabel, strings } from "../lib/strings.ts";
 import { commissionOf } from "../lib/renew.ts";
@@ -110,90 +111,109 @@ export default function Earnings({ viewer, now, totals, renewals, registrations,
   const t = strings(viewer.lang);
   const lang = viewer.lang;
   const day = (d: string) => formatDate(d, lang, true);
+  const since = (what: string) => `${what} · ${t.sinceStart}`;
+  const renewalsTitle = renewals.more ? t.renewalsLatest(renewals.rows.length) : t.renewalsCaption;
+  const registrationsTitle = registrations.more ? t.registrationsLatest(registrations.rows.length) : t.registrationsCaption;
   return (
     <Page title={t.earningsTitle} viewer={viewer} nav="earnings">
-      <h1>{t.earningsTitle}</h1>
+      <Hero
+        title={t.earningsTitle}
+        subtitle={t.allCad}
+        action={<HeroAction href="/renew" icon="refresh">{t.navRenew}</HeroAction>}
+        stats={<>
+          <StatCard icon="userPlus" label={t.statRegistrationsLabel} value={formatMoney(totals.salesEarned)} note={since(t.statRegistrations(totals.sales))} />
+          <StatCard icon="refresh" tone="good" label={t.statRenewalsLabel} value={formatMoney(totals.renewalsEarned)} note={since(t.statRenewals(totals.renewals))} />
+          <StatCard icon="dollar" label={t.earnedThisMonth} value={formatMoney(totals.earnedThisMonth)} note={monthLabel(new Date(now), lang)} />
+          <StatCard icon="wallet" tone="warn" label={t.owed} value={formatMoney(totals.owed)} note={t.asOfToday} />
+        </>}
+      />
+      {Number(totals.perRenewal) > 0 && <p className="note">{t.renewAnywhere(formatMoney(totals.perRenewal))}</p>}
 
-      <div className="stats">
-        <div className="stat"><b>{formatMoney(totals.salesEarned)}</b>{t.statRegistrations(totals.sales)}<br /><small>{t.sinceStart}</small></div>
-        <div className="stat">
-          <b>{formatMoney(totals.renewalsEarned)}</b>{t.statRenewals(totals.renewals)}<br />
-          <small>{t.statRenewalsSplit(totals.renewalsOwnClients, totals.renewalsOtherClients, formatMoney(totals.renewalsOtherClientsEarned))}</small><br />
-          <small>{t.sinceStart}</small>
+      <div className="grid">
+        <div>
+          <Card title={renewalsTitle}>
+            {renewals.rows.length === 0 ? (
+              <p>{t.noRenewals}</p>
+            ) : (
+              <div className="wrap">
+                <table id="renewals">
+                  <caption className="sr">{renewalsTitle}</caption>
+                  <thead>
+                    <tr><th>{t.colClient}</th><th>{t.colDate}</th><th>{t.colPeriod}</th><th className="num">{t.colAmount}</th><th>{t.colRegisteredBy}</th></tr>
+                  </thead>
+                  <tbody>
+                    {renewals.rows.map((r) => (
+                      <tr key={r.key}>
+                        <td>{r.clientName}</td>
+                        <td>{formatDateTime(r.paidAt, lang)}</td>
+                        <td>{t.periodRange(day(r.periodStart), day(r.periodEnd))}</td>
+                        <td className="num">{formatMoney(r.commission)}</td>
+                        <td>{r.registeredByYou ? t.youShort : r.registeredBy}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+
+          <Card title={registrationsTitle}>
+            {registrations.rows.length === 0 ? (
+              <p>{t.noRegistrations}</p>
+            ) : (
+              <div className="wrap">
+                <table id="registrations">
+                  <caption className="sr">{registrationsTitle}</caption>
+                  <thead><tr><th>{t.colClient}</th><th>{t.colDate}</th><th className="num">{t.colAmount}</th></tr></thead>
+                  <tbody>
+                    {registrations.rows.map((p) => (
+                      <tr key={p.id}>
+                        <td><a href={`/clients/${p.clientId}/code`}>{p.clientName}</a></td>
+                        <td>{formatDateTime(p.paidAt, lang)}</td>
+                        <td className="num">{formatMoney(p.amount)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
         </div>
-        <div className="stat"><b>{formatMoney(totals.earned)}</b>{t.earned}<br /><small>{t.sinceStart}</small></div>
-        <div className="stat"><b>{formatMoney(totals.earnedThisMonth)}</b>{t.earnedThisMonth}<br /><small>{monthLabel(new Date(now), lang)}</small></div>
-        <div className="stat"><b>{formatMoney(totals.paidOut)}</b>{t.paidOut}<br /><small>{t.sinceStart}</small></div>
-        <div className="stat"><b>{formatMoney(totals.owed)}</b>{t.owed}<br /><small>{t.asOfToday}</small></div>
+
+        <div>
+          <Card title={t.totalsTitle}>
+            <ul className="list">
+              <li><div><div className="t">{t.earned}</div><div className="meta">{t.sinceStart}</div></div><b className="big">{formatMoney(totals.earned)}</b></li>
+              <li><div><div className="t">{t.paidOut}</div><div className="meta">{t.sinceStart}</div></div><b className="big">{formatMoney(totals.paidOut)}</b></li>
+              <li><div><div className="t">{t.statRenewalsLabel}</div><div className="meta">{t.statRenewalsSplit(totals.renewalsOwnClients, totals.renewalsOtherClients, formatMoney(totals.renewalsOtherClientsEarned))}</div></div></li>
+            </ul>
+            {totals.ownClientsRenewedElsewhere > 0 && <p>{t.renewedElsewhere(totals.ownClientsRenewedElsewhere)}</p>}
+          </Card>
+
+          <Card title={t.payoutsCaption}>
+            {payouts.length === 0 ? (
+              <p>{t.noPayouts}</p>
+            ) : (
+              <ul className="list">
+                {payouts.map((p) => (
+                  <li key={p.id}>
+                    <div>
+                      <div className="t">{formatDateTime(p.paidAt, lang)}</div>
+                      {(p.method || p.note) && (
+                        <div className="meta">
+                          {p.method && <span>{t.colMethod}: {p.method}</span>}
+                          {p.note && <span>{t.colNote}: {p.note}</span>}
+                        </div>
+                      )}
+                    </div>
+                    <b className="big">{formatMoney(p.amount)}</b>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+        </div>
       </div>
-      {Number(totals.perRenewal) > 0 && <p className="note big">{t.renewAnywhere(formatMoney(totals.perRenewal))}</p>}
-      {totals.ownClientsRenewedElsewhere > 0 && <p>{t.renewedElsewhere(totals.ownClientsRenewedElsewhere)}</p>}
-      <p className="muted">{t.allCad}</p>
-
-      {renewals.rows.length === 0 ? (
-        <><h2>{t.renewalsCaption}</h2><p>{t.noRenewals}</p></>
-      ) : (
-        <div className="wrap">
-          <table id="renewals">
-            <caption>{renewals.more ? t.renewalsLatest(renewals.rows.length) : t.renewalsCaption}</caption>
-            <thead>
-              <tr><th>{t.colClient}</th><th>{t.colDate}</th><th>{t.colPeriod}</th><th className="num">{t.colAmount}</th><th>{t.colRegisteredBy}</th></tr>
-            </thead>
-            <tbody>
-              {renewals.rows.map((r) => (
-                <tr key={r.key}>
-                  <td>{r.clientName}</td>
-                  <td>{formatDateTime(r.paidAt, lang)}</td>
-                  <td>{t.periodRange(day(r.periodStart), day(r.periodEnd))}</td>
-                  <td className="num">{formatMoney(r.commission)}</td>
-                  <td>{r.registeredByYou ? t.youShort : r.registeredBy}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {registrations.rows.length === 0 ? (
-        <><h2>{t.registrationsCaption}</h2><p>{t.noRegistrations}</p></>
-      ) : (
-        <div className="wrap">
-          <table id="registrations">
-            <caption>{registrations.more ? t.registrationsLatest(registrations.rows.length) : t.registrationsCaption}</caption>
-            <thead><tr><th>{t.colClient}</th><th>{t.colDate}</th><th className="num">{t.colAmount}</th></tr></thead>
-            <tbody>
-              {registrations.rows.map((p) => (
-                <tr key={p.id}>
-                  <td><a href={`/clients/${p.clientId}/code`}>{p.clientName}</a></td>
-                  <td>{formatDateTime(p.paidAt, lang)}</td>
-                  <td className="num">{formatMoney(p.amount)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {payouts.length === 0 ? (
-        <><h2>{t.payoutsCaption}</h2><p>{t.noPayouts}</p></>
-      ) : (
-        <div className="wrap">
-          <table>
-            <caption>{t.payoutsCaption}</caption>
-            <thead><tr><th>{t.colDate}</th><th className="num">{t.colCharged}</th><th>{t.colMethod}</th><th>{t.colNote}</th></tr></thead>
-            <tbody>
-              {payouts.map((p) => (
-                <tr key={p.id}>
-                  <td>{formatDateTime(p.paidAt, lang)}</td>
-                  <td className="num">{formatMoney(p.amount)}</td>
-                  <td>{p.method ?? ""}</td>
-                  <td>{p.note ?? ""}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
     </Page>
   );
 }

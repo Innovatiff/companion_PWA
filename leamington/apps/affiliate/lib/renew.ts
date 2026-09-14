@@ -73,6 +73,12 @@ export function registeredByLabel(a: Registrant, t: Strings): string {
   return a.is_you ? t.registeredByYou : a.is_house ? t.registeredByHouse : t.registeredBy(a.name);
 }
 
+/** The registrant alone, for a "Registrado por" row: "ti", "Hoy (registro directo)" or the business name. */
+export function registrantName(a: Registrant, t: Strings): string {
+  const label = registeredByLabel(a, t);
+  return a.is_you || a.is_house ? label.slice(label.indexOf(": ") + 2) : a.name;
+}
+
 /** "Tu comisión: $8.00", or "Sin comisión" when this business earns nothing on it. */
 export function commissionLabel(commission: number | string | null | undefined, t: Strings): string {
   const n = Number(commission ?? 0);
