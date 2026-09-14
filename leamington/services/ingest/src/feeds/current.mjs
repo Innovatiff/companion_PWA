@@ -125,15 +125,36 @@ const PROVIDERS = [
 ];
 
 /**
- * OpenWeather's free plan allows 1,000 calls a day, shared with the forecast
- * feed (4 runs a day per place). Up to 17 places it is called on every run,
- * 17 x (48 + 4) = 884 calls, so its reading is as recent as the others' and
- * counts toward the median (0043 only combines readings within 20 minutes).
- * Up to 30 places it is called hourly, on the run that starts in minutes 0-14,
- * 30 x (24 + 4) = 840; above that, not at all. Exported for tests.
+ * OpenWeather's free plan allows 1,000 calls a day. We keep to 950, so a manual
+ * run-feeds-once or a restart cannot tip it over. Three feeds share it:
+ *
+ *   current   48 runs a day (every 30 minutes) per place up to 17 places, so its
+ *             reading is as recent as the others' and counts toward the median
+ *             (0043 only combines readings within 20 minutes); 24 runs (hourly,
+ *             the run in minutes 0-14) up to 30 places; none above.
+ *   forecast  4 runs a day (every 6 hours) per place.
+ *   hourly    12 runs a day (every 2 hours) per local place (hourly.mjs), up to
+ *             HOURLY_OPENWEATHER_MAX_PLACES local places.
+ *
+ * The local places (Leamington, Windsor) are among the current and forecast places.
+ *
+ *   17 places, 2 local:  17 x (48 + 4) + 2 x 12 = 884 + 24 = 908
+ *   30 places, 2 local:  30 x (24 + 4) + 2 x 12 = 840 + 24 = 864
+ *   17 places, 5 local:  884 + 5 x 12 = 944 (the most local places hourly calls it for)
+ *
+ * The air feed does not call OpenWeather. Exported for tests.
  */
+export const OPENWEATHER_DAILY_BUDGET = 950;
 export const OPENWEATHER_EVERY_RUN_MAX = 17;
 export const OPENWEATHER_MAX_TARGETS = 30;
+export const HOURLY_OPENWEATHER_MAX_PLACES = 5;
+
+/** OpenWeather calls a day from current, forecast and hourly at these counts. */
+export function openWeatherCallsPerDay(targetCount, localCount) {
+  const currentRuns = targetCount <= OPENWEATHER_EVERY_RUN_MAX ? 48 : targetCount <= OPENWEATHER_MAX_TARGETS ? 24 : 0;
+  const hourly = localCount <= HOURLY_OPENWEATHER_MAX_PLACES ? localCount * 12 : 0;
+  return targetCount * currentRuns + targetCount * 4 + hourly;
+}
 
 export function openWeatherThisRun(now, targetCount) {
   if (targetCount <= OPENWEATHER_EVERY_RUN_MAX) return { call: true, warning: null };

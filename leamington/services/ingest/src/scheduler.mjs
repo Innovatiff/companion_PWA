@@ -16,6 +16,8 @@ import { ingestAlerts } from "./feeds/alerts.mjs";
 import { ingestFx } from "./feeds/fx.mjs";
 import { ingestForecast } from "./feeds/forecast.mjs";
 import { ingestCurrent } from "./feeds/current.mjs";
+import { ingestHourly } from "./feeds/hourly.mjs";
+import { ingestAir } from "./feeds/air.mjs";
 import { ingestLottery } from "./feeds/lottery.mjs";
 import { ingestStatic } from "./feeds/static.mjs";
 import { ingestFixtures } from "./feeds/fixtures.mjs";
@@ -31,7 +33,11 @@ export const FIXED_JOBS = [
   { feed: "forecast",  cron: "0 */6 * * *",  tz: "UTC",              fn: ingestForecast, label: "Forecast (3 providers)" },
   // OpenWeather only on the run in minutes 0-14 (its free quota; current.mjs).
   { feed: "current",   cron: "*/30 * * * *", tz: "UTC",              fn: ingestCurrent,  label: "Current conditions (3 providers)" },
-  { feed: "static",    cron: "30 5 * * 1",   tz: "America/Toronto",  fn: ingestStatic,   label: "Static records (weekly)" },
+  // Round 4, local places only. Hourly: 12 runs x 2 places x 3 providers (24 OpenWeather calls; current.mjs).
+  { feed: "hourly",    cron: "10 */2 * * *", tz: "UTC",              fn: ingestHourly,   label: "Hourly outlook, local places (3 providers)" },
+  // Air hourly, so observations stay within app.air_quality's 2 hours: 24 runs x 2 places x 2 providers.
+  { feed: "air",       cron: "20 * * * *",   tz: "UTC",              fn: ingestAir,      label: "Air quality, local places (2 providers)" },
+  { feed: "static",    cron: "30 5 * * 1",  tz: "America/Toronto",  fn: ingestStatic,   label: "Static records (weekly)" },
   // Football by date query: 24 + 1 + 1 = 26 API-Football requests/day.
   { feed: "fixtures",  cron: "5 * * * *",    tz: "UTC", fn: (ctx) => ingestFixtures(ctx, { offsetDays: 0 }),  label: "Football fixtures today (hourly)" },
   { feed: "fixtures",  cron: "35 4 * * *",   tz: "UTC", fn: (ctx) => ingestFixtures(ctx, { offsetDays: -1 }), label: "Football results yesterday (late kickoffs)" },
