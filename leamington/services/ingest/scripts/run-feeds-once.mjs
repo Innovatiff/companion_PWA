@@ -20,9 +20,11 @@ import { ingestFixtures } from "../src/feeds/fixtures.mjs";
 import { ingestHourly } from "../src/feeds/hourly.mjs";
 import { ingestAir } from "../src/feeds/air.mjs";
 import { ingestNews } from "../src/feeds/news.mjs";
+import { ingestVideos } from "../src/feeds/videos.mjs";
 
 const FEEDS = {
   news: (ctx) => ingestNews(ctx),
+  videos: (ctx) => ingestVideos(ctx),
   static: ingestStatic,
   fx: ingestFx,
   forecast: ingestForecast,

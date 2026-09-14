@@ -130,9 +130,9 @@ export function resizeArea(src, box, dw, dh) {
   return out;
 }
 
-/** JPEG at the highest quality from 80 down to 30 that fits `maxBytes`, or null. */
-export function encodeWithin(data, width, height, maxBytes) {
-  for (const q of [80, 72, 64, 56, 48, 40, 30]) {
+/** JPEG at the highest quality (by default from 80 down to 30) that fits `maxBytes`, or null. */
+export function encodeWithin(data, width, height, maxBytes, qualities = [80, 72, 64, 56, 48, 40, 30]) {
+  for (const q of qualities) {
     const bytes = jpeg.encode({ data, width, height }, q).data;
     if (bytes.length <= maxBytes) return { bytes: Buffer.from(bytes), quality: q };
   }

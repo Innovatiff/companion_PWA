@@ -123,7 +123,7 @@ export function interleave(lists) {
   return out;
 }
 
-async function mapLimit(list, limit, fn) {
+export async function mapLimit(list, limit, fn) {
   const out = new Array(list.length);
   let next = 0;
   await Promise.all(Array.from({ length: Math.min(limit, list.length) }, async () => {

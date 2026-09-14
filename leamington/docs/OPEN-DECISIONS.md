@@ -687,3 +687,109 @@ parish, on a page of its own, with pictures.
     show text only.
   - Stop the feature: remove the `news` job from `scheduler.mjs` and set
     `feed_expectations.active = false`. The stored stories age out in 30 days.
+
+### 3.25 Football videos: YouTube links and a small thumbnail, never a player (2026-09-14)
+
+The owner asked: "Add videos links and their thumbnail on the sport page.
+Highlights of their team and all that."
+
+- **Stance (decided):** videos come only from the **public upload feeds of
+  verified official channels** (`https://www.youtube.com/feeds/videos.xml?channel_id=UC…`:
+  Atom, no API key, the latest 15 uploads).
+  - Hoy stores the title, the channel, the publish time, the video id, the view
+    count and a small cached copy of YouTube's thumbnail. It links to
+    `https://www.youtube.com/watch?v=…`, credited "YouTube · {channel}".
+  - **Hoy never embeds a player:** a player would make the phone call YouTube.
+    The page must say that watching opens YouTube and uses a lot of data.
+  - Thumbnails are fetched by ingest from `i.ytimg.com` only (`mqdefault.jpg`,
+    else the feed's own `hqdefault.jpg` with its letterbox bars cropped). Each
+    is re-encoded to one JPEG of at most 14 KB, 320 x 180 (288 x 162 when a
+    busy picture does not fit). At most 60 per run; a video whose thumbnail
+    fails is stored without one. Never hotlinked.
+  - Shorts (links `/shorts/…`, about half of some feeds) are skipped. Videos
+    are kept 60 days.
+- **Tables (0049):** `video_channels` (seed `seeds/video_channels.sql`),
+  `videos`, and `video_teams`, precomputed at ingest with the name that matched
+  and the rule. Feed `videos` runs hourly at :22 (`feed_expectations`: 1 hour,
+  1 hour grace).
+  - A channel that does not answer makes the run partial. No channel answering
+    is an error, never "no videos".
+- **Channels (all verified live 2026-09-14; each id taken from the channel's
+  own page, where the canonical link and externalId agreed):**
+  - **Active:** 37 (21 Mexico, 6 Honduras, 3 Guatemala, 7 Jamaica).
+  - **Mexico:** the league's LIGA BBVA MX (every match summary, "SANTOS 2-1
+    JUÁREZ J8 AP26"); TUDN México, ESPN MX, TV Azteca Deportes; 17 official
+    club channels.
+  - **Honduras:** Liga Hondubet (the league's own; full matches); Deportes TVC
+    (Televicentro: "Marathón 1 - 0 Olimpia | Jornada 7"); Motagua, Olimpia,
+    Real España, Victoria.
+  - **Guatemala:** Guatefutbol TV and FOX Deportes Guatemala (goals and
+    summaries of every round); Comunicaciones.
+    - Guatefutbol is a sports outlet, not a rights holder. It is the only
+      Guatemalan channel found posting Liga Nacional highlights. **Owner
+      review:** keep it, or switch it off
+      (`update video_channels set active = false where key = 'gt-guatefutbol-tv'`).
+  - **Jamaica:** Jamaica Premier League TV (full matches live, no highlights);
+    Montego Bay United, Mount Pleasant, Waterhouse, Humble Lion, Portmore
+    United, Harbour View.
+  - **Seeded inactive (answer, not worth reading):** FOX Sports MX and ESPN
+    Deportes (0 highlights in 11, talk shows), Todo Deportes TV and FOX Deportes
+    Honduras (0 highlights), Mazatlán FC (farewell video 2026-04-30, replaced by
+    Atlante), Arnett Gardens (quiet since 2025-12), Molynes United (since 2024).
+  - **Not seeded:**
+    - SportsMax TV: no uploads since 2025-07.
+    - JFF: national teams only, none in 30 days.
+    - Tigo Sports Guatemala: quiet since 2023.
+    - Tigo Sports Honduras: no channel found.
+    - Lobos UPNFM: 2020. Antigua GFC: 2025.
+    - Municipal: fan and Shorts-only channels.
+    - "C.D. Platense | Canal Gallo" and "Deportes Canal 4": El Salvador.
+    - "TVC Deportes" (@tvc.deportes): Mexico's, talk only.
+    - Television Jamaica, HCH, Azteca Guate: general channels.
+    - Search found no channel for Atlante, Marathón, Xelajú, Cavalier or
+      Arnett Gardens (active).
+- **is_highlight (`videos/highlight.mjs`), from the title:**
+  - **Yes:** a highlight word (resumen, highlights, goles, gol, golazo, lo
+    mejor, all goals, extended highlights…), or a result line "X 2-1 Y" (how
+    the league channels title summaries).
+  - **Never:** press conferences, podcasts, interviews, "exclusiva", analysis,
+    named talk shows (Futbol Picante, Línea de 4, Cuadro Titular, La Última
+    Palabra…), boxing and baseball.
+  - **Not unless a highlight word is there too:** "EN VIVO" / "LIVE", full
+    matches, previews, reactions.
+- **Team matching (`videos/teams.mjs`, names in `videos/team-aliases.json`):**
+  - Only teams of the channel's country. A club's own channel counts for its
+    club.
+  - An alias ("Motagua", "Cruz Azul", "Chivas", "Cremas") counts anywhere.
+  - A guarded name counts only from a channel of that country and league, and
+    only with another club of the league across "vs" / "-" / a score, or both
+    clubs of a stored fixture within 4 days. Guarded names: "América",
+    "Municipal", "Olimpia", "Real España", "Marathón", "Platense", "Victoria",
+    "Vida", "Harbour View", "Portmore", "Mount Pleasant", "Arnett Gardens",
+    "Cavalier", every single-word name.
+  - Phrases that are not the club are removed first ("Copa América", "Real
+    Madrid", "Olimpia Paraguay", "América de Cali"…).
+  - **Women's, youth, reserve and Expansión sides never count** ("Femenil",
+    "FEM", "Sub-19", "Sub-21", "Cruz Azul Hidalgo"): the teams table is the
+    first team. The dry run found them on club channels every week.
+- **What the Fútbol page gets (`app.football_videos`, and
+  `football_page.videos` with 6 of each):**
+  - **team:** their team's videos, 30 days, highlights first. Other videos
+    only from their club's own channel or the league's, so a broadcaster's talk
+    show or another club's press conference is never "their team's video".
+  - **league:** 7 days of highlights from the league's channel, or from a
+    broadcaster when two clubs of the league are named. A video already in
+    team is not repeated.
+  - Channels are mixed round-robin, so one channel cannot fill the list.
+  - A member without a team gets their country's league.
+  - `stale` is true after 3 hours without an ok or partial run.
+- **Dry run 2026-09-14 (`scripts/fetch-videos.mjs --dry-run`):** 37 channels,
+  329 videos, 57 highlights, 329 thumbnails, 0 failures. Thumbnails: median
+  13,104 B, maximum 13,982 B.
+- **Reverse:**
+  - Stop reading a channel: `update video_channels set active = false where key = …`,
+    and seed the change. Its stored videos are no longer shown.
+  - Wrong match: add the phrase to `not` or `squads`, or move the name to
+    `guarded`, in `team-aliases.json`.
+  - Stop the feature: remove the `videos` job from `scheduler.mjs` and set
+    `feed_expectations.active = false`. Stored videos age out in 60 days.

@@ -19,7 +19,8 @@ insert into feed_expectations (feed, label, expected_interval, grace, active) va
   -- Pictures: not safety-critical, but a quiet job still shows.
   ('photos',      'Hometown photos',              interval '1 day',      interval '1 day',      true),
   ('crests',      'Team crests',                  interval '1 day',      interval '1 day',      true),
-  ('news',        'News (national and regional outlets)', interval '30 minutes', interval '30 minutes', true)
+  ('news',        'News (national and regional outlets)', interval '30 minutes', interval '30 minutes', true),
+  ('videos',      'Football videos (YouTube channel feeds)', interval '1 hour', interval '1 hour', true)
 on conflict (feed) do update
   set label = excluded.label, expected_interval = excluded.expected_interval,
       grace = excluded.grace, active = excluded.active;

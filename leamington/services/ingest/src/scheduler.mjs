@@ -25,6 +25,7 @@ import { sendDueNotifications, planEngagement } from "./feeds/notify.mjs";
 import { ingestTownPhotos } from "./feeds/town-photos.mjs";
 import { ingestCrests } from "./feeds/crests.mjs";
 import { ingestNews } from "./feeds/news.mjs";
+import { ingestVideos } from "./feeds/videos.mjs";
 
 const log = logger("scheduler");
 
@@ -48,6 +49,8 @@ export const FIXED_JOBS = [
   { feed: "notify:plan", cron: "2,17,32,47 * * * *", tz: "UTC", fn: (ctx) => planEngagement(ctx),       label: "Daily engagement planner" },
   // Headlines, the outlet's own summary and a picture (at most 40 new per run), linking to the publisher.
   { feed: "news", cron: "7,37 * * * *", tz: "UTC", fn: (ctx) => ingestNews(ctx), label: "News (national and regional outlets)" },
+  // Football videos: official YouTube channels' upload feeds, a thumbnail each (at most 60 new per run), linking to YouTube.
+  { feed: "videos", cron: "22 * * * *", tz: "UTC", fn: (ctx) => ingestVideos(ctx), label: "Football videos (YouTube channel feeds)" },
   // Pictures for new clients' towns and newly seen teams, from our own copies.
   { feed: "photos", cron: "40 5 * * *", tz: "America/Toronto", fn: (ctx) => ingestTownPhotos(ctx), label: "Hometown photos (daily, missing only)" },
   { feed: "crests", cron: "45 5 * * *", tz: "America/Toronto", fn: (ctx) => ingestCrests(ctx),     label: "Team crests (daily, missing only)" },
