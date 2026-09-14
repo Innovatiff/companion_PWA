@@ -36,15 +36,17 @@ beforeEach(async () => {
 
 /** Three days from each provider, in each provider's own response shape. */
 function providersAnswer() {
-  const days = ["2026-09-14", "2026-09-15", "2026-09-16"];
+  // Today and the next two days (UTC), because OpenWeather's steps are kept only from today on.
+  const today = Date.parse(`${new Date().toISOString().slice(0, 10)}T00:00:00Z`);
+  const days = [0, 1, 2].map((i) => new Date(today + i * 86_400_000).toISOString().slice(0, 10));
   const original = globalThis.fetch;
   globalThis.fetch = async (url) => {
     const host = new URL(url).hostname;
     const json =
       host === "api.open-meteo.com" ? { daily: { time: days, temperature_2m_max: [31, 30, 29],
         temperature_2m_min: [24, 23, 23], precipitation_probability_max: [40, 60, 20], precipitation_sum: [1, 5, 0] } }
-      : host === "api.openweathermap.org" ? { list: days.map((d, i) => ({
-        dt: Date.parse(`${d}T12:00:00Z`) / 1000, temp: { max: 30 + i, min: 23 }, pop: 0.5, rain: 2 })) }
+      : host === "api.openweathermap.org" ? { city: { timezone: 0 }, list: Array.from({ length: 24 }, (_, i) => ({
+        dt: today / 1000 + i * 10_800, main: { temp_max: 30, temp_min: 23 }, pop: 0.5, rain: { "3h": 0.25 } })) }
       : host === "api.weatherapi.com" ? { forecast: { forecastday: days.map((d) => ({
         date: d, day: { maxtemp_c: 30, mintemp_c: 23, daily_chance_of_rain: 50, totalprecip_mm: 2 } })) } }
       : null;

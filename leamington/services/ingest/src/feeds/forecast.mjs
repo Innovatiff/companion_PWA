@@ -29,13 +29,11 @@ const PROVIDERS = [
   {
     name: "openweather",
     needsKey: "OPENWEATHER_KEY",
-    url: (m, key) => `https://api.openweathermap.org/data/2.5/forecast/daily?lat=${m.lat}&lon=${m.lng}` +
-      `&cnt=${DAYS}&units=metric&appid=${key}`,
-    parse: (j) => (j.list ?? []).map((d) => ({
-      date: new Date(d.dt * 1000).toISOString().slice(0, 10),
-      tempMax: d.temp?.max, tempMin: d.temp?.min,
-      precipProb: d.pop != null ? d.pop * 100 : null, precipMm: d.rain ?? null,
-    })),
+    // The free plan's 5-day, 3-hour forecast. The daily endpoint needs a paid
+    // plan and answers HTTP 401, which read as a rejected key.
+    url: (m, key) => `https://api.openweathermap.org/data/2.5/forecast?lat=${m.lat}&lon=${m.lng}` +
+      `&units=metric&appid=${key}`,
+    parse: (j) => openWeatherDays(j),
   },
   {
     name: "weatherapi",
@@ -48,6 +46,42 @@ const PROVIDERS = [
     })),
   },
 ];
+
+/**
+ * OpenWeather's 3-hour steps as the place's own calendar days, today and the
+ * next DAYS-1. A day is reported only when its steps reach from the early
+ * morning low (a step at or before 06:00) to the afternoon high (one at or
+ * after 15:00): later in the day the remaining steps would pass the evening
+ * off as the day's high, so the row from an earlier run stands instead.
+ * Exported for tests.
+ */
+export function openWeatherDays(j, now = Date.now()) {
+  const offsetMs = (Number(j?.city?.timezone) || 0) * 1000;
+  const localIso = (ms) => new Date(ms + offsetMs).toISOString();
+  const today = localIso(now).slice(0, 10);
+  const last = new Date(Date.parse(`${today}T00:00:00Z`) + (DAYS - 1) * 86_400_000).toISOString().slice(0, 10);
+  const days = new Map();
+  for (const step of j?.list ?? []) {
+    const hi = step.main?.temp_max ?? step.main?.temp, lo = step.main?.temp_min ?? step.main?.temp;
+    if (typeof step.dt !== "number" || typeof hi !== "number" || typeof lo !== "number") continue;
+    const iso = localIso(step.dt * 1000);
+    const date = iso.slice(0, 10), hour = Number(iso.slice(11, 13));
+    if (date < today || date > last) continue;
+    let d = days.get(date);
+    if (!d) days.set(date, d = { date, first: hour, lastHour: hour, max: hi, min: lo, pop: 0, mm: 0 });
+    d.first = Math.min(d.first, hour);
+    d.lastHour = Math.max(d.lastHour, hour);
+    d.max = Math.max(d.max, hi);
+    d.min = Math.min(d.min, lo);
+    d.pop = Math.max(d.pop, step.pop ?? 0);
+    d.mm += step.rain?.["3h"] ?? 0;
+  }
+  return [...days.values()]
+    .filter((d) => d.first <= 6 && d.lastHour >= 15)
+    .sort((a, b) => (a.date < b.date ? -1 : 1))
+    .map((d) => ({ date: d.date, tempMax: d.max, tempMin: d.min,
+                   precipProb: Math.round(d.pop * 100), precipMm: Math.round(d.mm * 100) / 100 }));
+}
 
 /**
  * Only places someone actually reads: clients' homes and watched towns, plus

@@ -145,6 +145,12 @@ test('Mexico uses more than one timezone, and the right ones where it matters', 
 
 test('spot checks: known places are where they should be', () => {
   assert.ok(near(find('HN', 'Cortés', 'San Pedro Sula'), 15.50, -88.03));
+  // Points are the town, not somewhere in the municipio: these ADM2 points were
+  // 5-10 km out, in the hills, and their forecasts ran several degrees cold.
+  assert.ok(near(find('HN', 'Atlántida', 'La Ceiba'), 15.76, -86.79, 0.03));
+  assert.ok(near(find('HN', 'Cortés', 'San Pedro Sula'), 15.505, -88.025, 0.03));
+  assert.ok(near(find('GT', 'Huehuetenango', 'Huehuetenango'), 15.32, -91.47, 0.03));
+  assert.ok(near(find('MX', 'Michoacán', 'Uruapan'), 19.42, -102.06, 0.03));
   assert.ok(near(find('HN', 'Francisco Morazán', 'Distrito Central'), 14.10, -87.20, 0.3));
   assert.ok(near(find('GT', 'Quetzaltenango', 'Quetzaltenango'), 14.84, -91.52));
   assert.ok(near(find('GT', 'Guatemala', 'Guatemala'), 14.63, -90.51));

@@ -44,7 +44,7 @@ export const APP_CSS = BASE +
   ".hello small{color:rgba(255,255,255,.8)}.hello>div{flex:1;min-width:0}.hello h1{margin:0;color:#fff}.hello p{margin:.35rem 0 0;color:rgba(255,255,255,.88);font-size:.95rem}" +
   ".hello .ico{width:3.6rem;height:3.6rem;border-radius:50%;background:rgba(255,255,255,.16);color:#fff}.art{flex:none;display:block}" +
   // With a hometown photo: the photo fills the box under a dark overlay, text at the bottom
-  ".hello.photo{position:relative;overflow:hidden;min-height:13rem;align-items:flex-end;background:#1d2147;padding:1.1rem 1.2rem}" +
+  ".hello.photo{position:relative;isolation:isolate;overflow:hidden;min-height:13rem;align-items:flex-end;background:#1d2147;padding:1.1rem 1.2rem}" +
   ".hello.photo>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}" +
   ".hello.photo::before{content:\"\";position:absolute;inset:0;z-index:1;background:linear-gradient(rgba(14,16,44,.55),rgba(14,16,44,.78) 40%,rgba(14,16,44,.93))}" +
   ".hello.photo>div{position:relative;z-index:2}.hello.photo h1,.hello.photo p{text-shadow:0 1px 3px rgba(0,0,0,.5)}" +
@@ -109,7 +109,7 @@ export const APP_CSS = BASE +
   ".pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem}" +
   "main>p:first-child>a[href=\"/mas\"]{display:inline-block;padding:.35rem .85rem;border-radius:999px;background:var(--card);text-decoration:none;font-weight:600;font-size:.9rem;color:var(--ink);box-shadow:var(--shadow)}" +
   // Tab bar
-  "nav.tabs{position:fixed;left:0;right:0;bottom:0;display:flex;background:rgba(255,255,255,.97);border-top:1px solid var(--line);" +
+  "nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;background:rgba(255,255,255,.97);border-top:1px solid var(--line);" +
   "box-shadow:0 -4px 20px rgba(27,31,59,.06);padding:.3rem .4rem calc(.3rem + env(safe-area-inset-bottom))}" +
   "nav.tabs a{flex:1;display:flex;flex-direction:column;align-items:center;gap:.15rem;min-height:56px;padding:.25rem 0;color:#6b7190;text-decoration:none;font-size:.75rem;font-weight:600}" +
   "nav.tabs svg{width:52px;height:30px;padding:3px 14px;border-radius:999px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}" +

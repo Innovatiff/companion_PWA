@@ -139,7 +139,9 @@ export default function Clima({ w, country, today, now, photos }: Props) {
       <span className="bar"><i style={{ width: `${Math.min(100, Math.max(0, d.rain_prob))}%` }} /></span>
     </span>
   );
-  const lowRain = (d: Day) => [d.low != null ? `${t(lang, "mín", "low")} ${d.low}°` : null, d.rain ? t(lang, "Lluvia", "Rain") : null]
+  // The big number is the day's high, not the temperature right now: say so.
+  const lowRain = (d: Day) => [t(lang, "máxima", "high"), d.low != null ? `${t(lang, "mín", "low")} ${d.low}°` : null,
+    d.rain ? t(lang, "Lluvia", "Rain") : null]
     .filter(Boolean).join(" · ");
   // Sunrise and sunset, computed; only with coordinates.
   const sky = (lat: number | null | undefined, lng: number | null | undefined, placeTz: string, date: string, extra?: string, small = false) => {

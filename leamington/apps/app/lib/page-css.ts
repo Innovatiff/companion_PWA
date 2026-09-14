@@ -41,7 +41,7 @@ export const FUTBOL_CSS = TABLE +
 
 export const CLIMA_CSS =
   // Town headers: a photo under a dark overlay, or a sky gradient
-  ".townhead{position:relative;display:flex;align-items:flex-end;min-height:8.5rem;margin:1.3rem 0 .6rem;border-radius:18px;overflow:hidden;background:#1d2147;box-shadow:var(--shadow)}" +
+  ".townhead{position:relative;isolation:isolate;display:flex;align-items:flex-end;min-height:8.5rem;margin:1.3rem 0 .6rem;border-radius:18px;overflow:hidden;background:#1d2147;box-shadow:var(--shadow)}" +
   ".townhead img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}" +
   ".townhead::before{content:\"\";position:absolute;inset:0;z-index:1;background:linear-gradient(rgba(14,16,44,.2),rgba(14,16,44,.82))}" +
   ".townhead h2{position:relative;z-index:2;margin:.9rem 1rem;color:#fff;font-size:1.2rem;text-transform:none;letter-spacing:-.01em;text-shadow:0 1px 3px rgba(0,0,0,.5)}" +

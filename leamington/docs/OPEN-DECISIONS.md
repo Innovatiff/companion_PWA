@@ -463,11 +463,10 @@ nothing is sample data.
     jsDelivr, with its own mirror), after Frankfurter. It needs no key and no
     attribution, so the UI still never names a provider.
   - **Reverse:** remove it from `PROVIDERS` in `services/ingest/src/feeds/fx.mjs`.
-- **OpenWeather key rejected (HTTP 401) — OWNER ACTION.** The `OPENWEATHER_KEY`
-  variable on the ingest service is refused by OpenWeather. Forecasts still
-  show, because Open-Meteo and WeatherAPI agree, but with two providers
-  instead of three, and the forecast feed reads "partial".
-  - **Fix:** a valid key (new keys can take a few hours to activate).
+- **OpenWeather "401" — resolved 2026-09-14, not a key problem.** The key is
+  valid: current weather and the 5-day, 3-hour forecast both answer 200. The
+  daily endpoint the feed used needs a paid plan. The feed now uses the free
+  3-hour forecast (3.22), so forecasts have three providers again.
 
 ### 3.20 Real images in Hoy (owner's choice, 2026-09-13)
 
@@ -514,3 +513,29 @@ https://dashboard.api-football.com." The fixtures feed fails on every run.
   and when fixtures were last confirmed. It never says "no matches".
 - **Fix:** reactivate the account in the API-Football dashboard, or choose
   another provider (a paid decision). Nothing in the apps changes either way.
+
+### 3.22 Weather precision: town points at the town, three providers (2026-09-14)
+
+The owner reported that the weather did not look precise. Checking each
+provider live for every client town showed why.
+
+- **Town points were in the hills.** The municipality seeds used GeoNames' ADM2
+  point, which can fall anywhere in the municipio. La Ceiba's was 10 km from
+  the city and 1,200 m up Pico Bonito, and San Pedro Sula's was also at
+  1,200 m. Forecasts there ran about 6–7° cold, around 26° instead of 31–33°.
+  - **Chosen:** each municipio's point is now its seat (cabecera): the GeoNames
+    seat inside the municipio, else a town with the municipio's name inside it
+    or within 25 km. The ADM2 point is kept only where no town is found (154 of
+    3,109).
+  - **Result:** names and regions are unchanged. Points moved 3–4 km on median.
+  - **Follow-on (0038):** clients' copied points, which alert matching uses,
+    follow the correction. Forecasts made for the old point are deleted, so
+    a town shows no forecast until the next run rather than a wrong one.
+  - **Reverse:** regenerate the seeds from the ADM2 points (the generator's
+    `seatFor`).
+- **OpenWeather** is back as the third provider through its free 3-hour
+  forecast. A day is stored only when the steps cover its early morning and
+  afternoon, so an evening-only "today" never passes for the day's high.
+- **Clima labels the big number "máxima".** It is the day's high, not the
+  temperature right now; unlabelled, it read as wrong at night. Hoy does not
+  show a current temperature.
