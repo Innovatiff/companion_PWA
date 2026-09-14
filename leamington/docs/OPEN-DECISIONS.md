@@ -442,3 +442,29 @@ third-party aggregator.
   services; which office covers southwestern Ontario is not stated.
 - **Owner action:** a person can fill these in from a normal browser; the
   loader publishes any record that carries `verified_at` and `verified_by`.
+
+### 3.19 Launch-eve data fill (2026-09-13)
+
+The owner asked for Hoy to be full before sales start. Everything added is real;
+nothing is sample data.
+
+- **Reference data loaded into production:** holidays, school calendars,
+  consulates, emergency numbers and transit. Exchange rates, forecasts and
+  lottery results were run once, with the ingest service's own settings, via
+  `railway run`. Ingest was not redeployed. The runs are recorded in
+  `source_runs` like scheduled runs, so the soak report will count them.
+- **Team crests** are fetched server-side into `team_crests` and served from
+  Hoy's own domain.
+- **Sales demo accounts,** flagged as test: `VENTAMX2`, `VENTAGT2`, `VENTAHN2`,
+  `VENTAJM2` (`packages/db/fixtures/demo_clients.sql`).
+- **FX source for HNL, GTQ and JMD.** The ECB source does not quote them, and
+  exchangerate.host now needs a paid key.
+  - **Chosen:** the CC0 daily currency dataset (fawazahmed0 currency-api, via
+    jsDelivr, with its own mirror), after Frankfurter. It needs no key and no
+    attribution, so the UI still never names a provider.
+  - **Reverse:** remove it from `PROVIDERS` in `services/ingest/src/feeds/fx.mjs`.
+- **OpenWeather key rejected (HTTP 401) — OWNER ACTION.** The `OPENWEATHER_KEY`
+  variable on the ingest service is refused by OpenWeather. Forecasts still
+  show, because Open-Meteo and WeatherAPI agree, but with two providers
+  instead of three, and the forecast feed reads "partial".
+  - **Fix:** a valid key (new keys can take a few hours to activate).

@@ -16,13 +16,27 @@ const PROVIDERS = [
     url: `https://api.frankfurter.app/latest?from=CAD&to=${CURRENCIES.join(",")}`,
     parse: (j) => ({ date: j.date, rates: j.rates ?? {} }),
   },
+  // Frankfurter is ECB-derived and does not quote HNL, GTQ or JMD. The fallback
+  // is the open-licensed (CC0) daily currency dataset, with its mirror. No key,
+  // no attribution, so the UI still never names a provider. (exchangerate.host
+  // now requires a paid key and was removed.)
   {
-    // Fallback: Frankfurter is ECB-derived and may not quote HNL/GTQ/JMD.
-    name: "exchangerate.host",
-    url: `https://api.exchangerate.host/latest?base=CAD&symbols=${CURRENCIES.join(",")}`,
-    parse: (j) => ({ date: j.date, rates: j.rates ?? {} }),
+    name: "currency-api",
+    url: "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/cad.json",
+    parse: parseCurrencyApi,
+  },
+  {
+    name: "currency-api-mirror",
+    url: "https://latest.currency-api.pages.dev/v1/currencies/cad.json",
+    parse: parseCurrencyApi,
   },
 ];
+
+export function parseCurrencyApi(j) {
+  const rates = {};
+  for (const [code, value] of Object.entries(j?.cad ?? {})) rates[code.toUpperCase()] = value;
+  return { date: j?.date, rates };
+}
 
 export async function ingestFx(ctx) {
   const { log } = ctx;
