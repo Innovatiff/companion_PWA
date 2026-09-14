@@ -22,6 +22,9 @@ cd services/ingest && node --test test/static-data.test.mjs
 | `gt-holidays.json` | 17 | Código de Trabajo art. 127 (PDF on mcd.gob.gt). Decreto 19-2018 (congreso.gob.gt). Diario de Centro América, 23-06-2026, on the 2020 Constitutional Court ruling. |
 | `hn-holidays.json` | 16 | Código del Trabajo art. 339 (trabajo.gob.hn). Decreto 78-2015 and Decreto 126-2020 in La Gaceta (tsc.gob.hn). |
 | `jm-holidays.json` | 13 | Holidays (Public General) Act and Schedule (mlss.gov.jm). Good Friday and Christmas Day: Consulate General of Jamaica, Toronto (jcgtoronto.ca). |
+| `on-provincial_holidays.json` | 18 | Ontario's nine public holidays, 2026 and 2027, from Your guide to the Employment Standards Act, "Public holidays" (ontario.ca). Checked 2026-09-14. Loaded into `provincial_holidays` (0042). |
+
+Ontario: the guide lists nine public holidays. It says an employer is not required to give Easter Monday, the first Monday in August (Civic Holiday) or Remembrance Day, so those are not included. The dates follow each holiday's rule: Family Day is the third Monday in February, Victoria Day the Monday before 25 May, Labour Day the first Monday in September and Thanksgiving the second Monday in October. Good Friday is two days before Easter (5 April 2026, 28 March 2027). A holiday on a weekend keeps its date; the ESA gives a substitute day or holiday pay instead.
 
 How the movable dates were resolved (Easter 2027 = 28 March):
 

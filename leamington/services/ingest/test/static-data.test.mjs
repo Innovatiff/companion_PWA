@@ -31,6 +31,7 @@ function requireVerification(record, file, index) {
 const HOME = ["MX", "GT", "HN", "JM"]; // country_code enum in 0002_core.sql
 const KINDS = {
   holidays: { countries: HOME, required: ["country", "holiday_date", "name"], dates: ["holiday_date"], key: (r) => [r.country, r.holiday_date, r.name] },
+  provincial_holidays: { provinces: ["ON"], required: ["province", "holiday_date", "name", "name_es"], dates: ["holiday_date"], key: (r) => [r.province, r.holiday_date, r.name] },
   school_calendar: { countries: HOME, required: ["country", "school_year", "event_name", "start_date"], dates: ["start_date", "end_date"], key: (r) => [r.country, r.school_year, r.event_name, r.start_date] },
   consulates: { countries: HOME, required: ["country", "city"], dates: [], key: (r) => [r.country, r.city] },
   emergency_contacts: { countries: ["CA", ...HOME], required: ["country", "label", "number"], dates: [], key: (r) => [r.country, r.region ?? "", r.label, r.number] },
@@ -79,6 +80,11 @@ for (const file of files) {
       if (spec.countries) {
         assert.ok(spec.countries.includes(r.country), `${where}: invalid country ${r.country}`);
         assert.equal(r.country, prefix, `${where}: country ${r.country} does not match file prefix ${prefix}`);
+      }
+      if (spec.provinces) {
+        assert.ok(spec.provinces.includes(r.province), `${where}: invalid province ${r.province}`);
+        assert.equal(r.province, prefix, `${where}: province ${r.province} does not match file prefix ${prefix}`);
+        if ("is_public_holiday" in r) assert.equal(typeof r.is_public_holiday, "boolean", `${where}: is_public_holiday must be a boolean`);
       }
       for (const f of spec.dates) {
         if (r[f] == null) continue;

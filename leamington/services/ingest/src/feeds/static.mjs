@@ -32,6 +32,15 @@ const WRITERS = {
        set verified_at = excluded.verified_at, source_url = excluded.source_url`,
     [r.country, r.holiday_date, r.name, r.verified_at, r.source_url ?? null]),
 
+  // Ontario public holidays (ESA), beside the home-country holidays (0042).
+  provincial_holidays: async (r) => query(
+    `insert into provincial_holidays (province, holiday_date, name, name_es, is_public_holiday, verified_at, source_url)
+     values ($1,$2,$3,$4,$5,$6,$7)
+     on conflict (province, holiday_date, name) do update
+       set name_es = excluded.name_es, is_public_holiday = excluded.is_public_holiday,
+           verified_at = excluded.verified_at, source_url = excluded.source_url`,
+    [r.province, r.holiday_date, r.name, r.name_es, r.is_public_holiday ?? true, r.verified_at, r.source_url]),
+
   school_calendar: async (r) => query(
     `insert into school_calendar (country, school_year, event_name, start_date, end_date, verified_at, source_url)
      values ($1::country_code,$2,$3,$4,$5,$6,$7)

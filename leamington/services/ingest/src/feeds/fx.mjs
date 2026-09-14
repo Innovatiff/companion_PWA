@@ -8,12 +8,26 @@
 import { query } from "../db.mjs";
 import { fetchText } from "../run-feed.mjs";
 
-const CURRENCIES = ["MXN", "HNL", "GTQ", "JMD"];
+export const CURRENCIES = ["MXN", "HNL", "GTQ", "JMD"];
+
+// Shared with scripts/backfill-fx.mjs (src/feeds/fx-backfill.mjs): the same
+// sources, URLs and parsing, so a backfilled day is stored exactly as a daily one.
+export const FRANKFURTER = "https://api.frankfurter.app";
+/** `tag` is "latest" or a YYYY-MM-DD version of the dataset. */
+export const currencyApiUrl = (tag) => `https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@${tag}/v1/currencies/cad.json`;
+export const currencyApiMirrorUrl = (tag) => `https://${tag}.currency-api.pages.dev/v1/currencies/cad.json`;
+
+export const isRateDate = (d) => /^\d{4}-\d{2}-\d{2}$/.test(String(d ?? ""));
+/** A usable rate, or null. */
+export function validRate(value) {
+  const v = Number(value);
+  return Number.isFinite(v) && v > 0 ? v : null;
+}
 
 const PROVIDERS = [
   {
     name: "frankfurter",
-    url: `https://api.frankfurter.app/latest?from=CAD&to=${CURRENCIES.join(",")}`,
+    url: `${FRANKFURTER}/latest?from=CAD&to=${CURRENCIES.join(",")}`,
     parse: (j) => ({ date: j.date, rates: j.rates ?? {} }),
   },
   // Frankfurter is ECB-derived and does not quote HNL, GTQ or JMD. The fallback
@@ -22,12 +36,12 @@ const PROVIDERS = [
   // now requires a paid key and was removed.)
   {
     name: "currency-api",
-    url: "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/cad.json",
+    url: currencyApiUrl("latest"),
     parse: parseCurrencyApi,
   },
   {
     name: "currency-api-mirror",
-    url: "https://latest.currency-api.pages.dev/v1/currencies/cad.json",
+    url: currencyApiMirrorUrl("latest"),
     parse: parseCurrencyApi,
   },
 ];
@@ -36,6 +50,14 @@ export function parseCurrencyApi(j) {
   const rates = {};
   for (const [code, value] of Object.entries(j?.cad ?? {})) rates[code.toUpperCase()] = value;
   return { date: j?.date, rates };
+}
+
+/** A Frankfurter time series: one { date, rates } per day the source published. */
+export function parseFrankfurterSeries(j) {
+  return Object.entries(j?.rates ?? {})
+    .filter(([date]) => isRateDate(date))
+    .map(([date, rates]) => ({ date, rates: rates ?? {} }))
+    .sort((a, b) => a.date.localeCompare(b.date));
 }
 
 export async function ingestFx(ctx) {
@@ -52,11 +74,11 @@ export async function ingestFx(ctx) {
     try {
       const { body } = await fetchText(p.url);
       const { date, rates } = p.parse(JSON.parse(body));
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date ?? ""))) throw new Error(`no rate date in the response`);
+      if (!isRateDate(date)) throw new Error(`no rate date in the response`);
       let added = 0;
       for (const c of missing) {
-        const v = Number(rates[c]);
-        if (Number.isFinite(v) && v > 0) { collected[c] = { rate: v, date }; added++; }
+        const v = validRate(rates[c]);
+        if (v != null) { collected[c] = { rate: v, date }; added++; }
       }
       log.info("provider.ok", { provider: p.name, added, stillMissing: CURRENCIES.filter((c) => collected[c] == null) });
     } catch (err) {

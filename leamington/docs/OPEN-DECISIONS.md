@@ -539,3 +539,31 @@ provider live for every client town showed why.
 - **Clima labels the big number "máxima".** It is the day's high, not the
   temperature right now; unlabelled, it read as wrong at night. Hoy does not
   show a current temperature.
+
+### 3.23 Rate reminder in the engagement queue (2026-09-14, round 3)
+
+CLAUDE.md orders engagement triggers as match day > 30-day rate high > lottery.
+Round 3 adds the member's own rate reminder ("Avísame cuando suba").
+
+- **Rule:** match day > rate reminder > 30-day rate high > lottery
+  (`app.trigger_priority`, `app.plan_engagement`, 0042).
+  - Eligible when the reminder is open and the latest current reference rate
+    (dated within 3 days, the Tasa page's rule) is at or above the number.
+  - Still one engagement message per client per local day, at the notify hour,
+    push only. Alerts never pass through it.
+  - It fires once: `triggered_at` is set when the notification is sent. A
+    message that was not delivered leaves the reminder open for a later day. A
+    reminder that loses to match day waits for the next day.
+  - The text is descriptive: "La tasa de referencia llegó a 18.60 HNL por
+    1 CAD." There is no advice.
+- **Why:** the member asked for this number. A generic 30-day high is our
+  suggestion; his own request outranks it. Match day stays first because it
+  expires the same day, while a reached rate is usually still there tomorrow.
+- **Reverse:** in `app.trigger_priority`, swap `rate_reminder` and
+  `fx_30d_high`, and move step 2 below step 3 in `app.plan_engagement`. To
+  switch reminders off, remove step 2; stored reminders stay and can be cleared.
+- **Related, same migration:**
+  - Ontario ESA public holidays live in their own `provincial_holidays` table,
+    so `holidays.country` and its functions are unchanged.
+  - The FX backfill (`scripts/backfill-fx.mjs`) never overwrites a stored rate
+    and never fills a day no source published.

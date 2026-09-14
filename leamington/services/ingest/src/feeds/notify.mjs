@@ -18,7 +18,7 @@ import { query } from "../db.mjs";
 import { sendPush, vapidFromEnv } from "../push/webpush.mjs";
 
 const MAX_ATTEMPTS = 5;
-const ENGAGEMENT_URL = { match_day: "/futbol", fx_30d_high: "/mas/tasa", lottery: "/mas/loteria" };
+const ENGAGEMENT_URL = { match_day: "/futbol", rate_reminder: "/mas/tasa", fx_30d_high: "/mas/tasa", lottery: "/mas/loteria" };
 
 /** What the phone receives; public/sw.js shows it. Each alert has its own tag. */
 export function payloadFor(n) {
