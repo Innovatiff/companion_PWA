@@ -23,6 +23,8 @@ begin
   x := app.home_more(v_client, '2026-09-13 20:00:00+00');
   assert x->'next_match' = 'null'::jsonb and x->'league_today' = 'null'::jsonb, 'a quiet fixtures feed hides the schedule';
   assert x->'alerts'->>'state' = 'stale' and x->'alerts'->'here' = 'null'::jsonb, format('a stale check lists no warnings: %s', x->'alerts');
+  assert (x->'alerts'->>'valid_until')::timestamptz > '2026-09-13 20:00:00+00',
+    'the stale message is not already expired when shown (0035)';
 
   insert into subscriptions (client_id, period_start, period_end, paid_at, kind, affiliate_id)
   select id, date '2026-09-01', date '2027-03-01', now(), 'sale', affiliate_id from clients where id = v_client
