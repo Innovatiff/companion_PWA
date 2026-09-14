@@ -15,6 +15,18 @@ const client = BASE.protocol === "https:" ? https : http;
 const CODE = process.env.CODE;
 if (!CODE) { console.error("set CODE to a client code"); process.exit(2); }
 
+// Round 2 (0041) checks compare pages with the database functions they render.
+// They need DATABASE_URL (the same database the server reads); without it they
+// are reported as SKIP, never as passed.
+const DB = process.env.DATABASE_URL ? new (await import("pg")).default.Pool({ connectionString: process.env.DATABASE_URL, max: 2 }) : null;
+const q = (sql, params) => DB.query(sql, params);
+const esc = (v) => String(v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;");
+const pretty = (code) => `${code.slice(0, 4)}-${code.slice(4)}`;
+// React does not keep attribute order: find a tag by its attributes, in any order.
+const tag = (html, name, attrs) => [...html.matchAll(new RegExp(`<${name}\\b[^>]*>`, "g"))].map((m) => m[0])
+  .find((t) => Object.entries(attrs).every(([k, v]) => t.includes(` ${k}="${v}"`)));
+const attr = (t, name) => t ? new RegExp(` ${name}="([^"]*)"`).exec(t)?.[1] : undefined;
+
 let failures = 0;
 const check = (ok, label, detail = "") => {
   console.log(`${ok ? "PASS" : "FAIL"} ${label}${!ok && detail ? ` -- ${detail}` : ""}`);
@@ -56,7 +68,7 @@ async function page(path, cookie, label = path) {
   // Images' loading="lazy" attribute is markup, not words on the screen.
   const bad = FORBIDDEN.find((re) => re.test(visible(r.text)));
   check(!bad, `${label} has no reassurance-from-silence or placeholder text`, String(bad));
-  if (r.status === 200 && !path.startsWith("/setup/")) {
+  if (r.status === 200 && !path.startsWith("/setup/") && !label.includes("(expired)")) {
     tabs(r.text, label, path === "/" ? "/" : path.startsWith("/mas/tasa") ? "/mas/tasa" : path.startsWith("/mas") ? "/mas" : path);
   }
   if (r.status === 200) await images(r.text, label);
@@ -169,7 +181,7 @@ async function more(cookie, label) {
   // when home lists an official warning (never a calm sign when it does not).
   const top = /<div class="top">([\s\S]*?)<\/div>/.exec(home)?.[1] ?? "";
   check(/<span class="av" aria-hidden="true">\p{Lu}{1,2}<\/span>/u.test(top), `${label}: home shows the member's initials`);
-  check(/<a class="member" href="\/mas">/.test(top), `${label}: the Miembro pill links to Más`);
+  check(/<a class="member" href="\/mas\/miembro">/.test(top), `${label}: the Miembro pill opens the member page`);
   check(/<a class="bellbtn" href="\/clima#avisos"/.test(top), `${label}: the bell opens Clima's official warnings`);
   const listed = (section("alerts").match(/class="alert [a-z]+"/g) ?? []).length;
   check(top.includes('class="dot"') === (listed > 0), `${label}: the bell's dot shows exactly when home lists an official warning`, `listed ${listed}`);
@@ -201,6 +213,9 @@ async function more(cookie, label) {
     const body = chunk.slice(0, chunk.indexOf("</section>"));
     return { id: /^\d+/.exec(body)?.[0], home: body.includes('class="chip"'), today: />(Hoy|Today)</.test(body) };
   });
+  // Today appears once per town: the forecast card, not again as the strip's first row.
+  const townBodies = clima.split('<section id="t').slice(1).map((chunk) => chunk.slice(0, chunk.indexOf("</section>")));
+  check(townBodies.every((b) => (b.match(/>(Hoy|Today)</g) ?? []).length <= 1), `${label}: Clima shows each town's today once`);
   const watched = [...home.matchAll(/href="\/clima#t(\d+)"/g)].map((m) => m[1]);
   check(watched.every((id) => climaTowns.some((town) => town.id === id && !town.home && town.today)),
     `${label}: every watched-town card is a town Clima shows with today's forecast`, `home ${watched}`);
@@ -216,6 +231,131 @@ async function more(cookie, label) {
   check(!(hasEvents && parent) || home.includes('data-line="school"'), `${label}: a parent with a school event sees it on home`);
   await images(home, `${label} / (more)`);
   await images(clima, `${label} /clima`);
+}
+
+// The welcome screen (0041): shown exactly when not yet welcomed, set up and
+// paid; a plain form with the arrow and Saltar; a foreign origin is refused;
+// the POST marks it and home follows.
+async function welcome(cookie, code, label) {
+  const home = (await send("/", { cookie })).text;
+  const shown = home.includes('<main class="welcome');
+  if (DB) {
+    const { rows: [w] } = await q(
+      "select welcomed_at is not null as done, app.setup_next_step(id) as step, (app.client_access(id)->>'paid')::boolean as paid from clients where code = $1", [code]);
+    check(shown === (!w.done && !w.step && w.paid), `${label}: the welcome screen shows exactly when not yet welcomed, set up and paid`, JSON.stringify(w));
+  } else console.log(`SKIP ${label}: welcome vs database (set DATABASE_URL)`);
+  if (!shown) return;
+  check(Boolean(tag(home, "form", { method: "post", action: "/api/welcome" })) && Boolean(tag(home, "button", { type: "submit", class: "go" })) && />(Saltar|Skip)</.test(home),
+    `${label}: the welcome screen has the round arrow and Saltar in a plain form`);
+  check(!home.includes('<nav class="tabs"') && !/<script/.test(home), `${label}: the welcome screen is one screen with no script`);
+  check(/Te damos la bienvenida a Hoy|Welcome to Hoy/.test(home), `${label}: the welcome screen greets them`);
+  await images(home, `${label} welcome`);
+  const foreign = await send("/api/welcome", { method: "POST", cookie, origin: "https://evil.example" });
+  check(foreign.status === 403 && (await send("/", { cookie })).text.includes('<main class="welcome'), `${label}: a cross-origin welcome post is refused and changes nothing`);
+  const done = await send("/api/welcome", { method: "POST", cookie, form: { skip: "1" } });
+  const after = (await send("/", { cookie })).text;
+  check(done.status === 303 && done.location === "/" && !after.includes('<main class="welcome') && after.includes("data-render="),
+    `${label}: the welcome POST marks it and home follows`, `${done.status} ${done.location}`);
+  if (DB) check((await q("select welcomed_at is not null as done from clients where code = $1", [code])).rows[0].done, `${label}: welcomed is recorded`);
+}
+
+// "Llegué a Canadá el…" (0041): only for seasonal members; a real date is saved,
+// a date the database refuses shows why and changes nothing, a foreign origin is
+// refused. The member's own date is put back at the end.
+async function arrival(cookie, code, label) {
+  const mas = (await send("/mas", { cookie })).text;
+  const form = mas.includes('action="/api/arrival"');
+  const stored = async () => DB ? (await q("select to_char(arrival_date, 'YYYY-MM-DD') as d, segment::text as s from clients where code = $1", [code])).rows[0] : null;
+  const before = await stored();
+  if (DB) check(form === (before.s === "seasonal"), `${label}: the arrival form shows exactly for a seasonal member`, before.s);
+  const inputValue = (html) => attr(tag(html, "input", { id: "arrival", name: "date", type: "date" }), "value") ?? "";
+  if (!form) {
+    const r = await send("/api/arrival", { method: "POST", cookie, form: { date: "2026-09-01" } });
+    check(r.status === 400, `${label}: a member who is not seasonal cannot set an arrival`, String(r.status));
+    if (DB) check((await stored()).d === before.d, `${label}: ... and nothing changes`);
+    return;
+  }
+  const original = inputValue(mas);
+  if (DB) check(original === (before.d ?? ""), `${label}: the arrival form shows the stored date`);
+  const day = new Date(Date.now() - 20 * 86_400_000).toISOString().slice(0, 10);
+  const ok = await send("/api/arrival", { method: "POST", cookie, form: { date: day } });
+  const saved = (await send(ok.location.split("#")[0] || "/mas", { cookie })).text;
+  check(ok.status === 303 && ok.location.startsWith("/mas?ok=arrival") && inputValue(saved) === day && /class="ok"/.test(saved),
+    `${label}: a real arrival date is saved`, `${ok.status} ${ok.location} ${inputValue(saved)}`);
+  if (DB) check((await stored()).d === day, `${label}: ... in the database`);
+  for (const [date, reason] of [["2020-01-01", "arrival-range"], ["31/12/2026", "arrival-date"], ["2026-02-30", "arrival-date"]]) {
+    const bad = await send("/api/arrival", { method: "POST", cookie, form: { date } });
+    const page = (await send(bad.location.split("#")[0], { cookie })).text;
+    check(bad.status === 303 && bad.location.startsWith(`/mas?e=${reason}`) && /class="err" role="alert"/.test(page) && inputValue(page) === day,
+      `${label}: the arrival "${date}" is refused with a reason and changes nothing`, `${bad.status} ${bad.location}`);
+  }
+  const foreign = await send("/api/arrival", { method: "POST", cookie, origin: "https://evil.example", form: { date: "" } });
+  check(foreign.status === 403 && inputValue((await send("/mas", { cookie })).text) === day, `${label}: a cross-origin arrival post is refused and changes nothing`);
+  await send("/api/arrival", { method: "POST", cookie, form: { date: original } });
+  check(inputValue((await send("/mas", { cookie })).text) === original, `${label}: the member's own arrival date is put back`);
+}
+
+// The member page, badges, season ring and Allá y aquí (0041), held to the
+// database functions they render.
+async function round2(cookie, code, label) {
+  const [home, miembro, clima] = await Promise.all(["/", "/mas/miembro", "/clima"].map(async (p) => (await send(p, { cookie })).text));
+
+  // Allá y aquí: two clocks, the difference, a 15-minute validity, temperatures only with "Ahora".
+  const alla = /<section class="alla" data-line="alla" data-until="([^"]+)">([\s\S]*?)<\/section>/.exec(home);
+  if (alla) {
+    const left = Date.parse(alla[1]) - Date.now();
+    check(left > 0 && left <= 15 * 60_000 + 5_000, `${label}: "Allá y aquí" holds for at most 15 minutes`, alla[1]);
+    check((alla[2].match(/class="clk">\d{1,2}(:\d{2})?(am|pm)</g) ?? []).length === 2, `${label}: "Allá y aquí" shows both local times`);
+    check(/class="dif">(Misma hora|Same time|Allá: [\d.]+ h (más|menos)|There: [\d.]+ h (ahead|behind))</.test(alla[2]), `${label}: "Allá y aquí" shows the time difference`);
+    const nowTemps = [...alla[2].matchAll(/class="nowt" data-line="alla-(home|leam)-now" data-until="([^"]+)">(-?\d+(–-?\d+)?°)</g)];
+    check(nowTemps.every((m) => Date.parse(m[2]) > Date.now()), `${label}: "Allá y aquí" temperatures carry their validity`);
+    const homeTown = clima.split('<section id="t').slice(1).find((c) => c.slice(0, c.indexOf("</section>")).includes('class="chip"')) ?? "";
+    const leamCard = /<b class="nm">Leamington<\/b>([\s\S]*?)<\/div><\/div>/.exec(clima)?.[1] ?? "";
+    check(nowTemps.some((m) => m[1] === "home") === homeTown.slice(0, homeTown.indexOf("</section>")).includes('class="ahora card"'),
+      `${label}: the hometown temperature in "Allá y aquí" shows exactly with its "Ahora"`);
+    check(nowTemps.some((m) => m[1] === "leam") === leamCard.includes('class="ahora in"'), `${label}: Leamington's temperature in "Allá y aquí" shows exactly with its "Ahora"`);
+  }
+
+  if (!DB) { console.log(`SKIP ${label}: member card, badges, season and "Allá y aquí" vs database (set DATABASE_URL)`); return; }
+  const { rows: [r] } = await q(
+    "select app.member_card(id) as m, app.member_badges(id) as b, app.season_progress(id) as s, app.home_more(id)->>'home_timezone' as tz from clients where code = $1", [code]);
+  const m = r.m;
+  check(Boolean(alla) === Boolean(r.tz), `${label}: "Allá y aquí" shows exactly when a hometown is set`);
+
+  // Member card: exactly its fields.
+  check(miembro.includes(`<p class="mname">${esc(m.full_name)}</p>`), `${label}: the member card shows the full name`);
+  check(m.member_number == null ? !miembro.includes('class="mnum"') : miembro.includes(`<p class="mnum">${m.language === "en" ? "Member" : "Miembro"} #${m.member_number}</p>`),
+    `${label}: the member number shows exactly when there is one`, String(m.member_number));
+  check(miembro.includes(`<p class="mcode">${pretty(m.code)}</p>`), `${label}: the member card shows the code`);
+  check(miembro.includes('class="ribbon"') === m.founder, `${label}: the founder ribbon shows exactly for a founder`, String(m.founder));
+  check(miembro.includes(`dateTime="${m.member_since}"`), `${label}: the member card shows member since`);
+  check(m.valid_until ? miembro.includes(`<span class="mvalid"><small>`) && miembro.includes(`dateTime="${m.valid_until}"`) : !miembro.includes('class="mvalid"'),
+    `${label}: "valid until" shows exactly when the plan is active or due`);
+  check(miembro.includes('class="chip mst"') === (m.status !== "active"), `${label}: a status chip shows exactly when not active`, m.status);
+  check(m.business ? miembro.includes(`<b>${esc(m.business)}</b>`) : !miembro.includes('class="mbiz"'), `${label}: the registering business shows exactly when there is one`);
+  check(m.renewals > 0 ? miembro.includes(`data-renewals="${m.renewals}"`) : !miembro.includes("data-renewals="), `${label}: renewals show exactly when there are some`);
+
+  // Badges: the same keys, in order, earned or locked, with dates and n/of rings.
+  const lis = [...miembro.matchAll(/<li class="badge (on|off)" data-key="([a-z]+)">([\s\S]*?)<\/li>/g)];
+  check(lis.map((x) => x[2]).join() === r.b.map((b) => b.key).join(), `${label}: the badges are the database's, in its order`, lis.map((x) => x[2]).join());
+  check(r.b.every((b, i) => lis[i] && (lis[i][1] === "on") === b.earned), `${label}: each badge is earned or locked as the database says`);
+  check(r.b.every((b, i) => !lis[i] || !b.earned || !b.earned_at || lis[i][3].includes(`dateTime="${b.earned_at}"`)), `${label}: earned badges show the day they were earned`);
+  check(r.b.every((b, i) => !lis[i] || b.earned || (b.progress ? lis[i][3].includes(`<b>${b.progress.n}/${b.progress.of}</b>`) : !lis[i][3].includes('class="ring'))),
+    `${label}: locked badges show n/of rings exactly where there is progress`);
+  const earned = r.b.filter((b) => b.earned).length;
+  check(new RegExp(`<a class="tile brow" href="/mas/miembro"[^>]*>[\\s\\S]*?<span class="sr">${earned}</span>[\\s\\S]*?(de|of) ${r.b.length}<`).test(home),
+    `${label}: home's badge row says ${earned} of ${r.b.length}`);
+
+  // Season ring: the database's kind, never a negative number of days.
+  const sc = /<section class="season" data-line="season" data-until="[^"]+" data-kind="([a-z]+)">([\s\S]*?)<\/section>/.exec(home);
+  check((sc?.[1] ?? null) === (r.s?.kind ?? null), `${label}: the season card's kind is the database's`, `${sc?.[1]} vs ${r.s?.kind}`);
+  if (sc && r.s) {
+    const text = sc[2].replace(/<[^>]+>/g, " ");
+    check(!/(^|\s)[-−]\s?\d/.test(text), `${label}: the season card never shows negative days`);
+    if (!r.s.past && r.s.days_left > 0) check(sc[2].includes(`<span class="sr">${r.s.days_left}</span>`), `${label}: the season card shows the days left`);
+    if (r.s.kind === "season") check(sc[2].includes(`<span class="sr">${r.s.pct}</span>`), `${label}: the season card shows the season's percentage`);
+    if (r.s.past) check(!/<span class="sr">\d+<\/span>[^<]*<\/b>(<small>|<em>)(días|días|days|day|día)/.test(sc[2]), `${label}: a past date is said in words, not days`);
+  }
 }
 
 // "Ahora" (0040): shown only with a temperature and an observation time, the
@@ -311,8 +451,9 @@ check(health.status === 200 && JSON.parse(health.text).status === "ok", "/health
 const login = await send("/api/login", { method: "POST", form: { code: CODE } });
 check(login.status === 303 && Boolean(login.cookie), "the code signs in", `${login.status} ${login.location}`);
 const cookie = login.cookie;
+await welcome(cookie, CODE, CODE);
 
-for (const path of ["/", "/futbol", "/mas", "/mas/tasa", "/mas/feriados", "/mas/escuela", "/mas/consulado",
+for (const path of ["/", "/futbol", "/mas", "/mas/miembro", "/mas/tasa", "/mas/feriados", "/mas/escuela", "/mas/consulado",
   "/mas/emergencias", "/mas/transporte", "/mas/loteria", "/mas/avisos",
   "/setup/municipality?edit=1", "/setup/watch?edit=1", "/setup/segment?edit=1", "/setup/kids?edit=1", "/setup/corridor?edit=1"]) {
   await page(path, cookie);
@@ -320,6 +461,8 @@ for (const path of ["/", "/futbol", "/mas", "/mas/tasa", "/mas/feriados", "/mas/
 
 await extras(cookie, CODE);
 await more(cookie, CODE);
+await arrival(cookie, CODE, CODE);
+await round2(cookie, CODE, CODE);
 await teamVisuals(cookie, CODE);
 await richer(cookie, CODE);
 for (const path of ["/crest/999999999999", "/crest/abc", "/photo/999999999999", "/photo/abc", "/league-crest/999999999999", "/league-crest/abc"]) {
@@ -410,10 +553,13 @@ if (process.env.SETUP_CODE) {
 if (process.env.CREST_CODE) {
   const k = await send("/api/login", { method: "POST", form: { code: process.env.CREST_CODE } });
   check(k.status === 303 && Boolean(k.cookie), `${process.env.CREST_CODE} signs in`, `${k.status} ${k.location}`);
+  await welcome(k.cookie, process.env.CREST_CODE, process.env.CREST_CODE);
   check(await teamVisuals(k.cookie, process.env.CREST_CODE) > 0, `${process.env.CREST_CODE}: a team with a stored crest shows it as an image`);
   await extras(k.cookie, process.env.CREST_CODE);
   await more(k.cookie, process.env.CREST_CODE);
   await richer(k.cookie, process.env.CREST_CODE);
+  await arrival(k.cookie, process.env.CREST_CODE, process.env.CREST_CODE);
+  await round2(k.cookie, process.env.CREST_CODE, process.env.CREST_CODE);
 }
 
 // A client whose paid period has ended: the expiry screen, and only the
@@ -422,6 +568,7 @@ if (process.env.EXPIRED_CODE) {
   const x = await send("/api/login", { method: "POST", form: { code: process.env.EXPIRED_CODE } });
   check(x.status === 303 && Boolean(x.cookie), "a lapsed client can still sign in", `${x.status} ${x.location}`);
   const home = await page("/", x.cookie, "/ (expired)");
+  check(!home.includes('<main class="welcome'), "the expiry screen wins over the welcome screen");
   const pretty = `${process.env.EXPIRED_CODE.slice(0, 4)}-${process.env.EXPIRED_CODE.slice(4)}`;
   check(home.includes(`class="code">${pretty}<`), "the expiry screen shows the code prominently");
   check(/Cualquier afiliado de Hoy puede reactivarla|Any Hoy affiliate can reactivate it/.test(home), "the expiry screen says any affiliate can reactivate");
@@ -435,5 +582,6 @@ if (process.env.EXPIRED_CODE) {
   await page("/mas/avisos", x.cookie, "/mas/avisos (expired)");
 }
 
+await DB?.end();
 console.log(failures ? `\n${failures} FAILED` : "\nALL PASSED");
 process.exit(failures ? 1 : 0);

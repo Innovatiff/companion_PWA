@@ -236,3 +236,21 @@ select s.id, 'JM', 'local-demo-1', 'local-demo', now() - interval '25 minutes', 
   from alert_sources s, municipalities m
  where s.country = 'JM' and s.active and m.country = 'JM' and m.name = 'Montego Bay'
  limit 1;
+
+-- LOCAL ONLY, round 2 (0041): a member who is not a founder and is settled with
+-- a next trip, for the member card and the "trip" season ring. Its first payment
+-- is an invented date after 1 November 2026, which is what makes member_since
+-- (and so "founder") fall after the first season. Invented, like everything above.
+insert into clients (affiliate_id, code, full_name, country, language, municipality_id, municipality, segment, next_trip_date,
+                     timezone, setup_state, setup_completed_at, corridor_confirmed_at)
+select '99999999-9999-4999-8999-999999999999', 'DEMXGT42', 'Ana Pérez', 'GT', 'es', m.id, m.name,
+       'settled', current_date + 40, 'America/Toronto',
+       '{"kids": "done", "watch": "skipped", "segment": "done", "corridor": "done", "municipality": "done"}', now(), now()
+  from municipalities m where m.country = 'GT' and m.name = 'Huehuetenango'
+ limit 1
+on conflict (code) do update set next_trip_date = excluded.next_trip_date, active = true;
+insert into subscriptions (client_id, period_start, period_end, paid_at, kind, affiliate_id)
+select id, (now() at time zone 'America/Toronto')::date, ((now() at time zone 'America/Toronto')::date + interval '6 months')::date,
+       timestamptz '2026-11-02 10:00:00-05', 'sale', affiliate_id
+  from clients where code = 'DEMXGT42'
+on conflict (client_id, period_start) where voided_at is null do nothing;

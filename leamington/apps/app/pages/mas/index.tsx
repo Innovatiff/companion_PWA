@@ -22,12 +22,22 @@ type Extras = {
   lottery: { game: string } | null;
 } | null;
 
-export const getServerSideProps: GetServerSideProps<{ client: Client; x: Extras }> = async (ctx) => {
+// Why an arrival date was not saved (pages/api/arrival.ts).
+const ARRIVAL_ERRORS: Record<string, [string, string]> = {
+  "arrival-date": ["Escribe una fecha completa: día, mes y año.", "Enter a full date: day, month and year."],
+  "arrival-range": ["No se guardó: la fecha tiene que estar a menos de 400 días de hoy y no después de tu regreso.",
+                    "Not saved: the date must be within 400 days of today and not after your going-home date."],
+};
+
+type Props = { client: Client; x: Extras; e: string | null; ok: boolean };
+
+export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
   const loaded = await loadClient(ctx);
   if ("redirect" in loaded) return loaded;
   const { rows } = await db().query("select app.home_extras($1) as x", [loaded.client.id]);
   await recordView(loaded.client.id, "mas", {});
-  return { props: { client: loaded.client, x: rows[0]?.x ?? null } };
+  const e = typeof ctx.query.e === "string" && ctx.query.e in ARRIVAL_ERRORS ? ctx.query.e : null;
+  return { props: { client: loaded.client, x: rows[0]?.x ?? null, e, ok: ctx.query.ok === "arrival" } };
 };
 
 // "15 de septiembre" is itself a holiday's name in Honduras: say it once.
@@ -36,7 +46,7 @@ function nextHoliday(h: { date: string; name: string }, lang: "es" | "en"): stri
   return h.name.toLowerCase().includes(day.toLowerCase()) ? h.name : `${day} · ${h.name}`;
 }
 
-export default function Mas({ client, x }: { client: Client; x: Extras }) {
+export default function Mas({ client, x, e, ok }: Props) {
   const lang = client.language;
   const links: [string, ArtName, string, string, string | null][] = [
     ["/mas/tasa", "money", "Tasa de referencia", "Reference rate", `${FLAG.CA} CAD → ${FLAG[client.country]}`],
@@ -70,6 +80,20 @@ export default function Mas({ client, x }: { client: Client; x: Extras }) {
             </li>
           ))}
         </ul>
+        {/* The day they arrived this season (0041), for the season ring: seasonal members only. */}
+        {client.segment === "seasonal" && (
+          <section id="llegada" className="card llegada">
+            <h2>{t(lang, "Llegué a Canadá el…", "I arrived in Canada on…")}</h2>
+            {e && <p className="err" role="alert">{t(lang, ...ARRIVAL_ERRORS[e])}</p>}
+            {ok && !e && <p className="ok" role="status">{t(lang, "Guardado.", "Saved.")}</p>}
+            <form method="post" action="/api/arrival" className="arr">
+              <label htmlFor="arrival" className="sr">{t(lang, "Fecha de llegada", "Arrival date")}</label>
+              <input id="arrival" name="date" type="date" defaultValue={client.arrivalDate ?? ""} />
+              <button type="submit">{t(lang, "Guardar", "Save")}</button>
+            </form>
+            <small>{t(lang, "Déjala vacía para borrarla.", "Leave it empty to clear it.")}</small>
+          </section>
+        )}
         {/* Letra grande: two big previews; the current one is marked. */}
         <section id="letra" className="card letra">
           <h2>{t(lang, "Tamaño de letra", "Text size")}</h2>

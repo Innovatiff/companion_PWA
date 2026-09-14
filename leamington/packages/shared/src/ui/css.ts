@@ -105,6 +105,22 @@ export const APP_CSS = BASE +
   "span.ahora,.fc{display:contents}.ahora+.fc{display:none}.tx{flex:1;min-width:0}.aw{font-weight:800;color:var(--brand-ink)}.tb .aw{display:inline}.hello .aw{color:#fff}" +
   ".nc{display:flex;flex-wrap:wrap;gap:.35rem;margin:.55rem 0 0}.nc>span{display:inline-flex;align-items:center;gap:.3rem;padding:.3rem .75rem;border-radius:999px;background:var(--tile);font-size:.86rem;font-weight:650}" +
   ".nc svg{width:1.1em;height:1.1em;fill:none;stroke:var(--brand-ink);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}" +
+  // Round 2 on home: the season ring card, the badges row, Allá y aquí
+  ".season{position:relative;isolation:isolate;overflow:hidden;display:flex;align-items:center;gap:.9rem;color:#fff;border-radius:24px;padding:1.15rem 1.2rem;margin:0 0 .75rem;" +
+  "background:radial-gradient(circle at 90% 10%,rgba(255,255,255,.18),transparent 40%),linear-gradient(125deg,#3b44b5,#6a4fd8);box-shadow:0 16px 34px rgba(63,75,196,.26)}" +
+  ".season>div{flex:1;min-width:0}.season .lbl{background:rgba(255,255,255,.18)}.season small{display:block;color:rgba(255,255,255,.92)}.season a{color:#fff;font-weight:750}" +
+  ".sbig{margin:.35rem 0 .15rem;font-size:3.1rem;font-weight:800;line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums}.sbig em{font-style:normal;font-size:1.1rem;font-weight:700;margin-left:.35rem;letter-spacing:0}.sbig.sm{font-size:1.35rem;line-height:1.25}.sbig .pc{margin-left:.05rem}.tile small.at{font-weight:600;color:var(--muted)}" +
+  ".sring{position:relative;display:grid;place-items:center;flex:none;width:6.75rem;height:6.75rem;text-align:center;line-height:1.05}" +
+  ".sring>i{position:absolute;inset:0;border-radius:50%;background:conic-gradient(#fff calc(var(--p)*1%),rgba(255,255,255,.22) 0);" +
+  "-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 12px),#000 calc(100% - 11px));mask:radial-gradient(farthest-side,transparent calc(100% - 12px),#000 calc(100% - 11px));animation:fill 1.3s .2s cubic-bezier(.2,.7,.3,1) both}" +
+  ".sring b{display:block;font-size:1.65rem;font-weight:800}.sring small{font-size:.76rem}.sring .art{width:3.4rem;height:3.4rem}" +
+  ".brow .bar{margin-top:.35rem}" +
+  ".alla{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:.85rem 1rem 1rem;margin:0 0 .75rem}.alla>header{display:flex;align-items:center;gap:.5rem;font-weight:750}" +
+  ".ah2{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:.4rem;margin-top:.5rem}" +
+  ".ah{display:flex;flex-direction:column;align-items:center;text-align:center;gap:.05rem;min-width:0}.ah small{font-size:.8rem;font-weight:650;line-height:1.2;overflow-wrap:break-word;hyphens:auto}" +
+  ".clk{font-size:1.55rem;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}.nowt{font-size:1.05rem;font-weight:800;color:var(--brand-ink)}" +
+  ".dif{max-width:5.25rem;padding:.35rem .5rem;border-radius:999px;background:var(--tile);color:var(--brand-ink);font-size:.78rem;font-weight:750;text-align:center;line-height:1.2}" +
+  ".llegada h2,.letra h2{margin:.1rem 0 .75rem}.arr{display:flex;gap:.5rem;align-items:center}.arr input{flex:1;min-width:0}.arr button{width:auto;margin:0;padding:.8rem 1.2rem}" +
   // Letra grande's two previews (Más)
   ".aa{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.65rem}.aa button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.15rem;min-height:6rem;margin:0;border-radius:20px}" +
   ".aa .a1{font-size:1.45rem;font-weight:800;line-height:1.1}.aa .a2{font-size:2.3rem;font-weight:800;line-height:1}.aa .on::after{content:\"✓\";font-weight:800}.letra h2{margin:.1rem 0 .75rem}" +
@@ -174,7 +190,7 @@ export const APP_CSS = BASE +
   "html.big .tile{min-height:5.75rem;padding:.95rem}html.big .pair,html.big .menu{grid-template-columns:minmax(0,1fr)}" +
   "html.big .menu a{flex-direction:row;align-items:center;min-height:5.5rem}html.big .menu a,html.big h1,html.big p.line,html.big .match>span{overflow-wrap:anywhere}" +
   "html.big nav.tabs a{font-size:.66rem;min-height:66px}html.big nav.tabs svg{height:32px}html.big main{padding-bottom:calc(9rem + env(safe-area-inset-bottom))}" +
-  "html.big .sh>a,html.big .seg a,html.big .dial{min-height:56px}html.big a.tile::after{display:none}html.big .pic{width:3rem;height:3rem}html.big .pic .art{width:2.2rem;height:2.2rem}html.big .sk>.art{width:4.25rem;height:4.25rem}html.big .sk h1{padding-right:3.5rem}html.big .lbl{max-width:calc(100% - 4rem)}html.big .ring{width:4.4rem;height:4.4rem}html.big .nb{font-size:1.9rem}";
+  "html.big .sh>a,html.big .seg a,html.big .dial{min-height:56px}html.big a.tile::after{display:none}html.big .pic{width:3rem;height:3rem}html.big .pic .art{width:2.2rem;height:2.2rem}html.big .sk>.art{width:4.25rem;height:4.25rem}html.big .sk h1{padding-right:3.5rem}html.big .lbl{max-width:calc(100% - 4rem)}html.big .ring{width:4.4rem;height:4.4rem}html.big .nb{font-size:1.9rem}html.big .sbig{font-size:2.5rem}html.big .sring{width:5.5rem;height:5.5rem}html.big .ah2{grid-template-columns:minmax(0,1fr);gap:.6rem}html.big .arr{flex-wrap:wrap}html.big .arr button{width:100%}";
 
 /**
  * The portals' dashboard look (docs/DESIGN.md section 9): a white sidebar with

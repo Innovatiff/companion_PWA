@@ -99,6 +99,8 @@ export default async function setup(req: NextApiRequest, res: NextApiResponse) {
     return next();
   } catch (err) {
     const code = (err as { code?: string }).code;
+    // 0041: a going-home date before the recorded arrival day has its own reason.
+    if (code === "23514" && step === "segment" && /arrival/.test((err as Error).message)) return back("arrival");
     if (code === "23514") return back(step === "segment" ? "date" : step === "watch" ? "max" : "pick");
     if (code === "22007" || code === "22008") return back("date");
     throw err;

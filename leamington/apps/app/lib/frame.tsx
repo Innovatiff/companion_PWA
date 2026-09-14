@@ -60,7 +60,7 @@ export function HomeTop({ lang, name, warnings, until }: { lang: Lang; name: str
   return (
     <div className="top">
       <span className="av" aria-hidden="true">{initialsOf(name)}</span>
-      <a className="member" href="/mas"><b aria-hidden="true">✦</b>{t(lang, "Miembro", "Member")}</a>
+      <a className="member" href="/mas/miembro"><b aria-hidden="true">✦</b>{t(lang, "Miembro", "Member")}</a>
       <a className="bellbtn" href="/clima#avisos"
          aria-label={dot ? t(lang, `Avisos oficiales (${warnings})`, `Official warnings (${warnings})`) : t(lang, "Avisos oficiales", "Official warnings")}>
         <Svg d='<path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 21h4"/>' />

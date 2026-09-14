@@ -32,26 +32,27 @@ Hoy's budgets were raised on 2026-09-14 (from 15 KB cold and 5 KB warm) for the
 round-1 look the owner asked for: pictures, motion and bigger type cost about
 1.5 KB more CSS and markup per page, while the pictures themselves are cached files.
 
-Measured 2026-09-14 after round 1 step 2 ("Ahora", Letra grande; local, demo
-client DEMXHN42, the fullest home):
+Measured 2026-09-14 after round 2 ("Tú eres Hoy"; local, demo client DEMXHN42,
+the fullest home):
 
 | Hoy page | Bytes |
 | --- | --- |
-| Cold: sign-in plus home (redirect, login, sign-in, home, sw.js, manifest, open ping) | 19,813 |
-| Home (warm) | 9,320 |
-| Clima | 9,272 |
-| Fútbol | 7,750 |
-| Tasa | 7,518 |
-| Transporte | 7,475 |
-| Consulado | 7,436 |
-| Emergencias | 7,140 |
-| Feriados | 7,002 |
-| Más | 6,991 |
-| Lotería | 6,751 |
-| Setup step | 6,744 |
-| Notificaciones | 6,625 |
-| Escuela | 6,451 |
-| Illustrations, largest | 498 gzipped (crown.svg); first load of the 18 used: 18,228 |
+| Cold: sign-in plus home (redirect, login, sign-in, home, sw.js, manifest, open ping) | 21,020 |
+| Home (warm) | 10,037 |
+| Clima | 9,684 |
+| Miembro | 8,343 |
+| Fútbol | 8,210 |
+| Tasa | 8,012 |
+| Transporte | 7,968 |
+| Consulado | 7,926 |
+| Emergencias | 7,632 |
+| Feriados | 7,492 |
+| Más | 7,485 |
+| Lotería | 7,242 |
+| Setup step | 7,233 |
+| Notificaciones | 7,114 |
+| Escuela | 6,940 |
+| Illustrations, largest | 523 gzipped (badge-temporada.svg); first load of the 28 used: 29,768 |
 
 Every page is measured with `scripts/measure.mjs` and the numbers are reported.
 
@@ -204,13 +205,52 @@ and keeps every page within a 360 px screen.
     and ↓low chips and the rain ring.
   - **Home:** the hometown and Leamington rows lead with "Ahora" and the time,
     with the forecast's ↑↓ beside it; without it they show the forecast high
-    labelled "máx". The forecast version is also in the markup (`.fc`) and
+    labelled "máx"; "Ahora 9:48am" sits on its own small line under the number.
+    The forecast version is also in the markup (`.fc`) and
     appears if "Ahora" expires on a cached copy. Watched towns show their
     "Ahora" temperature the same way.
 - **Letra grande.** Más has a "Tamaño de letra" card with two big previews,
   "Aa Normal" and "Aa Grande", the current one marked. It posts to
   `/api/text-size` (same-origin and session checks as setup; only "normal" or
   "large"), which saves `clients.text_size` and returns to Más.
+- **Tú eres Hoy (round 2, 0041).** Every value comes from `app.member_card`,
+  `app.member_badges`, `app.season_progress` and `app.home_more`; nothing is
+  estimated (`apps/app/lib/member.tsx`).
+  - **Member card** (`/mas/miembro`, opened by the "✦ Miembro" pill): a deep
+    indigo-to-violet card with a fine diagonal pattern and a shine that sweeps
+    once. The "Hoy ✦ Miembro" mark, the crown, a gold "★ Fundador 2026" pill only
+    for founders, the full name, "Miembro #412" only when there is a number, the
+    code large and letter-spaced, "Desde" and "Vigente hasta" (or a status
+    chip). Below: who registered them (when a business did), renewals (when
+    any), and one line: renewal works at any Hoy business. No payment prompts.
+  - **Badges:** a two-column grid of eight medals, each its own animated
+    picture, popping in staggered. Earned: full colour, the name, "Ganada {día}"
+    when the day is on record. Locked: grey, a small n/of ring where 0041 counts
+    progress, and a how-to line that says exactly what is counted ("Abre 5
+    secciones distintas", "Abre Hoy 7 días distintos", "Agrega otro
+    municipio"). Home has one row: a crown, "3 de 8", a thin bar.
+  - **Season ring** (home, replacing the countdown line): an indigo gradient
+    card. season: the percentage huge and a thick white ring with the days
+    left. countdown: the days big, an empty ring with a plane (no arrival on
+    record, so no share of the season is claimed) and "Anota tu llegada".
+    trip: a plane and the days. Days are never negative; a past date is said
+    in words.
+  - **Arrival date:** "Llegué a Canadá el…" on Más, for seasonal members only,
+    posting to `/api/arrival` (same-origin and session checks; empty clears
+    it). A refused date says why and changes nothing.
+  - **Welcome, once:** after setup, before home, never over the expiry screen.
+    The hometown photo full-bleed with its full credit (or the live sky), a
+    white rounded card with a waving hand, "Te damos la bienvenida a Hoy,
+    {nombre}" (neutral in gender), "Miembro #412 · Fundador", and a big round
+    arrow with an outer ring; the arrow and "Saltar" post to `/api/welcome`.
+    No script.
+  - **Allá y aquí** (home): the hometown and Leamington side by side, each with
+    its local time, a sun or moon from sunrise and sunset there, and its
+    temperature only with "Ahora"; the difference between them ("Allá: 2 h
+    menos", "Misma hora"). The clocks are the render time, so the card holds 15
+    minutes.
+- **Clima's today, once.** A town's forecast card is today; the three-day strip
+  under it starts with tomorrow.
 - **Section header.** A bold title, and an indigo "Ver todo" link on the right
   where the section has its own page.
 - **Section page header.** Tab pages (Clima, Tasa, Más): the title on the left

@@ -314,7 +314,7 @@ export default function Clima({ w, country, today, now, photos }: Props) {
                 <div className={`card now ${d.rain ? "rain" : "sun"}`}>
                   <Art name={dayArt(d)} size={52} lazy />
                   <span>
-                    <small>{`${dayName(d.date, placeToday)} · ${town.admin_region}`}</small>
+                    <small><b className="dn">{dayName(d.date, placeToday)}</b>{` · ${town.admin_region}`}</small>
                     {highLow(d)}
                     {d.rain_prob != null && d.rain_mm != null && <small>{`${d.rain_mm} mm`}</small>}
                   </span>
@@ -322,7 +322,8 @@ export default function Clima({ w, country, today, now, photos }: Props) {
                 </div>
               )}
               {sky(town.lat, town.lng, placeTz, placeToday, town.is_home ? `${MOON_ICON[phase]} ${MOON[lang][phase]}` : undefined)}
-              {town.days.length > 1 && strip(town.days, placeToday)}
+              {/* Today is the card above; the strip carries the days after it. */}
+              {town.days.length > 1 && strip(town.days.slice(1), placeToday)}
               {photo && <Credit p={photo} lang={lang} />}
             </section>
           );

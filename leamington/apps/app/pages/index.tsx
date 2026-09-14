@@ -35,6 +35,7 @@ import { ahoraWord, nowArt, nowData, nowLive, type Now } from "../lib/now";
 import { recordView, type Access } from "../lib/client";
 import { t } from "../lib/t";
 import { HomeTop, TabBar } from "../lib/frame";
+import { AllaAqui, BadgesRow, SeasonCard, WelcomeScreen, type MemberCard, type Season } from "../lib/member";
 import {
   Art, Balls, Credit, Crest, DateBlock, FLAG, Icon, Num, Pic, Ring, SKY_PHASES, TownPhoto, dayArt, drawTime, localDayEnd, skyPhase, tel,
   type ArtName, type Photo, type SkyPhase,
@@ -68,16 +69,19 @@ type More = {
   school_next: { event_name: string; start_date: string; end_date: string | null; verified_at: string } | null;
   // The weather right now (0040): null below two fresh providers; each carries valid_until.
   home_now?: Now | null; leamington_now?: Now | null;
+  // Round 2 (0041): the member card, the season ring, badge counts, the welcome flag, the hometown's timezone.
+  member?: MemberCard | null; season?: Season | null; badges_earned?: number; badges_total?: number;
+  welcomed?: boolean; home_timezone?: string | null;
 };
 // Today's forecast at their home town, for the high and low beside "Ahora".
-type HomeDay = { timezone: string; d: { temp: string; low: number | null; rain?: boolean } | null };
+type HomeDay = { timezone: string; name: string; lat: number | null; lng: number | null; d: { temp: string; low: number | null; rain?: boolean } | null };
 type Expired = { language: "es" | "en"; access: Access };
 type Here = { name: string; d: { temp: string; low: number | null; rain: boolean; rain_prob?: number | null } };
 type Props =
   | {
       renderId: string; renderedAt: string; language: "es" | "en"; lines: Line[]; prompt: string | null;
       extras: Extras | null; more: More | null; watchPhotos: Photo[]; pushReady: boolean; here: Here | null;
-      name: string; sky: SkyPhase; homeDay: HomeDay | null; expired?: undefined;
+      name: string; sky: SkyPhase; homeDay: HomeDay | null; welcome: boolean; allaAt: string; expired?: undefined;
     }
   | { expired: Expired };
 
@@ -109,7 +113,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
         where lp.key = 'leamington' and lp.active and c.id = $1`, [clientId]),
     // Their home town's forecast today (the same summary as Clima), and its timezone.
     db().query(
-      `select m.timezone, app.forecast_summary(m.id, (now() at time zone m.timezone)::date, now(), c.language::text) as d
+      `select m.timezone, m.name, m.lat, m.lng, app.forecast_summary(m.id, (now() at time zone m.timezone)::date, now(), c.language::text) as d
          from clients c join municipalities m on m.id = c.municipality_id where c.id = $1`, [clientId]),
   ]);
   const m = home.rows[0]?.m;
@@ -125,10 +129,18 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
         .rows.map((r) => r.p)
     : [];
 
-  // LOCAL ONLY: HOY_SKY_PREVIEW=1 lets ?sky=night force the hero's sky for
-  // screenshots. Production never sets it, so there the sky is always the real one.
-  const forced = process.env.HOY_SKY_PREVIEW === "1" && typeof query.sky === "string"
+  // The welcome screen, once: not yet welcomed, and setup complete (0041). The
+  // expiry screen above still wins. Not recorded as a page view: 0041 counts every
+  // page but setup and expiry toward Explorador, and welcomed_at is its record.
+  const welcome = more?.welcomed === false
+    && !(await db().query("select app.setup_next_step($1) as step", [clientId])).rows[0]?.step;
+
+  // LOCAL ONLY: HOY_SKY_PREVIEW=1 lets ?sky=night force the hero's sky, and ?at=
+  // the moment "Allá y aquí" shows, for screenshots. Production never sets it.
+  const preview = process.env.HOY_SKY_PREVIEW === "1";
+  const forced = preview && typeof query.sky === "string"
     && (SKY_PHASES as readonly string[]).includes(query.sky) ? (query.sky as SkyPhase) : null;
+  const clock = preview && typeof query.at === "string" && Number.isFinite(Date.parse(query.at)) ? new Date(query.at).toISOString() : null;
 
   (req as { appLang?: string }).appLang = m.language;
   return {
@@ -140,7 +152,12 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
       pushReady: Boolean(process.env.VAPID_PUBLIC_KEY?.trim()),
       name: a?.full_name ?? "",
       sky: forced ?? skyPhase(new Date()),
-      homeDay: homeDayRow.rows[0] ? { timezone: homeDayRow.rows[0].timezone, d: homeDayRow.rows[0].d ?? null } : null,
+      homeDay: homeDayRow.rows[0] ? {
+        timezone: homeDayRow.rows[0].timezone, name: homeDayRow.rows[0].name, lat: homeDayRow.rows[0].lat, lng: homeDayRow.rows[0].lng,
+        d: homeDayRow.rows[0].d ?? null,
+      } : null,
+      welcome,
+      allaAt: clock ?? m.rendered_at,
     },
   };
 };
@@ -234,7 +251,11 @@ const HOUR = 3_600_000;
 
 export default function Home(props: Props) {
   if (props.expired) return <ExpiryScreen {...props.expired} />;
-  const { renderId, renderedAt, language: lang, lines, prompt, extras: x, more: h, watchPhotos, pushReady, here, name, sky, homeDay } = props;
+  const { renderId, renderedAt, language: lang, lines, prompt, extras: x, more: h, watchPhotos, pushReady, here, name, sky, homeDay, allaAt } = props;
+  if (props.welcome) {
+    return <WelcomeScreen lang={lang} first={h?.member?.first_name ?? name.split(" ")[0]} member={h?.member ?? null}
+                          photo={h?.home_photo ?? null} place={h?.home_town ?? null} sky={sky} />;
+  }
   const greeting = lines.find((l) => l.key === "greeting");
   const tz = x?.timezone ?? "America/Toronto";
   const now = Date.parse(renderedAt);
@@ -301,6 +322,10 @@ export default function Home(props: Props) {
   const photo = h?.home_photo ?? null;
 
   const high = t(lang, "máx", "high");
+  // Round 2: the season ring and badges are day-bound; the clocks hold 15 minutes.
+  const season = h?.season ?? null;
+  const badgesTotal = h?.member ? h.badges_total ?? 0 : 0;
+  const allaUntil = new Date(now + 15 * 60_000).toISOString();
   const arrows = (hi: string | undefined, lo: number | null | undefined) =>
     [hi ? `↑${hi}` : null, lo != null ? `↓${lo}°` : null].filter(Boolean).join(" ");
 
@@ -319,8 +344,9 @@ export default function Home(props: Props) {
           <span className="ahora" {...nowData("home-now", homeNow)}>
             <Pic name={nowArt(homeNow)} />
             <span className="tx">
-              <small>{town && `${town} · `}{ahoraWord(lang)}{homeDay ? ` · ${formatTime12(homeNow.observed_at, homeDay.timezone)}` : ""}</small>
+              <small>{town || t(lang, "Tu municipio", "Your town")}</small>
               <span className="nb"><Num value={homeNow.temp} /></span>
+              <small className="at">{ahoraWord(lang)}{homeDay ? ` ${formatTime12(homeNow.observed_at, homeDay.timezone)}` : ""}</small>
               {(homeNow.label || hl) && <small>{[homeNow.label, hl].filter(Boolean).join(" · ")}</small>}
             </span>
           </span>
@@ -381,6 +407,8 @@ export default function Home(props: Props) {
         )}
         {rest.map((line) => {
           if (line.key === "weather") return homeTile(line);
+          // The season card below says the same days with more: it replaces this line.
+          if (line.key === "countdown" && season) return null;
           const tile = TILE[line.key];
           const rain = line.key === "weather" && /, (lluvia|rain)/.test(line.text);
           const cls = `tile ${line.key}`;
@@ -412,8 +440,9 @@ export default function Home(props: Props) {
               <span className="ahora" {...nowData("leamington-now", leamNow)}>
                 <Pic name={nowArt(leamNow)} />
                 <span className="tx">
-                  <small>{`${here?.name ?? "Leamington"} · `}{ahoraWord(lang)}{` · ${formatTime12(leamNow.observed_at, "America/Toronto")}`}</small>
+                  <small>{here?.name ?? "Leamington"}</small>
                   <span className="nb"><Num value={leamNow.temp} /></span>
+                  <small className="at">{ahoraWord(lang)}{` ${formatTime12(leamNow.observed_at, "America/Toronto")}`}</small>
                   {(leamNow.label || here) && <small>{[leamNow.label, here ? arrows(here.d.temp, here.d.low) : null].filter(Boolean).join(" · ")}</small>}
                 </span>
               </span>
@@ -465,6 +494,13 @@ export default function Home(props: Props) {
               </div>
             )}
           </section>
+        )}
+
+        {season && <SeasonCard s={season} lang={lang} until={dayEnd} />}
+        {badgesTotal > 0 && <BadgesRow earned={h!.badges_earned ?? 0} total={badgesTotal} lang={lang} until={dayEnd} />}
+        {h?.home_timezone && homeDay && (
+          <AllaAqui lang={lang} at={allaAt} until={allaUntil} leamNow={leamNow}
+                    home={{ name: homeDay.name, tz: h.home_timezone, lat: homeDay.lat, lng: homeDay.lng, now: homeNow }} />
         )}
 
         {footballUntil && h && (

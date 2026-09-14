@@ -86,6 +86,41 @@ export const TASA_CSS = TABLE +
   ".rg i{position:absolute;top:50%;width:1.2rem;height:1.2rem;margin:-.6rem 0 0 -.6rem;border-radius:50%;background:#fff;border:3px solid var(--brand-ink);box-shadow:var(--shadow)}" +
   ".rgl{display:flex;justify-content:space-between;gap:1rem;font-variant-numeric:tabular-nums}.rgl b{display:block;font-size:1.15rem}.rgl>span:last-child{text-align:right}";
 
+// The member page (0041): a premium card, then the badges grid.
+export const MIEMBRO_CSS =
+  ".mcard{position:relative;isolation:isolate;overflow:hidden;display:flex;flex-direction:column;min-height:13rem;color:#fff;border-radius:24px;padding:1.1rem 1.25rem 1.15rem;margin:0 0 1rem;" +
+  "background:radial-gradient(circle at 88% 0%,rgba(255,255,255,.22),transparent 42%),repeating-linear-gradient(135deg,rgba(255,255,255,.05) 0 2px,transparent 2px 12px),linear-gradient(135deg,#232a8f,#4b3fc4 55%,#7c3aed);" +
+  "box-shadow:0 22px 44px rgba(59,40,160,.35)}" +
+  ".mcard::after{content:\"\";position:absolute;inset:0;z-index:-1;background:linear-gradient(110deg,transparent 35%,rgba(255,255,255,.3) 50%,transparent 65%);transform:translateX(-130%);animation:shine 1.7s .45s ease-out both}" +
+  "@keyframes shine{to{transform:translateX(130%)}}" +
+  ".mtop{display:flex;align-items:center;gap:.5rem}.mtop .art{margin-left:auto}.mark{font-weight:800;letter-spacing:.02em;white-space:nowrap}.mark b{color:#ffd66b}" +
+  ".ribbon{padding:.2rem .7rem;border-radius:999px;background:linear-gradient(90deg,#e5a50a,#ffe08a,#f5c542);color:#4a3000;font-size:.74rem;font-weight:800;white-space:nowrap;box-shadow:0 4px 10px rgba(0,0,0,.2)}" +
+  ".mname{margin:auto 0 0;padding-top:.8rem;font-size:1.4rem;font-weight:800;line-height:1.2;overflow-wrap:anywhere}.mnum{margin:.1rem 0 0;color:rgba(255,255,255,.88);font-weight:700}" +
+  ".mcode{margin:.55rem 0 .6rem;font:700 1.75rem/1.1 ui-monospace,\"Roboto Mono\",monospace;letter-spacing:.2em}" +
+  ".mfoot{display:flex;flex-wrap:wrap;gap:.3rem 1.6rem}.mfoot small{display:block;color:rgba(255,255,255,.8);font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em}.mfoot time{font-weight:750}" +
+  ".mst{align-self:flex-start;margin-top:.6rem;background:#fff;color:#8a3b00}" +
+  ".mfacts{list-style:none;padding:0;margin:0 0 .5rem}.mfacts li{display:flex;align-items:center;gap:.8rem;margin:0 0 .6rem;padding:.7rem .9rem;background:var(--card);border-radius:var(--r);box-shadow:var(--shadow)}.mfacts small{display:block}" +
+  ".badges{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.65rem;list-style:none;padding:0;margin:0 0 1rem}" +
+  ".badge{display:flex;flex-direction:column;align-items:center;text-align:center;gap:.3rem;padding:1rem .6rem .9rem;background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);animation:pop .5s cubic-bezier(.3,1.5,.5,1) both}" +
+  ".badge:nth-child(2){animation-delay:.07s}.badge:nth-child(3){animation-delay:.14s}.badge:nth-child(4){animation-delay:.21s}.badge:nth-child(5){animation-delay:.28s}.badge:nth-child(6){animation-delay:.35s}.badge:nth-child(7){animation-delay:.42s}.badge:nth-child(8){animation-delay:.49s}" +
+  "@keyframes pop{from{opacity:0;transform:scale(.7)}}" +
+  ".badge>b{font-size:1rem}.badge small{line-height:1.3}.bt{position:relative}.badge.off .art{filter:grayscale(1);opacity:.45}.badge.off>b{color:var(--muted)}" +
+  ".ring.sm{position:absolute;right:-.7rem;bottom:-.35rem;width:2.5rem;height:2.5rem;box-shadow:0 2px 6px rgba(40,48,120,.2);border-radius:50%}.ring.sm::before{inset:.3rem}.ring.sm b{font-size:.62rem}";
+
+// The welcome screen (0041), inlined only when home shows it.
+export const WELCOME_CSS =
+  ".welcome{position:relative;isolation:isolate;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;max-width:none;min-height:100vh;min-height:100dvh;margin:0;" +
+  "padding:1rem 1rem calc(1rem + env(safe-area-inset-bottom));color:#fff}" +
+  ".wbg{position:absolute;inset:0;z-index:-2;width:100%;height:100%;object-fit:cover}" +
+  ".welcome.wp::before{content:\"\";position:absolute;inset:0;z-index:-1;background:linear-gradient(rgba(10,12,40,.6),rgba(10,12,40,.05) 35%,rgba(10,12,40,.45))}" +
+  ".wtop{max-width:34rem}.welcome .credit{display:block;margin:0;color:#fff;font-size:.74rem;text-shadow:0 1px 3px rgba(0,0,0,.7)}" +
+  ".wcard{width:100%;max-width:34rem;margin:0 auto;padding:1.4rem 1.4rem 1.2rem;background:#fff;color:var(--ink);border-radius:32px;box-shadow:0 24px 50px rgba(0,0,0,.35)}" +
+  ".wcard h1{margin:.5rem 0 .3rem;font-size:1.85rem}.wcard p{margin:0 0 1.1rem;color:var(--muted);font-weight:700}" +
+  ".wgo{display:flex;align-items:center;justify-content:space-between;gap:1rem}" +
+  ".go{display:grid;place-items:center;flex:none;width:5.25rem;height:5.25rem;min-height:0;margin:.4rem .4rem .4rem 0;padding:0;border-radius:50%;box-shadow:0 0 0 10px rgba(79,91,213,.16),0 14px 28px rgba(79,91,213,.45)}" +
+  ".go svg{width:2.2rem;height:2.2rem;fill:none;stroke:#fff;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}" +
+  ".wskip{width:auto;min-height:48px;margin:0;padding:.5rem .9rem;background:transparent;color:var(--muted);box-shadow:none;font-weight:700;text-decoration:underline}";
+
 export const LOGIN_CSS =
   ".feat{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.5rem;list-style:none;padding:0;margin:0 0 1rem}" +
   ".feat li{display:flex;flex-direction:column;align-items:center;gap:.25rem;padding:.65rem .2rem;border-radius:18px;background:var(--card);box-shadow:var(--shadow);font-weight:750;font-size:.8rem;text-align:center;line-height:1.2}" +

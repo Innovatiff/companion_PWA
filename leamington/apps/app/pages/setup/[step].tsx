@@ -32,6 +32,8 @@ const ERRORS: Record<string, [string, string]> = {
   date: ["La fecha tiene que ser hoy o después.", "The date must be today or later."],
   segment: ["Elige una de las dos opciones.", "Choose one of the two options."],
   invalid: ["No pudimos guardar eso. Inténtalo otra vez.", "We could not save that. Try again."],
+  arrival: ["Tu regreso no puede ser antes del día que llegaste a Canadá. Puedes cambiar tu llegada en Más.",
+            "Your going-home date cannot be before the day you arrived in Canada. You can change your arrival in More."],
 };
 
 type Props = {
