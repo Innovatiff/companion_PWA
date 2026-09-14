@@ -9,7 +9,8 @@
  *
  * Forecast days follow the home-line rules (0023): at least two providers
  * updated within 12 hours, a range when they disagree. A day without that is
- * absent. The home town comes first.
+ * absent. The home town comes first. A town with a stored photo (0034) gets it
+ * as its header, with the photo's credit.
  */
 import Head from "next/head";
 import type { GetServerSideProps } from "next";
@@ -18,7 +19,7 @@ import { formatDate, formatTime12, formatWeekdayDate, localDate } from "@leaming
 import { db } from "../lib/db";
 import { loadClient, recordView } from "../lib/client";
 import { t } from "../lib/t";
-import { Art, Icon } from "../lib/ui";
+import { Art, Credit, Icon, TownPhoto, type Photo } from "../lib/ui";
 import { CLIMA_CSS } from "../lib/page-css";
 
 export const config = { unstable_runtimeJS: false };
@@ -37,7 +38,7 @@ type Weather = {
   agency: string | null; agency_url: string | null;
   alerts_here: Alert[] | null; alerts_elsewhere: Alert[] | null; history: Alert[];
 };
-type Props = { w: Weather; country: string; today: string };
+type Props = { w: Weather; country: string; today: string; photos: Photo[] };
 
 export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
   // Official warnings stay available after a paid period ends (OPEN-DECISIONS 3.6).
@@ -46,13 +47,18 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
   const { client } = loaded;
   const { rows } = await db().query("select app.weather_page($1) as w", [client.id]);
   const w = rows[0]?.w as Weather;
+  const ids = w.towns.map((town) => town.id);
+  const photos: Photo[] = ids.length
+    ? (await db().query("select p from (select app.town_photo(id) as p from unnest($1::bigint[]) as id) s where p is not null", [ids]))
+        .rows.map((r) => r.p)
+    : [];
   await recordView(client.id, "clima", {
     alerts_state: w.alerts_state, alerts_checked_at: w.alerts_checked_at,
     alerts_here: w.alerts_here?.length ?? null, alerts_elsewhere: w.alerts_elsewhere?.length ?? null,
     has_home: w.has_home, towns: w.towns.map((town) => ({ id: town.id, days: town.days.length })),
-    history: w.history.length,
+    history: w.history.length, photos: photos.length,
   });
-  return { props: { w, country: client.country, today: localDate(new Date(), client.timezone) } };
+  return { props: { w, country: client.country, today: localDate(new Date(), client.timezone), photos } };
 };
 
 const LEVEL: Record<string, [string, string]> = {
@@ -67,7 +73,7 @@ function addDays(date: string, n: number): string {
   return new Date(Date.parse(date) + n * 86_400_000).toISOString().slice(0, 10);
 }
 
-export default function Clima({ w, country, today }: Props) {
+export default function Clima({ w, country, today, photos }: Props) {
   const lang = w.language;
   const tz = w.timezone;
   const pick = (pair: [string, string] | undefined, fallback: string) => (pair ? pair[lang === "en" ? 1 : 0] : fallback);
@@ -126,7 +132,7 @@ export default function Clima({ w, country, today }: Props) {
         {w.alerts_state === "current" && (
           <>
             {w.alerts_here?.map(card)}
-            <div className="tile">
+            <div className="tile calm">
               <span className="ico"><Icon name="check" /></span>
               <small>
                 {t(lang, `Revisamos los avisos de ${w.agency} a las ${moment(w.alerts_checked_at!)}.`,
@@ -142,7 +148,7 @@ export default function Clima({ w, country, today }: Props) {
           </>
         )}
         {w.alerts_state === "stale" && (
-          <section className="tile">
+          <section className="tile stale">
             <span className="ico"><Icon name="alert" /></span>
             <span>
               <p>
@@ -169,22 +175,27 @@ export default function Clima({ w, country, today }: Props) {
         {!w.has_home && (
           <a className="prompt" href="/setup/municipality">{t(lang, "Elige tu municipio para ver el clima →", "Choose your town to see the weather →")}</a>
         )}
-        {towns.map((town) => (
-          <section key={town.id}>
-            <h2>{town.name}{town.is_home && <span className="chip">{t(lang, "Tu municipio", "Your town")}</span>}</h2>
-            <div className="days">
-              {town.days.map((d) => (
-                <div key={d.date} className={`card day ${d.rain ? "rain" : "sun"}`}>
-                  <small>{dayName(d.date)}</small>
-                  <Art name={d.rain ? "rainy" : "sunny"} size={52} />
-                  <b>{d.temp}</b>
-                  {d.rain && <small>{t(lang, "Lluvia", "Rain")}</small>}
-                  {d.low != null && <small>{t(lang, "mín", "low")} {d.low}°</small>}
-                </div>
-              ))}
-            </div>
-          </section>
-        ))}
+        {towns.map((town) => {
+          const photo = photos.find((p) => p.municipality_id === town.id);
+          const title = <h2>{town.name}{town.is_home && <span className="chip">{t(lang, "Tu municipio", "Your town")}</span>}</h2>;
+          return (
+            <section key={town.id} id={`t${town.id}`}>
+              {photo ? <div className="townhead"><TownPhoto p={photo} />{title}</div> : title}
+              <div className="days">
+                {town.days.map((d) => (
+                  <div key={d.date} className={`card day ${d.rain ? "rain" : "sun"}`}>
+                    <small>{dayName(d.date)}</small>
+                    <Art name={d.rain ? "rainy" : "sunny"} size={52} />
+                    <b>{d.temp}</b>
+                    {d.rain && <small>{t(lang, "Lluvia", "Rain")}</small>}
+                    {d.low != null && <small>{t(lang, "mín", "low")} {d.low}°</small>}
+                  </div>
+                ))}
+              </div>
+              {photo && <Credit p={photo} lang={lang} />}
+            </section>
+          );
+        })}
 
         {w.history.length > 0 && (
           <details>

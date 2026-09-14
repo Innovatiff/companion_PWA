@@ -13,9 +13,12 @@
  * offers it at most once a day: never modal, never blocking. No client runtime
  * JS; one small inline script (see lib/open-script.ts).
  *
- * Below the message, "Útil para ti": quick cards from app.home_extras (0033),
- * each rendered only when its real record exists. Time-bound cards carry
- * data-line/data-until like the lines, so an offline copy drops them.
+ * The greeting sits on a photo of their hometown when we hold one (0034), with
+ * its credit. Below the message, in this order, each section only when its real
+ * data exists and carrying its own expiry (data-line/data-until), so an offline
+ * copy drops it: official warnings status, their team's next match and today's
+ * league, their other towns' weather (app.home_more), "Útil para ti" quick
+ * cards (app.home_extras), and reminders: plan, alerts on this phone, school.
  */
 import Head from "next/head";
 import type { GetServerSideProps } from "next";
@@ -27,7 +30,10 @@ import { readSession, cookieValue, clearedCookie } from "../lib/session";
 import { OPEN_SCRIPT } from "../lib/open-script";
 import { recordView, type Access } from "../lib/client";
 import { t } from "../lib/t";
-import { Art, Balls, Crest, DateBlock, FLAG, Icon, drawTime, greetingArt, tel, type IconName } from "../lib/ui";
+import {
+  Art, Balls, Credit, Crest, DateBlock, FLAG, Icon, TownPhoto, drawTime, greetingArt, localDayEnd, tel,
+  type IconName, type Photo,
+} from "../lib/ui";
 
 export const config = { unstable_runtimeJS: false };
 
@@ -40,9 +46,28 @@ type Extras = {
   lottery: { game: string; draw_date: string; draw_time: string | null; numbers: string[]; verified_at: string; valid_until: string } | null;
   team: { id: number; name: string; crest: boolean } | null;
 };
+type Match = {
+  kickoff: string; status?: string; home: string; away: string; is_today?: boolean;
+  home_id?: number; away_id?: number; home_crest?: boolean; away_crest?: boolean;
+  home_score?: number | null; away_score?: number | null;
+};
+type Warning = { id: number; level: string; event: string | null; headline: string | null; area_desc: string | null; issued_at: string | null };
+type More = {
+  home_photo: Photo | null; home_town: string | null;
+  next_match: Match | null; league: string | null; league_today: Match[] | null; football_valid_until: string | null;
+  watch_weather: { id: number; name: string; photo: boolean; today: { temp: string; rain: boolean } }[] | null;
+  weather_valid_until: string | null;
+  alerts: { state: "current" | "stale"; checked_at: string | null; valid_until: string | null; agency: string | null; agency_url: string | null; here: Warning[] | null } | null;
+  plan: { period_end: string; days_left: number; status: "active" | "due" } | null;
+  push_subscriptions: number;
+  school_next: { event_name: string; start_date: string; end_date: string | null; verified_at: string } | null;
+};
 type Expired = { language: "es" | "en"; access: Access };
 type Props =
-  | { renderId: string; renderedAt: string; language: "es" | "en"; lines: Line[]; prompt: string | null; extras: Extras | null; expired?: undefined }
+  | {
+      renderId: string; renderedAt: string; language: "es" | "en"; lines: Line[]; prompt: string | null;
+      extras: Extras | null; more: More | null; watchPhotos: Photo[]; pushReady: boolean; expired?: undefined;
+    }
   | { expired: Expired };
 
 export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }) => {
@@ -60,21 +85,31 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }
     return { props: { expired: { language: a.language, access: a.access } } };
   }
 
-  const [home, extras] = await Promise.all([
+  const [home, extras, moreRow] = await Promise.all([
     db().query("select app.render_home($1) as m", [clientId]),
     db().query("select app.home_extras($1) as x", [clientId]),
+    db().query("select app.home_more($1) as h", [clientId]),
   ]);
   const m = home.rows[0]?.m;
   if (!m) {
     res.setHeader("Set-Cookie", clearedCookie);
     return { redirect: { destination: "/login?e=inactive", permanent: false } };
   }
+  const more = (moreRow.rows[0]?.h ?? null) as More | null;
+  // Credits for the watched towns that have a photo.
+  const withPhoto = (more?.watch_weather ?? []).filter((w) => w.photo).map((w) => w.id);
+  const watchPhotos: Photo[] = withPhoto.length
+    ? (await db().query("select p from (select app.town_photo(id) as p from unnest($1::bigint[]) as id) s where p is not null", [withPhoto]))
+        .rows.map((r) => r.p)
+    : [];
 
   (req as { appLang?: string }).appLang = m.language;
   return {
     props: {
       renderId: m.render_id, renderedAt: m.rendered_at, language: m.language, lines: m.lines, prompt: m.prompt ?? null,
-      extras: extras.rows[0]?.x ?? null,
+      extras: extras.rows[0]?.x ?? null, more, watchPhotos,
+      // The "turn on alerts" card only where this server can actually subscribe a phone.
+      pushReady: Boolean(process.env.VAPID_PUBLIC_KEY?.trim()),
     },
   };
 };
@@ -140,27 +175,78 @@ const TILE: Record<string, { href?: string; es: string; en: string; icon: IconNa
   countdown: { es: "Tu fecha", en: "Your date", icon: "calendar" },
 };
 
+const LEVEL: Record<string, [string, string]> = {
+  red: ["Rojo", "Red"], orange: ["Naranja", "Orange"], yellow: ["Amarillo", "Yellow"], green: ["Verde", "Green"],
+};
+const STATUS: Record<string, [string, string]> = {
+  live: ["en juego", "playing now"], postponed: ["aplazado", "postponed"], cancelled: ["cancelado", "cancelled"],
+};
+
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+const HOUR = 3_600_000;
 
 export default function Home(props: Props) {
   if (props.expired) return <ExpiryScreen {...props.expired} />;
-  const { renderId, renderedAt, language: lang, lines, prompt, extras: x } = props;
+  const { renderId, renderedAt, language: lang, lines, prompt, extras: x, more: h, watchPhotos, pushReady } = props;
   const [greeting, ...rest] = lines;
-  const tz = x?.timezone;
+  const tz = x?.timezone ?? "America/Toronto";
+  const now = Date.parse(renderedAt);
+  // Anything whose validity has already passed is not rendered at all.
+  const live = (until: string | null | undefined): until is string => Boolean(until) && Date.parse(until!) > now;
+  const today = localDate(renderedAt, tz);
+  const dayEnd = localDayEnd(new Date(now), tz);
+  const moment = (iso: string) =>
+    localDate(iso, tz) === today ? formatTime12(iso, tz) : `${formatTime12(iso, tz)}, ${formatDate(localDate(iso, tz), lang)}`;
+  const verified = (day: string) => `${t(lang, "Verificado", "Verified")}: ${formatDate(day, lang)}`;
+
+  // Útil para ti (0033).
   const hol = x?.next_holiday ?? null;
   const sos = x?.emergency ?? null;
   const con = x?.consulate ?? null;
   const lot = x?.lottery && x.lottery.numbers.length > 0 ? x.lottery : null;
-  const verified = (day: string) => `${t(lang, "Verificado", "Verified")}: ${formatDate(day, lang)}`;
-  // "en 2 días" is only true on the day it was rendered: it carries its own
-  // expiry (an hour early, to stay safe across a clock change).
-  const dayEnd = hol ? new Date(Date.parse(hol.valid_until) - hol.days_until * 86_400_000 - 3_600_000).toISOString() : "";
+  // "en 2 días" is only true on the day it was rendered: it expires at local midnight.
+  const holDayEnd = dayEnd;
   const soon = hol && (hol.days_until === 0 ? t(lang, "Hoy", "Today")
     : hol.days_until === 1 ? t(lang, "Mañana", "Tomorrow")
     : t(lang, `En ${hol.days_until} días`, `In ${hol.days_until} days`));
   // If every quick card is time-bound, the heading expires with the last of them.
   const timed = [hol?.valid_until, lot?.valid_until].filter(Boolean) as string[];
   const headingUntil = !sos && !con && timed.length ? { "data-line": "extras", "data-until": timed.sort().at(-1) } : {};
+
+  // Official warnings (0034). Current: valid until our check is 45 minutes old.
+  // Stale: the statement "we could not check since..." is as of this render.
+  const al = h?.alerts ?? null;
+  const alertsUntil = al ? (al.state === "current" ? al.valid_until : new Date(now + 45 * 60_000).toISOString()) : null;
+  const showAlerts = Boolean(al && al.agency && live(alertsUntil));
+
+  // Next match: while the schedule is current, and no later than two hours after kickoff.
+  const nm = h?.next_match ?? null;
+  const matchUntil = nm && h?.football_valid_until
+    ? new Date(Math.min(Date.parse(h.football_valid_until), Date.parse(nm.kickoff) + 2 * HOUR)).toISOString() : null;
+  const showMatch = Boolean(nm && live(matchUntil));
+  const played = (m: Match) => m.home_score != null && m.away_score != null;
+  const same = (m: Match) => showMatch && m.home_id === nm!.home_id && m.away_id === nm!.away_id && Date.parse(m.kickoff) === Date.parse(nm!.kickoff);
+  // Today's league: finished with a score, or not yet two hours past kickoff; never a stale time.
+  const league = live(h?.football_valid_until)
+    ? (h!.league_today ?? []).filter((m) => !same(m) && (played(m) || Date.parse(m.kickoff) + 2 * HOUR > now)) : [];
+  const footballUntil = [showMatch ? matchUntil : null, league.length ? h!.football_valid_until : null]
+    .filter(Boolean).sort().at(-1) as string | undefined;
+
+  // Their other towns, today.
+  const towns = live(h?.weather_valid_until) ? h!.watch_weather ?? [] : [];
+  const photoOf = (id: number) => watchPhotos.find((p) => p.municipality_id === id);
+
+  // Reminders: day-bound.
+  const plan = h?.plan ?? null;
+  const pushCard = pushReady && h?.push_subscriptions === 0;
+  const school = h?.school_next ?? null;
+  const photo = h?.home_photo ?? null;
+
+  const kickoffChip = (m: Match) => {
+    if (m.is_today) return `${t(lang, "Hoy", "Today")} · ${formatTime12(m.kickoff, tz)}`;
+    const day = localDate(m.kickoff, tz);
+    return `${cap(formatWeekdayDate(day, lang).slice(0, 3))} ${Number(day.slice(8))} · ${formatTime12(m.kickoff, tz)}`;
+  };
 
   return (
     <>
@@ -172,12 +258,15 @@ export default function Home(props: Props) {
         {/* Reserved for a future feature. Empty, and takes no space. */}
         <div id="slot"></div>
         {greeting && (
-          <header className="hello" data-line={greeting.key} data-until={greeting.valid_until}>
+          <header className={photo ? "hello photo" : "hello"} data-line={greeting.key} data-until={greeting.valid_until}>
+            {photo && <TownPhoto p={photo} lazy={false} />}
             <div>
+              {photo && h?.home_town && <span className="place"><Icon name="pin" />{h.home_town}</span>}
               <h1>{greeting.text}</h1>
-              <p>{(tz ? `${cap(formatWeekdayDate(localDate(renderedAt, tz), lang))} · ` : "") + t(lang, "Tu resumen de hoy", "Your day at a glance")}</p>
+              <p>{`${x ? `${cap(formatWeekdayDate(today, lang))} · ` : ""}${t(lang, "Tu resumen de hoy", "Your day at a glance")}`}</p>
+              {photo && <Credit p={photo} lang={lang} />}
             </div>
-            <Art name={greetingArt(greeting.text)} size={60} />
+            {!photo && <Art name={greetingArt(greeting.text)} size={60} />}
           </header>
         )}
         {prompt === "municipality" && (
@@ -208,6 +297,91 @@ export default function Home(props: Props) {
             : <div key={line.key} className={cls} data-line={line.key} data-until={line.valid_until}>{inner}</div>;
         })}
 
+        {showAlerts && al && (
+          <section data-line="alerts" data-until={alertsUntil!}>
+            <h2>{t(lang, "Avisos oficiales", "Official warnings")}</h2>
+            {al.state === "current" && (al.here ?? []).map((a) => (
+              <a key={a.id} className={`alert ${a.level}`} href="/clima">
+                <span className="level"><span className="i"><Icon name="alert" /></span>{LEVEL[a.level]?.[lang === "en" ? 1 : 0] ?? a.level}</span>
+                <p><strong>{a.headline ?? a.event}</strong></p>
+                {a.area_desc && <small>{a.area_desc}</small>}
+                <small>{`${al.agency}${a.issued_at ? ` · ${t(lang, "Emitido", "Issued")}: ${moment(a.issued_at)}` : ""}`}</small>
+              </a>
+            ))}
+            {al.state === "current" && al.checked_at && (
+              <a className="tile calm" href="/clima">
+                <span className="ico"><Icon name="check" /></span>
+                <span><p>{t(lang, `Revisamos los avisos de ${al.agency} a las ${moment(al.checked_at)}.`,
+                                  `We checked ${al.agency} warnings at ${moment(al.checked_at)}.`)}</p></span>
+              </a>
+            )}
+            {al.state === "stale" && (
+              <div className="tile stale">
+                <span className="ico"><Icon name="alert" /></span>
+                <span>
+                  <p>{al.checked_at
+                    ? t(lang, `No hemos podido revisar los avisos de ${al.agency} desde las ${moment(al.checked_at)}.`,
+                              `We have not been able to check ${al.agency} warnings since ${moment(al.checked_at)}.`)
+                    : t(lang, `No hemos podido revisar los avisos de ${al.agency}.`, `We have not been able to check ${al.agency} warnings.`)}</p>
+                  {al.agency_url && <a href={al.agency_url} rel="noopener">{t(lang, `Ver avisos de ${al.agency}`, `See ${al.agency} warnings`)}</a>}
+                </span>
+              </div>
+            )}
+          </section>
+        )}
+
+        {footballUntil && h && (
+          <section data-line="football" data-until={footballUntil}>
+            <h2>{t(lang, "Fútbol", "Football")}</h2>
+            {showMatch && nm && (
+              <a className="card match" href="/futbol" data-line="match" data-until={matchUntil!}>
+                <small>{`${t(lang, "Próximo partido", "Next match")}${h.league ? ` · ${h.league}` : ""}${nm.status && STATUS[nm.status] ? ` · ${STATUS[nm.status][lang === "en" ? 1 : 0]}` : ""}`}</small>
+                <span><Crest id={nm.home_id} name={nm.home} has={nm.home_crest} size={48} />{nm.home}</span>
+                <b className="chip">{kickoffChip(nm)}</b>
+                <span><Crest id={nm.away_id} name={nm.away} has={nm.away_crest} size={48} />{nm.away}</span>
+              </a>
+            )}
+            {league.length > 0 && (
+              <a className="card lg" href="/futbol" data-line="league" data-until={h.football_valid_until!}>
+                <small>{t(lang, "Hoy en la liga", "In the league today")}</small>
+                {league.map((m) => (
+                  <span key={m.kickoff + m.home}>
+                    <span><Crest id={m.home_id} name={m.home} has={m.home_crest} size={26} />{m.home}</span>
+                    {played(m) ? <b>{`${m.home_score}–${m.away_score}`}</b> : <b className="chip">{formatTime12(m.kickoff, tz)}</b>}
+                    <span>{m.away}<Crest id={m.away_id} name={m.away} has={m.away_crest} size={26} /></span>
+                  </span>
+                ))}
+              </a>
+            )}
+          </section>
+        )}
+
+        {towns.length > 0 && h && (
+          <section data-line="watch" data-until={h.weather_valid_until!}>
+            <h2>{t(lang, "Tus otros municipios", "Your other towns")}</h2>
+            <div className="towns">
+              {towns.map((w) => {
+                const p = w.photo ? photoOf(w.id) : undefined;
+                return (
+                  <a key={w.id} className="town" href={`/clima#t${w.id}`}>
+                    {p ? <TownPhoto p={p} className="thumb" />
+                       : <span className={`thumb ${w.today.rain ? "rain" : "sun"}`}><Art name={w.today.rain ? "rainy" : "sunny"} size={48} /></span>}
+                    <span className="tb">
+                      <b>{w.name}</b>
+                      <span className="tt"><span className="i"><Icon name={w.today.rain ? "rain" : "sun"} /></span>{w.today.temp}</span>
+                      <small>{w.today.rain ? t(lang, "Hoy · lluvia", "Today · rain") : t(lang, "Hoy", "Today")}</small>
+                    </span>
+                  </a>
+                );
+              })}
+            </div>
+            {towns.map((w) => {
+              const p = w.photo ? photoOf(w.id) : undefined;
+              return p ? <Credit key={w.id} p={p} lang={lang} place={w.name} /> : null;
+            })}
+          </section>
+        )}
+
         {(hol || sos || con || lot) && <h2 {...headingUntil}>{t(lang, "Útil para ti", "Useful for you")}</h2>}
         {hol && (
           <a className="tile holiday" href="/mas/feriados" data-line="holiday" data-until={hol.valid_until}>
@@ -216,7 +390,7 @@ export default function Home(props: Props) {
               <small>{`${t(lang, "Próximo feriado", "Next holiday")} ${FLAG[x!.country] ?? ""}`}</small>
               <p className="line">{hol.name}</p>
               <small>
-                <span className="chip" data-line="holiday-days" data-until={dayEnd}>{soon}</span>
+                <span className="chip" data-line="holiday-days" data-until={holDayEnd}>{soon}</span>
                 {` ${cap(formatWeekdayDate(hol.date, lang))}`}
               </small>
               <small>{verified(hol.verified_at)}</small>
@@ -248,7 +422,7 @@ export default function Home(props: Props) {
             )}
           </div>
         )}
-        {lot && tz && (
+        {lot && (
           <a className="tile lottery" href="/mas/loteria" data-line="lottery" data-until={lot.valid_until}>
             <span className="ico"><Icon name="star" /></span>
             <span>
@@ -258,6 +432,54 @@ export default function Home(props: Props) {
               <small>{`${verified(localDate(lot.verified_at, tz))}, ${formatTime12(lot.verified_at, tz)}`}</small>
             </span>
           </a>
+        )}
+
+        {(plan || pushCard || school) && (
+          <section data-line="reminders" data-until={dayEnd}>
+            <h2>{t(lang, "Recordatorios", "Reminders")}</h2>
+            {plan && (
+              <div className={`tile plan${plan.status === "due" ? " due" : ""}`} data-line="plan" data-until={dayEnd}>
+                <span className="ico"><Icon name="key" /></span>
+                <span>
+                  <small>{t(lang, "Tu plan de Hoy", "Your Hoy plan")}</small>
+                  <p className="line">{t(lang, `Tu plan vence el ${formatDate(plan.period_end, lang, true)}`, `Your plan ends on ${formatDate(plan.period_end, lang, true)}`)}</p>
+                  {plan.status === "due" && (
+                    <small>
+                      <span className="chip warn">{plan.days_left <= 0 ? t(lang, "Vence hoy", "Ends today")
+                        : plan.days_left === 1 ? t(lang, "Queda 1 día", "1 day left")
+                        : t(lang, `Quedan ${plan.days_left} días`, `${plan.days_left} days left`)}</span>
+                      {` ${t(lang, "Cualquier afiliado de Hoy puede renovarlo.", "Any Hoy affiliate can renew it.")}`}
+                    </small>
+                  )}
+                </span>
+              </div>
+            )}
+            {pushCard && (
+              <a className="tile push" href="/mas/avisos" data-line="push" data-until={dayEnd}>
+                <span className="ico"><Icon name="bell" /></span>
+                <span>
+                  <small>{t(lang, "Notificaciones", "Notifications")}</small>
+                  <p className="line">{t(lang, "Activa las alertas", "Turn on alerts")}</p>
+                  <small>{al?.agency
+                    ? t(lang, `Los avisos oficiales de ${al.agency} para tus municipios, en este teléfono.`, `Official ${al.agency} warnings for your towns, on this phone.`)
+                    : t(lang, "Tu equipo, la tasa y la lotería: como máximo una al día.", "Your team, the rate and the lottery: at most one a day.")}</small>
+                </span>
+              </a>
+            )}
+            {school && (
+              <a className="tile school" href="/mas/escuela" data-line="school" data-until={dayEnd}>
+                <DateBlock date={school.start_date} lang={lang} />
+                <span>
+                  <small>{`${t(lang, "Calendario escolar", "School calendar")} ${x ? FLAG[x.country] ?? "" : ""}`}</small>
+                  <p className="line">{school.event_name}</p>
+                  <small>{school.end_date && school.end_date !== school.start_date
+                    ? `${formatDate(school.start_date, lang)} – ${formatDate(school.end_date, lang)}`
+                    : cap(formatWeekdayDate(school.start_date, lang))}</small>
+                  <small>{verified(school.verified_at)}</small>
+                </span>
+              </a>
+            )}
+          </section>
         )}
         <p id="stamp" hidden></p>
       </main>

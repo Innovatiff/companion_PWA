@@ -43,21 +43,30 @@ export const APP_CSS = BASE +
   "color:#fff;border-radius:22px;padding:1.2rem;margin:.2rem 0 1rem;box-shadow:0 10px 28px rgba(53,51,205,.25)}" +
   ".hello small{color:rgba(255,255,255,.8)}.hello>div{flex:1;min-width:0}.hello h1{margin:0;color:#fff}.hello p{margin:.35rem 0 0;color:rgba(255,255,255,.88);font-size:.95rem}" +
   ".hello .ico{width:3.6rem;height:3.6rem;border-radius:50%;background:rgba(255,255,255,.16);color:#fff}.art{flex:none;display:block}" +
+  // With a hometown photo: the photo fills the box under a dark overlay, text at the bottom
+  ".hello.photo{position:relative;overflow:hidden;min-height:13rem;align-items:flex-end;background:#1d2147;padding:1.1rem 1.2rem}" +
+  ".hello.photo>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}" +
+  ".hello.photo::before{content:\"\";position:absolute;inset:0;z-index:1;background:linear-gradient(rgba(14,16,44,.55),rgba(14,16,44,.78) 40%,rgba(14,16,44,.93))}" +
+  ".hello.photo>div{position:relative;z-index:2}.hello.photo h1,.hello.photo p{text-shadow:0 1px 3px rgba(0,0,0,.5)}" +
+  ".place{display:inline-flex;align-items:center;gap:.3rem;margin:0 0 .5rem;padding:.2rem .65rem;border-radius:999px;background:rgba(255,255,255,.2);font-size:.78rem;font-weight:700}" +
+  ".credit{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin:.35rem .2rem 0;font-size:.7rem;line-height:1.35;color:var(--muted)}.credit a{color:inherit}" +
+  ".hello .credit{margin:.6rem 0 0;color:rgba(255,255,255,.85)}" +
   // Cards and tiles
   ".card,.tile{background:var(--card);border-radius:18px;box-shadow:var(--shadow);margin:0 0 .75rem}.card{padding:1rem 1.1rem}" +
   ".tile{display:flex;gap:.9rem;align-items:center;padding:.95rem 1rem;text-decoration:none;color:var(--ink)}.tile>span:not([class]){flex:1;min-width:0}" +
   ".ico,.mi{border-radius:14px;display:grid;place-items:center;flex:none;background:var(--brand-soft);color:var(--brand)}" +
   ".ico{width:2.9rem;height:2.9rem}.mi{width:2.6rem;height:2.6rem;border-radius:12px}" +
-  ".ico svg,.mi svg,.i svg,.dial svg{width:25px;height:25px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}" +
-  ".i{display:inline-grid;place-items:center;vertical-align:-.2em;margin-right:.35rem;color:var(--brand)}.i svg,.dial svg{width:1.15em;height:1.15em;stroke-width:2.2}" +
+  ".ico svg,.mi svg,.i svg,.dial svg,.place svg{width:25px;height:25px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}" +
+  ".i{display:inline-grid;place-items:center;vertical-align:-.2em;margin-right:.35rem;color:var(--brand)}.i svg,.dial svg,.place svg{width:1.15em;height:1.15em;stroke-width:2.2}" +
   ".fixture .ico{background:var(--ok-soft);color:var(--ok)}.rainy .ico{background:#e5efff;color:#1d5fd1}.sunny .ico{background:#fff3cf;color:#a15c00}" +
   ".rate .ico{background:var(--warn-soft);color:var(--warn)}.countdown .ico{background:#f1e8ff;color:#6b2fbf}.lottery .ico{background:#ffeef5;color:#b3246b}" +
+  ".calm .ico,.school .dt{background:var(--ok-soft);color:var(--ok)}.stale .ico,.due .ico{background:var(--warn-soft);color:var(--warn)}.push .ico{background:#f1e8ff;color:#6b2fbf}.tile p{margin:.1rem 0}" +
   ".tile small{display:block}.tile small:first-child,.call .ico+small{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em}" +
   "p.line{font-size:1.15rem;font-weight:600;margin:.1rem 0 0;line-height:1.35}" +
   "a.tile::after{content:\"›\";margin-left:auto;color:#b3b8cc;font-size:1.5rem;line-height:1}" +
   ".flag{font-size:.95rem;letter-spacing:0;margin-right:.35rem}" +
   ".chip{display:inline-block;padding:.12rem .6rem;border-radius:999px;background:var(--brand-soft);color:var(--brand);font-size:.78rem;font-weight:700;white-space:nowrap;text-transform:none;letter-spacing:0;vertical-align:middle}" +
-  ".chip.ok{background:var(--ok-soft);color:var(--ok)}.call small:last-child{font-size:.75rem}.pair .card{padding:1rem .85rem}.pair .dial{font-size:.8rem;padding:.4rem .5rem;gap:.3rem;white-space:nowrap}.dialrow .num{font-size:1.5rem;white-space:nowrap}" +
+  ".chip.ok{background:var(--ok-soft);color:var(--ok)}.chip.warn{background:var(--warn-soft);color:var(--warn)}.call small:last-child{font-size:.75rem}.pair .card{padding:1rem .85rem}.pair .dial{font-size:.8rem;padding:.4rem .5rem;gap:.3rem;white-space:nowrap}.dialrow .num{font-size:1.5rem;white-space:nowrap}" +
   "#stamp{color:var(--muted);font-size:.9rem;margin-top:1rem;text-align:center}" +
   // Crests, date blocks, lottery balls, tap-to-call
   ".cr{display:grid;place-items:center;flex:none;font-weight:800;object-fit:contain}span.cr{border-radius:50%}" +
@@ -71,6 +80,24 @@ export const APP_CSS = BASE +
   ".sos{background:linear-gradient(135deg,#b42318,#e5484d);color:#fff;box-shadow:0 8px 22px rgba(180,35,24,.28)}.sos small,.sos a{color:#fff}.sos .ico{background:rgba(255,255,255,.2);color:#fff}" +
   ".dial{display:inline-flex;align-items:center;gap:.45rem;min-height:44px;padding:.45rem .8rem;border-radius:12px;background:var(--ok-soft);color:var(--ok);font-weight:700;text-decoration:none;font-size:.92rem}" +
   ".dialrow{display:flex;align-items:center;gap:.9rem;text-decoration:none;color:inherit;min-height:48px}" +
+  // Match cards (home and Fútbol), today in the league
+  ".match{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:.5rem;text-align:center;text-decoration:none;color:var(--ink)}.match>small{grid-column:1/-1;font-weight:600}" +
+  ".match>span{display:flex;flex-direction:column;align-items:center;gap:.35rem;font-weight:650;font-size:.92rem;line-height:1.2;overflow-wrap:anywhere}" +
+  ".score{font-size:1.7rem;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}" +
+  ".lg{display:block;text-decoration:none;color:var(--ink)}.lg>small{display:block;font-weight:600}" +
+  ".lg>span{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:.5rem;margin-top:.6rem;font-weight:600;font-size:.88rem}" +
+  ".lg>span>span{display:flex;align-items:center;gap:.4rem;min-width:0}.lg>span>span:last-child{justify-content:flex-end;text-align:right}.lg b{font-variant-numeric:tabular-nums}" +
+  // Official warnings (home and Clima)
+  ".alert{display:block;background:var(--card);border-radius:18px;padding:1rem 1rem 1rem 1.15rem;margin:.75rem 0;border-left:6px solid var(--muted);box-shadow:var(--shadow);color:var(--ink);text-decoration:none}" +
+  ".alert.red{border-left-color:var(--danger)}.alert.orange{border-left-color:#d97706}.alert.yellow{border-left-color:#ca8a04}.alert>small{display:block}" +
+  ".level{display:inline-block;font-weight:800;text-transform:uppercase;font-size:.72rem;letter-spacing:.06em;padding:.15rem .6rem;border-radius:999px;background:#eef0f6}" +
+  ".level .i{color:inherit;margin-right:.25rem}.red .level{background:var(--danger-soft);color:var(--danger)}.orange .level{background:var(--warn-soft);color:var(--warn)}.yellow .level{background:var(--caution-soft);color:var(--caution)}" +
+  // Their other towns: a row of mini weather cards
+  ".towns{display:flex;gap:.65rem;overflow-x:auto;margin:0 -1rem;padding:.2rem 1rem .6rem;scroll-snap-type:x mandatory}" +
+  ".town{flex:1 0 9.5rem;scroll-snap-align:start;background:var(--card);border-radius:16px;box-shadow:var(--shadow);overflow:hidden;text-decoration:none;color:var(--ink)}" +
+  ".thumb{display:grid;place-items:center;width:100%;height:5.6rem;object-fit:cover}.thumb.sun{background:linear-gradient(#fff4d6,#fff)}.thumb.rain{background:linear-gradient(#e8f0ff,#fff)}" +
+  ".tb{display:block;padding:.55rem .8rem .7rem}.tb b{display:block;font-size:.95rem;line-height:1.2}.tt{display:flex;align-items:center;font-size:1.4rem;font-weight:800;margin:.1rem 0}" +
+  "main>section{margin-bottom:.25rem}" +
   // Más menu, login and expiry
   ".menu{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem;list-style:none;padding:0;margin:0 0 1rem}" +
   ".menu a{display:flex;flex-direction:column;gap:.6rem;min-height:7rem;height:100%;padding:1rem;background:var(--card);" +

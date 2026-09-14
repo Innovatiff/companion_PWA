@@ -21,6 +21,8 @@ export default {
       { source: "/health", destination: "/api/health" },
       // Team crests, from our own database (0033).
       { source: "/crest/:id", destination: "/api/crest/:id" },
+      // Hometown photos, from our own database (0034).
+      { source: "/photo/:id", destination: "/api/photo/:id" },
     ];
   },
   async headers() {

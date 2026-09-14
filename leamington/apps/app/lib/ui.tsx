@@ -86,7 +86,7 @@ export function Crest({ id, name, has, size }: { id?: number | string | null; na
   const h = hue(name);
   return (
     <span className="cr" aria-hidden="true"
-          style={{ width: size, height: size, fontSize: Math.round(size * 0.3), background: `hsl(${h} 70% 92%)`, color: `hsl(${h} 55% 30%)` }}>
+          style={{ width: size, height: size, fontSize: Math.max(9, Math.round(size * 0.3)), background: `hsl(${h} 70% 92%)`, color: `hsl(${h} 55% 30%)` }}>
       {initials(name)}
     </span>
   );
@@ -116,6 +116,47 @@ export const tel = (n: string) => `tel:${n.split("/")[0].replace(/[^\d+]/g, "")}
 export function drawTime(value: string): string {
   const [h, m] = value.split(":").map(Number);
   return `${h % 12 || 12}${m ? `:${String(m).padStart(2, "0")}` : ""}${h < 12 ? "am" : "pm"}`;
+}
+
+/** A town photo's credit, from app.town_photo (0034). */
+export type Photo = {
+  municipality_id: number; author: string; license: string; license_url: string | null;
+  source_page_url: string; width: number | null; height: number | null;
+};
+
+/** A town photo from our own domain. The page must also render its <Credit>. */
+export function TownPhoto({ p, lazy = true, className }: { p: Photo; lazy?: boolean; className?: string }) {
+  return (
+    <img className={className} src={`/photo/${p.municipality_id}`} width={p.width ?? 560} height={p.height ?? 373} alt=""
+         loading={lazy ? "lazy" : undefined} decoding="async" />
+  );
+}
+
+/** "Foto: {author} · {license}", linked to the file's page and the license. */
+export function Credit({ p, lang, place }: { p: Photo; lang: Lang; place?: string }) {
+  return (
+    <small className="credit" data-photo={p.municipality_id}>
+      {`${place ? `${place}. ` : ""}${lang === "en" ? "Photo" : "Foto"}: `}
+      <a href={p.source_page_url} rel="noopener">{p.author}</a>
+      {" · "}
+      {p.license_url ? <a href={p.license_url} rel="noopener">{p.license}</a> : p.license}
+    </small>
+  );
+}
+
+/**
+ * The next local midnight in a timezone, as an ISO string: when a day-bound
+ * line stops being true. The UTC offset is the one in force at that midnight,
+ * so a clock change that day is accounted for.
+ */
+export function localDayEnd(now: Date, timeZone: string): string {
+  const f = new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit", timeZoneName: "longOffset" });
+  const parts = (d: Date) => Object.fromEntries(f.formatToParts(d).map((x) => [x.type, x.value]));
+  const offset = (d: Date) => (parts(d).timeZoneName ?? "GMT").replace("GMT", "") || "Z";
+  const p = parts(now);
+  const next = new Date(Date.UTC(Number(p.year), Number(p.month) - 1, Number(p.day) + 1)).toISOString().slice(0, 10);
+  const guess = new Date(`${next}T00:00:00${offset(now)}`);
+  return new Date(`${next}T00:00:00${offset(guess)}`).toISOString();
 }
 
 /** Whole days from one "YYYY-MM-DD" to another. */

@@ -46,36 +46,47 @@ function send(path, { method = "GET", cookie, form, json, origin, headers: extra
 
 // Words that would turn silence into reassurance, or show a placeholder.
 const FORBIDDEN = [/sin avisos/i, /no alerts/i, /no hay (alertas|avisos|partidos)/i, /no matches/i, /all clear/i, /cargando/i, /loading/i];
+const visible = (html) => html.replace(/<script[\s\S]*?<\/script>/g, "").replace(/ loading="lazy"/g, "");
 
 async function page(path, cookie, label = path) {
   const r = await send(path, { cookie });
   check(r.status === 200, `${label} 200`, `got ${r.status} ${r.location}`);
   check(!/<script[^>]+src=/i.test(r.text) && !r.text.includes("/_next/"), `${label} ships no framework JS`);
-  // Crest images' loading="lazy" attribute is markup, not words on the screen.
-  const bad = FORBIDDEN.find((re) => re.test(r.text.replace(/<script[\s\S]*?<\/script>/g, "").replace(/ loading="lazy"/g, "")));
+  // Images' loading="lazy" attribute is markup, not words on the screen.
+  const bad = FORBIDDEN.find((re) => re.test(visible(r.text)));
   check(!bad, `${label} has no reassurance-from-silence or placeholder text`, String(bad));
   return r.text;
 }
 
-// Images are team crests from our own domain only: sized, lazy, each at most
-// 50 KB, cached for 30 days with an ETag.
-const crestsChecked = new Set();
-async function crests(html, label) {
+// Images come only from our own domain: team crests (each at most 50 KB, lazy)
+// and town photos (each at most 120 KB, always with a credit on the same page).
+// All sized, all cached for 30 days with an ETag, nosniff, and a 304 on the ETag.
+const imagesChecked = new Set();
+async function images(html, label) {
   const imgs = [...html.matchAll(/<img\b[^>]*>/g)].map((m) => m[0]);
-  check(imgs.every((i) => /src="\/crest\/\d+"/.test(i) && /width="\d+"/.test(i) && /height="\d+"/.test(i) && / alt=""/.test(i) && / loading="lazy"/.test(i)),
-    `${label}: every image is a crest from our own domain, sized and lazy`, imgs.join(" "));
-  for (const id of new Set(imgs.map((i) => /src="\/crest\/(\d+)"/.exec(i)?.[1]).filter(Boolean))) {
-    if (crestsChecked.has(id)) continue;
-    crestsChecked.add(id);
-    const r = await send(`/crest/${id}`);
-    check(r.status === 200 && /^image\//.test(r.headers["content-type"] ?? "") && r.bytes > 0 && r.bytes <= 50_000,
-      `/crest/${id} serves an image of at most 50 KB`, `${r.status} ${r.headers["content-type"]} ${r.bytes}`);
+  check(imgs.every((i) => /src="\/(crest|photo)\/\d+"/.test(i) && /width="\d+"/.test(i) && /height="\d+"/.test(i) && / alt=""/.test(i)),
+    `${label}: every image is a crest or a town photo from our own domain, sized`, imgs.join(" "));
+  check(imgs.filter((i) => i.includes('src="/crest/')).every((i) => / loading="lazy"/.test(i)), `${label}: crests load lazily`);
+  const photos = new Set(imgs.map((i) => /src="\/photo\/(\d+)"/.exec(i)?.[1]).filter(Boolean));
+  const credited = new Set([...html.matchAll(/<small class="credit" data-photo="(\d+)">([\s\S]*?)<\/small>/g)]
+    .filter((m) => /<a href="https?:\/\/[^"]+"[^>]*>[^<]+<\/a>/.test(m[2]) && /· /.test(m[2])).map((m) => m[1]));
+  check([...photos].every((id) => credited.has(id)), `${label}: every town photo shown has its credit (author, linked, and license)`,
+    `photos ${[...photos]} credited ${[...credited]}`);
+  for (const i of imgs) {
+    const [, kind, id] = /src="\/(crest|photo)\/(\d+)"/.exec(i) ?? [];
+    if (!kind || imagesChecked.has(kind + id)) continue;
+    imagesChecked.add(kind + id);
+    const path = `/${kind}/${id}`;
+    const limit = kind === "crest" ? 50_000 : 120_000;
+    const r = await send(path);
+    check(r.status === 200 && /^image\//.test(r.headers["content-type"] ?? "") && r.bytes > 0 && r.bytes <= limit,
+      `${path} serves an image of at most ${limit / 1000} KB`, `${r.status} ${r.headers["content-type"]} ${r.bytes}`);
     check(/max-age=2592000/.test(r.headers["cache-control"] ?? "") && Boolean(r.headers.etag) && r.headers["x-content-type-options"] === "nosniff",
-      `/crest/${id} is cached for 30 days, with an ETag and nosniff`, JSON.stringify(r.headers));
-    const again = await send(`/crest/${id}`, { headers: { "if-none-match": r.headers.etag } });
-    check(again.status === 304, `/crest/${id} answers 304 to its own ETag`, String(again.status));
+      `${path} is cached for 30 days, with an ETag and nosniff`, JSON.stringify(r.headers));
+    const again = await send(path, { headers: { "if-none-match": r.headers.etag } });
+    check(again.status === 304, `${path} answers 304 to its own ETag`, String(again.status));
   }
-  return imgs.length;
+  return { crests: imgs.filter((i) => i.includes('src="/crest/')).length, photos: photos.size };
 }
 
 // The team header shows the crest when stored, otherwise the team's initials.
@@ -84,7 +95,7 @@ async function teamVisuals(cookie, label) {
   if (f.text.includes('class="card team"')) {
     check(/class="card team"><(img|span) class="cr"/.test(f.text), `${label}: the Fútbol team header shows its crest or its initials`);
   }
-  return crests(f.text, `${label} /futbol`);
+  return (await images(f.text, `${label} /futbol`)).crests;
 }
 
 // Home quick cards ("Útil para ti") render only when their record exists, as
@@ -104,7 +115,51 @@ async function extras(cookie, label) {
   check(!/<p class="line"><\/p>|<span class="line"><\/span>|<span class="balls"><\/span>|<span class="num"><\/span>/.test(home), `${label}: no quick card renders without its data`);
   check((home.match(/ data-line="/g) ?? []).length === (home.match(/ data-until="\d{4}-\d{2}-\d{2}T/g) ?? []).length,
     `${label}: every time-bound element on home carries its expiry`);
-  await crests(home, `${label} /`);
+  await images(home, `${label} /`);
+}
+
+// The newer home sections (0034) render only with real data, checked against
+// the section pages that show the same records.
+async function more(cookie, label) {
+  const [home, clima, futbol, avisos, escuela, mas] = await Promise.all(
+    ["/", "/clima", "/futbol", "/mas/avisos", "/mas/escuela", "/mas"].map(async (p) => (await send(p, { cookie })).text));
+  const section = (key) => new RegExp(`<section data-line="${key}"[\\s\\S]*?</section>`).exec(home)?.[0] ?? "";
+
+  check(!/sin avisos|no alerts|no hay (alertas|avisos)|all clear/i.test(visible(home)), `${label}: home never says "sin avisos" or "no alerts"`);
+  const monitored = !/todavía no recibe|does not receive/.test(clima);
+  check(Boolean(section("alerts")) === monitored, `${label}: the warnings section shows exactly when we read that country's official warnings`);
+  if (section("alerts")) {
+    check(/Revisamos los avisos de|We checked .* warnings|No hemos podido revisar|We have not been able to check/.test(section("alerts")),
+      `${label}: the warnings section says when we checked, or since when we could not`);
+  }
+
+  const upcoming = /Próximos partidos|Next matches/.test(futbol);
+  check(!home.includes('data-line="match"') || upcoming, `${label}: the next-match card shows only when Fútbol has an upcoming match`);
+  if (home.includes('data-line="match"')) {
+    check(/class="card match"[^>]*>[\s\S]*?class="cr"[\s\S]*?class="chip"[\s\S]*?class="cr"/.test(section("football")),
+      `${label}: the next-match card shows both teams' crests or initials and the kickoff`);
+  }
+  check(!home.includes('data-line="league"') || /Hoy en la liga|In the league today/.test(futbol), `${label}: today's league rows show only when Fútbol has them`);
+
+  const climaTowns = clima.split('<section id="t').slice(1).map((chunk) => {
+    const body = chunk.slice(0, chunk.indexOf("</section>"));
+    return { id: /^\d+/.exec(body)?.[0], home: body.includes('class="chip"'), today: />(Hoy|Today)</.test(body) };
+  });
+  const watched = [...home.matchAll(/href="\/clima#t(\d+)"/g)].map((m) => m[1]);
+  check(watched.every((id) => climaTowns.some((town) => town.id === id && !town.home && town.today)),
+    `${label}: every watched-town card is a town Clima shows with today's forecast`, `home ${watched}`);
+  check(climaTowns.filter((town) => !town.home && town.today).every((town) => watched.includes(town.id)),
+    `${label}: every other town with today's forecast gets a card on home`);
+
+  check(home.includes('data-line="plan"') && /Tu plan vence el \d|Your plan ends on \d/.test(section("reminders")),
+    `${label}: a paying client sees when the plan ends`);
+  check(!home.includes('data-line="push"') || avisos.includes('id="on"'), `${label}: "Activa las alertas" shows only where this phone can subscribe`);
+  const hasEvents = /<ul class="rows"><li/.test(escuela);
+  const parent = mas.indexOf("/mas/escuela") < mas.indexOf("/mas/tasa");
+  check(!home.includes('data-line="school"') || (hasEvents && parent), `${label}: the school card shows only for a parent with a school event`);
+  check(!(hasEvents && parent) || home.includes('data-line="school"'), `${label}: a parent with a school event sees it on home`);
+  await images(home, `${label} / (more)`);
+  await images(clima, `${label} /clima`);
 }
 
 // Signed out.
@@ -125,8 +180,12 @@ for (const path of ["/", "/futbol", "/mas", "/mas/tasa", "/mas/feriados", "/mas/
 }
 
 await extras(cookie, CODE);
+await more(cookie, CODE);
 await teamVisuals(cookie, CODE);
-check((await send("/crest/999999999999")).status === 404 && (await send("/crest/abc")).status === 404, "an unknown or malformed crest id is 404");
+for (const path of ["/crest/999999999999", "/crest/abc", "/photo/999999999999", "/photo/abc"]) {
+  const r = await send(path);
+  check(r.status === 404 && r.headers["x-content-type-options"] === "nosniff", `${path} is 404`, String(r.status));
+}
 
 const clima = await page("/clima", cookie);
 check(/Revisamos los avisos|We checked .* warnings|No hemos podido revisar|We have not been able to check|todavía no recibe|does not receive/.test(clima),
@@ -173,6 +232,7 @@ if (process.env.SETUP_CODE) {
   const mas = await send("/mas", { cookie: c });
   check(mas.text.indexOf("/mas/escuela") < mas.text.indexOf("/mas/tasa"), "a parent sees the school calendar first in Más");
   await extras(c, process.env.SETUP_CODE);
+  await more(c, process.env.SETUP_CODE);
   await teamVisuals(c, process.env.SETUP_CODE);
 }
 
@@ -183,6 +243,7 @@ if (process.env.CREST_CODE) {
   check(k.status === 303 && Boolean(k.cookie), `${process.env.CREST_CODE} signs in`, `${k.status} ${k.location}`);
   check(await teamVisuals(k.cookie, process.env.CREST_CODE) > 0, `${process.env.CREST_CODE}: a team with a stored crest shows it as an image`);
   await extras(k.cookie, process.env.CREST_CODE);
+  await more(k.cookie, process.env.CREST_CODE);
 }
 
 // A client whose paid period has ended: the expiry screen, and only the
