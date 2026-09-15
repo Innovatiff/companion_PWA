@@ -222,19 +222,25 @@ on conflict (place_id, provider) where place_id is not null do update
   set observed_at = excluded.observed_at, temp_c = excluded.temp_c, feels_like_c = excluded.feels_like_c, humidity = excluded.humidity,
       wind_kph = excluded.wind_kph, condition = excluded.condition, is_day = excluded.is_day, fetched_at = now();
 
--- LOCAL ONLY, for the home bell's dot: Jamaica's warnings checked just now, and
--- one invented active warning covering Montego Bay (TEZTJM24's town). The
--- identifier marks it as local; it is replaced on every run.
+-- LOCAL ONLY, for the home bell's dot and "Avisos para tu familia": Jamaica's
+-- warnings checked just now, TEZTJM24 (home Montego Bay) watching Falmouth, and
+-- one invented LOCAL DEMO warning covering Falmouth only (6 km around it;
+-- Montego Bay is 26 km away). Not an agency message: the identifier and the
+-- headline both say LOCAL DEMO, and it is replaced on every run.
 insert into source_runs (feed, started_at, finished_at, status, records_written) values ('alerts:JM', now(), now(), 'ok', 1);
+insert into client_watch_locations (client_id, municipality_id)
+select c.id, m.id from clients c, municipalities m
+ where c.code = 'TEZTJM24' and m.country = 'JM' and m.name = 'Falmouth'
+on conflict do nothing;
 delete from weather_alerts where cap_identifier like 'local-demo-%';
 insert into weather_alerts (source_id, country, cap_identifier, cap_sender, cap_sent, msg_type, event, headline, area_desc, severity_raw,
                             level, issued_at, effective_at, expires_at, center_geog, radius_m, source_url, fetched_at)
-select s.id, 'JM', 'local-demo-1', 'local-demo', now() - interval '25 minutes', 'Alert', 'Flash Flood Watch',
-       'LOCAL DEMO: Flash Flood Watch for St. James', 'St. James', 'Moderate', 'orange',
-       now() - interval '25 minutes', now() - interval '25 minutes', now() + interval '6 hours', m.geog, 25000,
+select s.id, 'JM', 'local-demo-1', 'local-demo', now() - interval '25 minutes', 'Alert', 'LOCAL DEMO Flash Flood Watch',
+       'LOCAL DEMO (not an agency message): Flash Flood Watch for Trelawny', 'Trelawny (LOCAL DEMO)', 'Severe', 'orange',
+       now() - interval '25 minutes', now() - interval '25 minutes', now() + interval '6 hours', m.geog, 6000,
        'https://metservice.gov.jm/', now()
   from alert_sources s, municipalities m
- where s.country = 'JM' and s.active and m.country = 'JM' and m.name = 'Montego Bay'
+ where s.country = 'JM' and s.active and m.country = 'JM' and m.name = 'Falmouth'
  limit 1;
 
 -- LOCAL ONLY, round 2 (0041): a member who is not a founder and is settled with

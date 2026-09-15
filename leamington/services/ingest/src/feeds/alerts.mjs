@@ -131,41 +131,34 @@ async function insertAlert(client, source, doc) {
 }
 
 /**
- * Queue notifications for one alert, by polygon match.
- * Push policy is per-source (Jamaica red+orange; Mexico red only + areaDesc).
+ * Queue notifications for one stored message (0052 app.queue_alert_pushes).
+ *
+ * The database applies the whole decision: only a launched source; by area, a
+ * live Alert or Update at a level the source pushes, matched by polygon against
+ * every client's home AND watched towns, one push per client per identifier
+ * naming the towns covered; by lifecycle, an Update or Cancel to everyone who
+ * received the message it references. Expired, superseded and cancelled
+ * messages push to nobody.
+ *
+ * ALERT QUEUE: uncapped and immediate. An alert never competes with the
+ * engagement slot, and a second same-severity alert (a shifted hurricane
+ * track) always sends -- it is the message that changes what a person does.
  */
-async function queueForAlert(client, alertId, log) {
-  const { rows: [policy] } = await client.query(
-    `select app.should_push($1) as should_push,
-            app.alert_notification_body($1) as body,
-            a.event, a.level, a.country
-       from weather_alerts a where a.id = $1`, [alertId]);
-
-  if (!policy?.should_push) {
-    log.info("alert.no_push", { alertId, alertLevel: policy?.level,
-      note: "displays in-app only, per source push policy" });
-    return 0;
-  }
-
-  // Point-in-polygon against client municipality coordinates.
-  const { rows: matches } = await client.query(
-    `select client_id, is_home from app.clients_for_alert($1)`, [alertId]);
-
-  // ALERT QUEUE: uncapped and immediate. An alert never competes with the
-  // engagement slot, and a second same-severity alert (a shifted hurricane
-  // track) always sends -- it is the message that changes what a person does.
-  let queued = 0;
+async function queueForAlert(client, alertId, doc, log) {
+  const { rows } = await client.query(
+    "select client_id, outcome, reason, towns from app.queue_alert_pushes($1)", [alertId]);
   const outcomes = {};
-  for (const m of matches) {
-    const { rows: [r] } = await client.query(
-      `select app.queue_alert_notification($1, $2) as outcome`, [m.client_id, alertId]);
-    outcomes[r.outcome] = (outcomes[r.outcome] ?? 0) + 1;
-    if (r?.outcome === "queued") queued++;
-  }
+  for (const r of rows) outcomes[`${r.reason}:${r.outcome}`] = (outcomes[`${r.reason}:${r.outcome}`] ?? 0) + 1;
+  const queued = rows.filter((r) => r.outcome === "queued").length;
 
-  log.info("alert.queued", {
-    alertId, alertLevel: policy.level, matched: matches.length, queued, outcomes,
-  });
+  if (!rows.length) {
+    log.info("alert.no_push", {
+      alertId, msgType: doc.msgType, alertLevel: doc.level,
+      note: "no recipient: in-app only at this level, not live, or nobody received what it references",
+    });
+  } else {
+    log.info("alert.queued", { alertId, msgType: doc.msgType, alertLevel: doc.level, recipients: rows.length, queued, outcomes });
+  }
   return queued;
 }
 
@@ -256,12 +249,15 @@ export async function ingestAlerts(ctx) {
         }
         if (!doc.polygonWkts.length && !doc.centerWkt) {
           // Without geometry we cannot do municipality matching, and we will
-          // not fall back to name matching.
-          ctx.warnings.push(`alert ${doc.capIdentifier} has no geometry; stored, not matched`);
-          log.warn("alert.no_geometry", { alertId: id, areaDesc: doc.areaDesc });
-          return;
+          // not fall back to name matching. A Cancel commonly has no area of its
+          // own; it (and an Update) still reaches whoever got what it references.
+          if (doc.msgType !== "Cancel") {
+            ctx.warnings.push(`alert ${doc.capIdentifier} has no geometry; stored, not matched`);
+            log.warn("alert.no_geometry", { alertId: id, areaDesc: doc.areaDesc });
+          }
+          if (doc.msgType !== "Update" && doc.msgType !== "Cancel") return;
         }
-        await queueForAlert(client, id, log);
+        await queueForAlert(client, id, doc, log);
       });
     }
   }

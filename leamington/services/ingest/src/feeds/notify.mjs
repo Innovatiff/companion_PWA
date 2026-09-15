@@ -20,14 +20,19 @@ import { sendPush, vapidFromEnv } from "../push/webpush.mjs";
 const MAX_ATTEMPTS = 5;
 const ENGAGEMENT_URL = { match_day: "/futbol", rate_reminder: "/mas/tasa", fx_30d_high: "/mas/tasa", lottery: "/mas/loteria" };
 
-/** What the phone receives; public/sw.js shows it. Each alert has its own tag. */
+/**
+ * What the phone receives; public/sw.js shows it. Each alert has its own tag.
+ * Tapping an alert opens Clima's warnings focused on that message (0052).
+ */
 export function payloadFor(n) {
   const alert = n.channel === "alert";
   return {
     title: n.title,
     body: n.body,
     queue: n.channel,
-    url: alert ? "/clima" : ENGAGEMENT_URL[n.trigger] ?? "/",
+    url: alert
+      ? (n.weather_alert_id ? `/clima?aviso=${n.weather_alert_id}#avisos` : "/clima#avisos")
+      : ENGAGEMENT_URL[n.trigger] ?? "/",
     tag: alert ? `alert-${n.id}` : "engagement",
   };
 }

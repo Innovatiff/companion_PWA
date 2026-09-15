@@ -92,11 +92,14 @@ test("a CAP polygon containing the test client's coordinates matches them and qu
   assert.ok(matches.some((m) => m.client_id === TEST_CLIENT), "matched by coordinates inside the polygon");
 
   const { rows: [n] } = await db.query(
-    `select channel, status, title from notifications where client_id = $1 and weather_alert_id = $2`, [TEST_CLIENT, alert.id]);
+    `select channel, status, title, body, alert_towns from notifications where client_id = $1 and weather_alert_id = $2`, [TEST_CLIENT, alert.id]);
   assert.ok(n, "an alert notification is queued for the test client");
   assert.equal(n.channel, "alert");
   assert.equal(n.status, "queued");
-  assert.equal(n.title, "Synthetic Flash Flood Warning");
+  // 0052 copy: "{Level} · {agency}", then the agency's event verbatim and the towns (English client).
+  assert.equal(n.title, "Orange · Meteorological Service Jamaica");
+  assert.equal(n.body, "Synthetic Flash Flood Warning — Montego Bay");
+  assert.deepEqual(n.alert_towns, ["Montego Bay"]);
 });
 
 test("a polygon on the other side of the island matches nobody", { skip }, async () => {

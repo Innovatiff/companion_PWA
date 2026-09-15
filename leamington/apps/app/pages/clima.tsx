@@ -27,6 +27,7 @@ import { Art, Credit, FLAG, Icon, MOON, Pic, Ring, TownPhoto, dayArt, moonPhase,
 import { AhoraCard, nowLive, type Now } from "../lib/now";
 import { EXPIRE_SCRIPT } from "../lib/open-script";
 import { CLIMA_CSS } from "../lib/page-css";
+import { FamilyWarnings, PHONE_SCRIPT, type Family } from "../lib/family";
 
 export const config = { unstable_runtimeJS: false };
 
@@ -35,6 +36,8 @@ type Alert = {
   description: string | null; instruction: string | null; area_desc: string | null;
   issued_at: string | null; expires_at: string | null; source_url: string | null;
   cancelled_at: string | null; superseded: boolean;
+  // Opened from a notification (0052 app.client_alert): its lifecycle state and the towns it named.
+  state?: "active" | "cancel" | "cancelled" | "superseded" | "expired"; towns?: string[];
 };
 type Day = {
   date: string; temp: string; temp_max?: number; low: number | null; rain?: boolean;
@@ -54,7 +57,7 @@ type Weather = {
 };
 // A town's gallery (0045): photo 1 is the header; 2-6 are the strip.
 type GalleryPhoto = { rank: number; author: string; license: string; license_url: string | null; source_page_url: string; width: number | null; height: number | null };
-type Props = { w: Weather; country: string; today: string; now: string; photos: Photo[]; galleries: Record<string, GalleryPhoto[]> };
+type Props = { w: Weather; country: string; today: string; now: string; photos: Photo[]; galleries: Record<string, GalleryPhoto[]>; family: Family; focus: Alert | null };
 
 export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
   // Official warnings stay available after a paid period ends (OPEN-DECISIONS 3.6).
@@ -63,6 +66,12 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
   const { client } = loaded;
   const { rows } = await db().query("select app.weather_page($1) as w", [client.id]);
   const w = rows[0]?.w as Weather;
+  // "Avisos para tu familia" (0052), and the warning a notification opened (?aviso=), only while our copy is current.
+  const family = (await db().query("select app.family_warnings($1) as f", [client.id])).rows[0]?.f as Family;
+  const aviso = typeof ctx.query.aviso === "string" && /^\d{1,15}$/.test(ctx.query.aviso) ? ctx.query.aviso : null;
+  const focus = aviso && w.alerts_state === "current"
+    ? (((await db().query("select app.client_alert($1, $2::bigint) as a", [client.id, aviso])).rows[0]?.a as Alert | null) ?? null)
+    : null;
   const ids = w.towns.filter((town) => town.photo !== false).map((town) => town.id);
   const photos: Photo[] = ids.length
     ? (await db().query("select p from (select app.town_photo(id) as p from unnest($1::bigint[]) as id) s where p is not null", [ids]))
@@ -76,13 +85,14 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
   }
   await recordView(client.id, "clima", {
     alerts_state: w.alerts_state, alerts_checked_at: w.alerts_checked_at,
+    family_towns: family.towns.length, family_push: family.subscriptions > 0, focus: focus?.state ?? null,
     alerts_here: w.alerts_here?.length ?? null, alerts_elsewhere: w.alerts_elsewhere?.length ?? null,
     has_home: w.has_home, towns: w.towns.map((town) => ({ id: town.id, days: town.days.length })),
     local: (w.local ?? []).map((p) => ({ key: p.key, days: p.days.length })),
     history: w.history.length, photos: photos.length, gallery: Object.values(galleries).reduce((n, g) => n + Math.max(0, g.length - 1), 0),
   });
   const now = new Date();
-  return { props: { w, country: client.country, today: localDate(now, client.timezone), now: now.toISOString(), photos, galleries } };
+  return { props: { w, country: client.country, today: localDate(now, client.timezone), now: now.toISOString(), photos, galleries, family, focus } };
 };
 
 const LEVEL: Record<string, [string, string]> = {
@@ -98,7 +108,7 @@ function addDays(date: string, n: number): string {
   return new Date(Date.parse(date) + n * 86_400_000).toISOString().slice(0, 10);
 }
 
-export default function Clima({ w, country, today, now, photos, galleries }: Props) {
+export default function Clima({ w, country, today, now, photos, galleries, family, focus }: Props) {
   const lang = w.language;
   const tz = w.timezone;
   const at = new Date(now);
@@ -127,7 +137,7 @@ export default function Clima({ w, country, today, now, photos, galleries }: Pro
       <span className="level">
         <span className="i"><Icon name="alert" /></span>
         {pick(LEVEL[a.level], a.level)}
-        {a.msg_type === "Update" ? ` · ${t(lang, "Actualización", "Update")}` : ""}
+        {a.msg_type === "Update" ? ` · ${t(lang, "Actualización", "Update")}` : a.msg_type === "Cancel" ? ` · ${t(lang, "Cancelación", "Cancellation")}` : ""}
       </span>
       <p><strong>{a.headline ?? a.event}</strong></p>
       {a.area_desc && <p>{a.area_desc}</p>}
@@ -149,6 +159,20 @@ export default function Clima({ w, country, today, now, photos, galleries }: Pro
   const agencyLink = w.agency_url && w.agency && (
     <p><a href={w.agency_url} rel="noopener">{t(lang, `Ver avisos de ${w.agency}`, `See ${w.agency} warnings`)}</a></p>
   );
+
+  // Their towns, push reach and our last check; the checked (or stale) line lives here now.
+  const familyBlock = (
+    <FamilyWarnings f={{ ...family, state: w.alerts_state, checked_at: w.alerts_checked_at }} lang={lang} moment={moment} agencyLink={agencyLink} button />
+  );
+  // The warning a notification opened: first, with what has happened to it since.
+  const focusLine = (a: Alert) => {
+    const where = a.towns?.length ? ` ${t(lang, "Para", "For")}: ${a.towns.join(", ")}.` : "";
+    if (a.state === "cancel" || a.state === "cancelled") return t(lang, `${a.agency} canceló este aviso.`, `${a.agency} cancelled this warning.`) + where;
+    if (a.state === "superseded") return t(lang, `${a.agency} lo reemplazó por un aviso más reciente.`, `${a.agency} replaced it with a newer warning.`) + where;
+    if (a.state === "expired") return t(lang, "Este aviso ya venció.", "This warning has expired.") + where;
+    return t(lang, "El aviso de tu notificación.", "The warning from your notification.") + where;
+  };
+  const elsewhere = (w.alerts_elsewhere ?? []).filter((a) => a.id !== focus?.id);
 
   // Rain chance as a thin bar: only when two providers report it.
   const rainBar = (d: Day) => d.rain_prob != null && (
@@ -237,36 +261,23 @@ export default function Clima({ w, country, today, now, photos, galleries }: Pro
           <h2>{t(lang, "Avisos oficiales", "Official warnings")}</h2>
           {w.alerts_state === "current" && (
             <>
-              {w.alerts_here?.map(card)}
-              <div className="tile calm">
-                <Pic name="clock" />
-                <small>
-                  {t(lang, `Revisamos los avisos de ${w.agency} a las ${moment(w.alerts_checked_at!)}.`,
-                           `We checked ${w.agency} warnings at ${moment(w.alerts_checked_at!)}.`)}
-                </small>
-              </div>
-              {w.alerts_elsewhere && w.alerts_elsewhere.length > 0 && (
+              {focus && (
+                <div id={`a${focus.id}`} className="focus">
+                  <p className="step">{focusLine(focus)}</p>
+                  {card(focus)}
+                </div>
+              )}
+              {w.alerts_here?.filter((a) => a.id !== focus?.id).map(card)}
+              {familyBlock}
+              {elsewhere.length > 0 && (
                 <details>
-                  <summary>{t(lang, `En otras partes de ${pick(COUNTRY[country], country)}`, `Elsewhere in ${pick(COUNTRY[country], country)}`)} ({w.alerts_elsewhere.length})</summary>
-                  {w.alerts_elsewhere.map(card)}
+                  <summary>{t(lang, `En otras partes de ${pick(COUNTRY[country], country)}`, `Elsewhere in ${pick(COUNTRY[country], country)}`)} ({elsewhere.length})</summary>
+                  {elsewhere.map(card)}
                 </details>
               )}
             </>
           )}
-          {w.alerts_state === "stale" && (
-            <div className="tile stale">
-              <Pic name="warning" />
-              <span>
-                <p>
-                  {w.alerts_checked_at
-                    ? t(lang, `No hemos podido revisar los avisos de ${w.agency} desde las ${moment(w.alerts_checked_at)}.`,
-                              `We have not been able to check ${w.agency} warnings since ${moment(w.alerts_checked_at)}.`)
-                    : t(lang, `No hemos podido revisar los avisos de ${w.agency}.`, `We have not been able to check ${w.agency} warnings.`)}
-                </p>
-                {agencyLink}
-              </span>
-            </div>
-          )}
+          {w.alerts_state === "stale" && familyBlock}
           {w.alerts_state === "not_monitored" && (
             <div className="tile">
               <Pic name="bell" />
@@ -387,6 +398,7 @@ export default function Clima({ w, country, today, now, photos, galleries }: Pro
       <TabBar current="clima" lang={lang} />
       {/* "Ahora" carries its own expiry: an open or restored page drops it once past. */}
       <script dangerouslySetInnerHTML={{ __html: EXPIRE_SCRIPT }} />
+      {w.alerts_state !== "not_monitored" && <script dangerouslySetInnerHTML={{ __html: PHONE_SCRIPT }} />}
     </>
   );
 }

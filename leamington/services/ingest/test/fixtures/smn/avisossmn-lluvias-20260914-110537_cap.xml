@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<alert xmlns="urn:oasis:names:tc:emergency:cap:1.2">
+    <identifier>avisossmn-LLuvias-318</identifier>
+    <sender>smn.conagua.gob.mx</sender>
+    <sent>2026-09-14T11:10:00-06:00</sent>
+    <status>Actual</status>
+    <msgType>Alert</msgType>
+    <scope>Public</scope>
+    <code>01</code>
+    <info>
+        <language>es-MX</language>
+        <category>Met</category>
+        <event>Aviso de lluvias</event>
+        <responseType>Execute</responseType>
+        <urgency>Future</urgency>
+        <severity>Moderate</severity>
+        <certainty>Possible</certainty>
+        <effective>2026-09-14T11:10:00-06:00</effective>
+        <expires>2026-09-15T04:00:00-06:00</expires>
+        <senderName>Servicio Meteorológico Nacional</senderName>
+        <headline>Canal de baja presión</headline>
+        <description>Durante esta tarde y noche se prevén lluvias puntuales muy fuertes (50 a 75 mm), descargas eléctricas y rachas de viento.</description>
+        <instruction>Extremar precauciones a la población en general en las zonas de los estados mencionados y atender las recomendaciones emitidas por las autoridades del Sistema Nacional de Protección Civil, en cada entidad.</instruction>
+        <web>https://smn.conagua.gob.mx/</web>
+        <contact>webmaster.smn@conagua.gob.mx</contact>
+        <parameter>
+            <valueName>Elaboró</valueName>
+            <value>Alex Ricardo  Ramírez Olvera</value>
+        </parameter>
+        <parameter>
+            <valueName>Revisó</valueName>
+            <value>Javier Rodríguez</value>
+        </parameter>
+        <parameter>
+            <valueName>layer:Google:Region:0.1</valueName>
+            <value>Golfo de México, Pacifico Sur, Mesa de Norte</value>
+        </parameter>
+        <area>
+            <areaDesc>DGO, GTO, JAL, MICH, NAY, ZAC</areaDesc>
+            <polygon>22.77112,-105.38086 23.02413,-104.26025 22.23318,-102.78809 21.81561,-102.97485 21.45818,-102.75513 21.06912,-102.81006 20.79207,-103.56812 20.75098,-104.34814 22.77112,-105.38086</polygon>
+<polygon>19.79255,-101.78833 20.45275,-101.68945 20.23643,-100.46997 19.69949,-100.55237 19.79255,-101.78833</polygon>
+        </area>
+    </info>
+</alert>

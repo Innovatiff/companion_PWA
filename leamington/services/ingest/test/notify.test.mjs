@@ -89,7 +89,7 @@ test("alerts are sent before engagement, each alert with its own tag", { skip },
   assert.deepEqual(sent.map((x) => x.payload.queue), ["alert", "alert", "alert", "alert", "engagement", "engagement"]);
   assert.equal(new Set(sent.filter((x) => x.payload.queue === "alert").map((x) => x.payload.tag)).size, 2);
   assert.equal(sent[0].opts.urgency, "high");
-  assert.equal(sent[0].payload.url, "/clima");
+  assert.equal(sent[0].payload.url, "/clima#avisos");
   assert.equal(sent.at(-1).payload.url, "/mas/loteria");
   assert.equal(sent.at(-1).opts.topic, "engagement");
   for (const id of [first, second, engagement]) {

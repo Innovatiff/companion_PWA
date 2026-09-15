@@ -7,6 +7,14 @@
  */
 // Rows in a white card (Clima, Feriados, Escuela, Transporte, Consulado, setup) and the error box (forms): page-only.
 const ROWS = "ul.rows{list-style:none;margin:0 0 1rem;padding:.2rem 1.1rem;background:var(--card);border-radius:var(--r);box-shadow:var(--shadow)}ul.rows>li{padding:.85rem 0;border-bottom:1px solid var(--line)}ul.rows>li:last-child{border-bottom:0}";
+// "Avisos para tu familia" (0052): Clima's warnings and Más → Notificaciones; a warning opened from a notification.
+const FAMILY = ".fam{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:.9rem 1rem;margin:.75rem 0}.fam h3{margin:0 0 .3rem;font-size:1.02rem}.fam p{margin:.35rem 0}" +
+  ".ftowns{list-style:none;display:flex;flex-wrap:wrap;gap:.4rem;margin:.55rem 0 .2rem;padding:0}.ftowns li{display:inline-flex;flex-wrap:wrap;align-items:baseline;gap:.35rem;max-width:100%;padding:.35rem .75rem;border-radius:999px;background:var(--tile);font-weight:700;overflow-wrap:anywhere}.ftowns small{color:var(--muted);font-weight:650}" +
+  ".fadd{display:inline-flex;align-items:center;min-height:48px;font-weight:750;color:var(--brand-ink);text-decoration:none}.fck{color:var(--muted)}" +
+  ".fst{margin:.4rem 0;padding:.6rem .85rem;border-radius:14px;background:var(--warn-soft);color:var(--warn);font-weight:650}.fst a{color:inherit}.fph{font-weight:650}" +
+  ".fbtn{display:flex;align-items:center;justify-content:center;min-height:48px;margin:.5rem 0 0;padding:0 1rem;border-radius:999px;background:var(--brand);color:#fff;font-weight:750;text-decoration:none;text-align:center}" +
+  ".focus>.step{margin:.6rem .2rem 0}.focus>.alert{outline:3px solid var(--brand);outline-offset:2px}";
+export const AVISOS_CSS = FAMILY;
 const ERR = ".err{color:var(--danger);background:var(--danger-soft);padding:.75rem 1rem;border-radius:16px}.ok{color:var(--ok)}";
 
 const TABLE =
@@ -67,7 +75,7 @@ const AHORA =
   ".ahora.in{margin:.55rem 0 .4rem;padding:.55rem 0;border-block:1px solid var(--line)}.ahora.in .art{width:3.2rem;height:3.2rem}.ahora.in .nc>span{padding:.2rem .5rem;font-size:.76rem}" +
   ".tn{display:block;font-size:2.8rem;font-weight:800;letter-spacing:-.03em;line-height:1.05;font-variant-numeric:tabular-nums}.ahora.in .tn{font-size:1.9rem}.lab{display:block;font-size:.98rem}" + ".nc{display:flex;flex-wrap:wrap;gap:.35rem;margin:.55rem 0 0}.nc>span{display:inline-flex;align-items:center;gap:.3rem;padding:.3rem .75rem;border-radius:999px;background:var(--tile);font-size:.8rem;font-weight:650}.nc svg{width:1.1em;height:1.1em;fill:none;stroke:var(--brand-ink);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}";
 
-export const CLIMA_CSS = ROWS + AHORA + ".seg{display:flex;gap:.3rem;padding:.3rem;margin:0 0 1rem;background:var(--card);border-radius:999px;box-shadow:var(--shadow);overflow-x:auto}.seg a{flex:1 0 auto;display:grid;place-items:center;min-height:48px;padding:0 1rem;border-radius:999px;text-decoration:none;color:var(--ink);font-weight:650;font-size:.92rem;white-space:nowrap}.seg a[aria-current]{background:var(--brand);color:#fff}" + ".gal{display:flex;gap:.6rem;overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding-inline:1rem;margin:.5rem -1rem .6rem;padding:0 1rem .3rem}.gph{flex:none;width:11.25rem;margin:0;scroll-snap-align:start}.gph img{display:block;width:100%;height:auto;aspect-ratio:4/3;object-fit:cover;border-radius:16px;background:var(--tile)}" +
+export const CLIMA_CSS = ROWS + AHORA + FAMILY + ".seg{display:flex;gap:.3rem;padding:.3rem;margin:0 0 1rem;background:var(--card);border-radius:999px;box-shadow:var(--shadow);overflow-x:auto}.seg a{flex:1 0 auto;display:grid;place-items:center;min-height:48px;padding:0 1rem;border-radius:999px;text-decoration:none;color:var(--ink);font-weight:650;font-size:.92rem;white-space:nowrap}.seg a[aria-current]{background:var(--brand);color:#fff}" + ".gal{display:flex;gap:.6rem;overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding-inline:1rem;margin:.5rem -1rem .6rem;padding:0 1rem .3rem}.gph{flex:none;width:11.25rem;margin:0;scroll-snap-align:start}.gph img{display:block;width:100%;height:auto;aspect-ratio:4/3;object-fit:cover;border-radius:16px;background:var(--tile)}" +
   // Town headers: a photo under a dark overlay, or the indigo gradient
   ".townhead{position:relative;isolation:isolate;display:flex;align-items:flex-end;min-height:9rem;margin:1.4rem 0 .6rem;border-radius:var(--r);overflow:hidden;background:#1d2147;box-shadow:var(--shadow)}" +
   ".townhead img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}" +

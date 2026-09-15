@@ -912,3 +912,59 @@ player, never full text.
   - Wrong news match: `team-aliases.json` → `news.not`.
   - Stop Shorts: skip them again in `videos.mjs` `assess`; stored ones age
     out in 60 days.
+
+---
+
+## 4. Warnings for the family's towns (built 2026-09-15) — decisions made on the owner's behalf, and findings
+
+**Status: BUILT, pending the owner's review of 4.1–4.4. No country was activated:** `alert_sources.active`
+and `feed_expectations` are unchanged (Jamaica on; Mexico, Honduras, Guatemala off).
+
+What exists now (migration 0052): alerts match a client's home municipality **and every watched town** by
+polygon; a client gets **one push per CAP identifier** naming the towns covered, home first
+("Thunderstorm Watch — Kingston, Port Maria"); the title is "{Nivel} · {agency}" in the client's language;
+the body is the agency's own headline, or event, verbatim. The delivery log (`notifications.alert_towns`,
+`alert_reason`, view `alert_delivery_log`) records which towns each push covered and why it was sent.
+
+### 4.1 An Update reaches everyone who received what it updates — even when it is yellow
+
+An Update to an orange warning that downgrades it to yellow is pushed to the people who received the
+orange, and to nobody else. A yellow **Alert**, and a yellow Update with no pushed original, never push.
+Reason: a man told "orange" who is never told it changed believes a stale warning (the mirror of a missed
+alert). Reversible: drop the lifecycle branch for non-push levels in `app.queue_alert_pushes`.
+
+### 4.2 Cancel, Update and backfill rules
+
+- A **Cancel** goes only to people whose phone may have shown the original (sent, or mid-retry). An
+  original still waiting to send when its Update or Cancel arrives is never sent (`suppressed`, with the
+  reason). Titles: "Actualizado: Naranja · …", "Cancelado: Naranja · …".
+- A message that has **already expired, or been superseded or cancelled** by one we hold, pushes to nobody.
+  Before this, a first run or a backfill would have pushed up to 25 already-expired Jamaican warnings.
+- A Cancel with no area of its own is no longer dropped as "no geometry".
+
+### 4.3 Mexico's body carries SMN's areaDesc instead of the town names
+
+For a source with `include_area_desc` (Mexico), the body is "{headline} — {areaDesc}" and never names
+"your town", per section 1. Finding for the owner: SMN's `<headline>` is the weather system
+("Canal de baja presión", "Monzón mexicano") and `<event>` is "Aviso de lluvias", so a red push would have
+the title "Rojo · CONAGUA / SMN" and the body "Canal de baja presión — DGO, GTO, JAL, MICH, NAY, ZAC".
+Verbatim, but it does not say "rain". Using the event instead is a one-line change if the owner prefers it.
+
+### 4.4 Tapping a warning opens /clima?aviso={id}#avisos
+
+Clima shows that warning first, with what happened to it since (cancelled, replaced, expired), only while
+our copy is current; a stale copy shows the stale line instead.
+
+### Findings from the live feeds (2026-09-15), for the owner
+
+- **Jamaica push volume.** In JMS's last 100 CAP messages, 85 were "Strong Wind and Large Waves Advisory"
+  at `Severe` (orange by our mapping) on inshore/offshore marine polygons. The inshore north-coast
+  polygon (706–739 vertices) contains the points of Ocho Rios, Oracabessa, Port Antonio and Port Royal, so
+  clients with those towns would get an orange push roughly every other day. The rule says orange pushes;
+  this is flagged, not changed. No Cancel appeared in those 100 messages.
+- **Mexico readiness** (`services/ingest/scripts/alerts-readiness.mjs --country MX`, dry run): 186 SMN
+  documents, all from `smn.conagua.gob.mx`, all "Aviso de lluvias"; severity Moderate 165 / Severe 21 /
+  Extreme 0, so **none would push under the red-only policy**; 211 polygons, 4–186 vertices (median 8);
+  no Update or Cancel messages and no `<references>`: SMN reissues rather than updates. The Alert Hub
+  `country-mx-lang-en` feed carried 100 items, all `us-noaa-nws-en` and none from `mx-smn-es`, so the
+  fallback route currently yields nothing national (the filter discards all of it, as designed).

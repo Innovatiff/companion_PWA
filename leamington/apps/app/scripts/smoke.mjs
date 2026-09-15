@@ -235,6 +235,54 @@ async function more(cookie, label) {
   await images(clima, `${label} /clima`);
 }
 
+// "Avisos para tu familia" (0052): on Clima and Notificaciones exactly when Hoy
+// reads the country's official warnings; home and every watched town named (home
+// first), the add-a-town link, the checked or stale line, this phone's line and a
+// way to turn notifications on; never a count and never reassurance. A country
+// whose warnings Hoy does not read: one honest line and the agency's page. A
+// notification's link opens that warning first, and only once.
+async function family(cookie, label) {
+  const [clima, avisos] = await Promise.all(["/clima", "/mas/avisos"].map(async (p) => (await send(p, { cookie })).text));
+  const block = (html) => /<section class="fam" data-line="family"[\s\S]*?<\/section>/.exec(html)?.[0] ?? "";
+  const monitored = !/todavía no recibe|does not receive/.test(clima);
+  check(Boolean(block(clima)) === monitored && Boolean(block(avisos)) === monitored,
+    `${label}: "Avisos para tu familia" shows on Clima and Notificaciones exactly when Hoy reads that country's warnings`);
+  if (!monitored) {
+    check(/todavía no recibe los avisos de|does not receive .* warnings yet/.test(avisos) && /<a href="https:\/\/[^"]+" rel="noopener">(Ver avisos de|See )/.test(avisos),
+      `${label}: Notificaciones says in one line that Hoy does not receive this country's warnings yet, with the agency's page`);
+    return;
+  }
+  for (const [page, html] of [["/clima", clima], ["/mas/avisos", avisos]]) {
+    const b = block(html);
+    check(/<h3 id="famh">(Avisos para tu familia|Warnings for your family)<\/h3>/.test(b), `${label} ${page}: the family section has its heading`);
+    check(/<a class="fadd" href="\/setup\/(watch|municipality)\?edit=1">(\+ Agregar un pueblo|\+ Add a town|Cambiar pueblos|Change towns|Elegir tu municipio|Choose your town)<\/a>/.test(b),
+      `${label} ${page}: the family section links to adding a town`);
+    check(/Revisamos los avisos de|We checked .* warnings|No hemos podido revisar|We have not been able to check/.test(b), `${label} ${page}: the family section says when we checked, or since when we could not`);
+    check(/<p id="ph" class="fph" data-n="\d+" data-on="[^"]+" data-off="[^"]+">[^<]+<\/p>/.test(b), `${label} ${page}: the family section says whether this phone gets the notifications`);
+    check(!/\b\d+ (avisos|alertas|warnings|alerts)\b|sin avisos|no hay (avisos|alertas)|no alerts|no warnings|all clear|a salvo|you are safe/i.test(visible(b)),
+      `${label} ${page}: the family section never counts warnings or reassures`);
+  }
+  check(/<a id="pb" class="fbtn" href="\/mas\/avisos"/.test(block(clima)), `${label}: Clima's family section has the button to turn notifications on`);
+  if (!DB) return;
+  const { rows: [c] } = await DB.query("select app.family_warnings(id) as f, id from clients where code = $1", [CODE]);
+  const listed = [...block(clima).matchAll(/<li>([^<]+)(?:<small>[^<]*<\/small>)?<\/li>/g)].map((m) => m[1]);
+  check(JSON.stringify(listed) === JSON.stringify(c.f.towns.map((x) => x.name)), `${label}: the towns listed are home and every watched town, home first`, `${listed} vs ${c.f.towns.map((x) => x.name)}`);
+  check(/data-n="(\d+)"/.exec(block(clima))?.[1] === String(c.f.subscriptions), `${label}: the phone line starts from the client's working subscriptions`);
+  const region = (html) => /<div id="avisos"[\s\S]*?<section class="fam"/.exec(html)?.[0] ?? "";
+  const { rows: [a] } = await DB.query(
+    "select a.id from active_weather_alerts a where exists (select 1 from app.alert_client_towns(a.id, $1)) order by a.id desc limit 1", [c.id]);
+  if (a && c.f.state === "current") {
+    const opened = (await send(`/clima?aviso=${a.id}`, { cookie })).text;
+    const count = (html) => (region(html).match(/class="alert [a-z]+"/g) ?? []).length;
+    check(region(opened).includes(`<div id="a${a.id}" class="focus"><p class="step">`), `${label}: a notification's link opens its warning first on Clima`);
+    check(count(opened) === count(clima), `${label}: the opened warning is not listed twice`, `${count(opened)} vs ${count(clima)}`);
+  }
+  for (const bad of ["abc", "999999999999"]) {
+    const r = await send(`/clima?aviso=${bad}`, { cookie });
+    check(r.status === 200 && !r.text.includes('class="focus"'), `${label}: /clima?aviso=${bad} opens Clima without a focused warning`);
+  }
+}
+
 // The welcome screen (0041): shown exactly when not yet welcomed, set up and
 // paid; a plain form with the arrow and Saltar; a foreign origin is refused;
 // the POST marks it and home follows.
@@ -1139,6 +1187,7 @@ for (const path of ["/", "/futbol", "/clima/aqui", "/mas", "/mas/miembro", "/mas
 
 await extras(cookie, CODE);
 await more(cookie, CODE);
+await family(cookie, CODE);
 await arrival(cookie, CODE, CODE);
 await round2(cookie, CODE, CODE);
 await money(cookie, CODE, CODE);
