@@ -793,3 +793,122 @@ Highlights of their team and all that."
     `guarded`, in `team-aliases.json`.
   - Stop the feature: remove the `videos` job from `scheduler.mjs` and set
     `feed_expectations.active = false`. Stored videos age out in 60 days.
+
+### 3.26 Fútbol v2: national teams, Shorts, video categories, team news (2026-09-15)
+
+The owner asked: "improve the sports page. More videos please." The football
+data provider's account is suspended (no fixtures, standings or live scores),
+so the page is made rich from verified videos and news until that is fixed.
+Stance of 3.24 and 3.25 unchanged: links, small cached thumbnails, never a
+player, never full text.
+
+- **Migration 0050_futbol_v2.sql.**
+  - `video_channels.kind` gains `national` (a federation's channel) and
+    `confederation` (Concacaf, no country); `women` marks a women's
+    national team's own channel (none found).
+  - `videos.is_short`, `videos.category` (`highlight | goals | interview |
+    preview | other`), `videos.classified_at`. `is_highlight` stays for 0049
+    pages and writers: a trigger keeps it equal to `category in (highlight,
+    goals)`.
+  - `video_nations(video_id, country, women, matched, rule)` and
+    `news_teams(item_id, team_id, matched, rule)`, precomputed at ingest;
+    `news_items.teams_checked_at`.
+- **Channels (verified live 2026-09-15; canonical link and externalId agreed,
+  feed answered with the same id).**
+  - **Active, national:** Selección Nacional de México (FMF), FFH + (Honduras),
+    JFFLIVE (Jamaica, quiet since 2026-07-22).
+    - FMF and JFF post the men's and the women's teams on one channel. There
+      is no separate official women's channel.
+  - **Active, broadcasters:** TUDN USA, Multicable TV (Honduras), Tiki Taka de
+    Guatemala, Television Jamaica (TVJ Sports clips); plus Concacaf
+    (confederation).
+    - **Owner review:** Multicable (no channel description) and Tiki Taka
+      (a radio show, like Guatefutbol).
+  - **Seeded inactive:**
+    - FEDEFUT Guatemala: official, last upload 2022-12. Guatemala's national
+      team reaches members only through other channels' titles.
+    - Nuestro Diario: general-news Shorts.
+    - FOX Sports MX: rechecked, talk only.
+  - **Not seeded:**
+    - Talk only: Claro Sports.
+    - Entertainment: ViX. The @vixdeportes handle does not exist.
+    - Interviews and fan clips only: Diario Diez.
+    - General news: La Prensa HN, El Heraldo, HCH, TV Azteca Honduras, Prensa
+      Libre, Emisoras Unidas, Soy502, Gleaner, Observer.
+    - Dead: SportsMax (2025-07), Tigo Sports GT (2023), DXTV Guatevisión
+      (2020), old FENAFUTH and JFF channels.
+    - Not ours: "cvm_sports" (kabaddi), JFootballTV (a Japanese vlogger).
+    - Personal or unofficial channels.
+    - Not found: Tigo Sports Honduras.
+    - Betting, refused: CalienteBooksMx, Betcris.
+- **Shorts (`scripts/fetch-videos.mjs --dry-run`).**
+  - The only sign in the feed is the `/shorts/` link; `media:thumbnail` is the
+    same 480 x 360 `hqdefault.jpg`.
+  - Stored with their `/shorts/` url and a 180 x 320 thumbnail cut from
+    hqdefault's centre 9:16 band, at most 14 KB.
+  - **Kept only when worth the data:** highlights or goals of a league or
+    national channel, or highlights, goals, interviews or previews naming a
+    club or national team (or on its own channel). Every `other` Short
+    (tunnels, POV, sponsor clips, reactions) is skipped.
+- **Categories (`videos/highlight.mjs classifyVideo`), from the title.**
+  - Named talk shows, other sports, podcasts, analysis, training and betting
+    words: other.
+  - Press conferences and statements ("expresa", "speaks", "#LaReacción"):
+    interview.
+  - Summary words or a result line: highlight.
+  - Goal words ("gol", "GOOOL", "anotación", "opens the account"): goals.
+  - Previa, se viene, ahead of: preview.
+  - Live and full matches: other.
+  - A women's, youth or reserve side's video is `other`, never a highlight of
+    the men's league, unless it is the women's national team.
+- **National teams (`videos/nations.mjs`, names in `nation-aliases.json`).**
+  - **Aliases count anywhere:** "Selección Mexicana", "El Tri", "Selección de
+    Honduras", "Reggae Boyz".
+  - **Guarded names count only in a match line against another national
+    team:** "México", "Honduras", "Guatemala", "Jamaica", "La H", "Bicolor",
+    "Catrachos", "Chapines". Places, leagues and clubs named like a country
+    are removed first ("Ciudad de México", "Liga Nacional de Guatemala",
+    "Honduras Progreso", "Jamaica College").
+  - **A federation channel's title counts only when it names the team.** The
+    dry run found the Reggae Girlz' coach under nameless titles, and FFH's
+    referee analysis. Youth, Olympic, beach and esports sides count for no one.
+  - **The women's team is stored with `women = true`:** "Femenil", "Women",
+    "Reggae Girlz".
+- **Team news (`news/teams.mjs`, rules in `team-aliases.json` → `news`).**
+  - Clubs of the outlet's country only.
+  - An alias counts with a football word in the title or summary, or with
+    another club of its league named.
+  - A guarded name ("América", "Municipal", "Olimpia", "Victoria") also needs
+    a match line or "el/del/al" right before it.
+  - Removed first: "río Motagua", "Los Tigres del Norte", "México-Toluca",
+    "Policía Municipal", "Ministerio de Comunicaciones".
+  - Football words inside "partido político" or "equipo técnico" do not count.
+  - A story is matched at ingest; stored stories are backfilled (2,000 per
+    run). A country with no clubs in `teams` leaves its stories unchecked,
+    never "about no club".
+- **Pages.**
+  - `app.football_videos` (default 24 per list):
+    - `team_videos`: 45 days. Highlights and goals first, then interviews and
+      previews (not another club's), then the club's and league's other
+      videos.
+    - `league_videos`: 14 days, highlights and goals only.
+    - `shorts`: 14 days, the team's, then the league's, then the national
+      team's.
+    - `national` and `national_women`: 30 days; `other` only from the
+      federation.
+  - `app.team_news`: 7 days, news_page's item shape. A graphic story is never
+    first; a list of only graphic stories is empty.
+  - `football_page.videos`: team 10, league 10, shorts 10, national 8.
+  - `football_page.team_news`: 4.
+- **Dry run 2026-09-15.**
+  - **Videos:** 45 channels, 441 videos (19 Shorts), 104 Shorts skipped, 0
+    thumbnail failures. Thumbnails: median 13,167 B, max 13,982. Short
+    thumbnails: median 12,729, max 13,895.
+  - **News:** 25 club matches over 27 outlets, none wrong on review.
+- **Reverse:**
+  - Switch a channel off:
+    `update video_channels set active = false where key = …`.
+  - Wrong national match: `nation-aliases.json`.
+  - Wrong news match: `team-aliases.json` → `news.not`.
+  - Stop Shorts: skip them again in `videos.mjs` `assess`; stored ones age
+    out in 60 days.

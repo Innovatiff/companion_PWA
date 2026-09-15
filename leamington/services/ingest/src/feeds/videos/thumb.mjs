@@ -43,3 +43,36 @@ export function makeThumb(bytes) {
   }
   throw new Error(`thumb does not fit ${THUMB.maxBytes} bytes`);
 }
+
+/*
+ * A Short's thumbnail: vertical, 180 x 320 (162 x 288 when a busy picture does
+ * not fit), at most 14 KB. hqdefault.jpg of a Short is 480 x 360 with the
+ * vertical picture in the centre 9:16 band (202 x 360) and dark bars at the
+ * sides, so that band is kept.
+ */
+export const SHORT_THUMB = { width: 180, widths: [180, 162], minSourceHeight: 240 };
+
+/** The centre 9:16 box of a picture. */
+export function box916(width, height) {
+  const w = Math.round(height * 9 / 16);
+  if (w <= width) return { x: Math.floor((width - w) / 2), y: 0, w, h: height };
+  const h = Math.round(width * 16 / 9);
+  return { x: 0, y: Math.floor((height - h) / 2), w: width, h };
+}
+
+export function makeShortThumb(bytes) {
+  if (!bytes?.length) throw new Error("empty image");
+  if (bytes.length > THUMB.downloadMaxBytes) throw new Error(`image over ${THUMB.downloadMaxBytes} bytes`);
+  if (sniff(bytes) !== "image/jpeg") throw new Error(`not a JPEG (${sniff(bytes) ?? "unknown"})`);
+  const src = decode(bytes);
+  if (src.height < SHORT_THUMB.minSourceHeight) throw new Error(`image only ${src.height} px high`);
+  const box = box916(src.width, src.height);
+  for (const w of SHORT_THUMB.widths) {
+    const width = Math.min(w, box.w);
+    // The box is 9:16 to the nearest pixel (202.5 wide in a 360 high picture): the thumbnail is exactly 9:16.
+    const height = Math.round(width * 16 / 9);
+    const enc = encodeWithin(resizeArea(src, box, width, height), width, height, THUMB.maxBytes, THUMB.qualities);
+    if (enc) return { bytes: enc.bytes, width, height, quality: enc.quality };
+  }
+  throw new Error(`thumb does not fit ${THUMB.maxBytes} bytes`);
+}

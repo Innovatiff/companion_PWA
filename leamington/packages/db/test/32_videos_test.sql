@@ -1,4 +1,4 @@
--- Football videos (0049): sections and their windows, highlights first, channel
+-- Football videos (0049; windows as widened by 0050: team 45 days, league 14): sections and their windows, highlights first, channel
 -- mixing, team videos from stored video_teams rows only, a member without a
 -- team, the stale flag, pruning, thumbnails, and football_page.videos.
 -- The clock is pinned: 2026-09-17 16:00 UTC.
@@ -103,12 +103,12 @@ begin
   -- Club channel: every video counts (a press conference too), stored as club_channel.
   v_i := pg_temp.vid('t-mx-america', 'c1', 'Club press conference', v_now - interval '2 days', false, true);
   perform pg_temp.vt(v_i, 'Club America', 'club_channel');
-  -- Broadcaster 1: three highlights about América, newest 1, 3, 5 hours ago; a talk clip; one 31 days old.
+  -- Broadcaster 1: three highlights about América, newest 1, 3, 5 hours ago; a talk clip; one 46 days old (outside 0050's 45).
   v_i := pg_temp.vid('t-mx-tv1', 'b1', 'TV1 highlight 1h', v_now - interval '1 hour', true);  perform pg_temp.vt(v_i, 'Club America');
   v_i := pg_temp.vid('t-mx-tv1', 'b2', 'TV1 highlight 3h', v_now - interval '3 hours', true); perform pg_temp.vt(v_i, 'Club America');
   v_i := pg_temp.vid('t-mx-tv1', 'b3', 'TV1 highlight 5h', v_now - interval '5 hours', true); perform pg_temp.vt(v_i, 'Club America');
   v_i := pg_temp.vid('t-mx-tv1', 'b4', 'TV1 talk clip', v_now - interval '30 minutes', false); perform pg_temp.vt(v_i, 'Club America');
-  v_i := pg_temp.vid('t-mx-tv1', 'b5', 'TV1 highlight 31 days', v_now - interval '31 days', true); perform pg_temp.vt(v_i, 'Club America');
+  v_i := pg_temp.vid('t-mx-tv1', 'b5', 'TV1 highlight 46 days', v_now - interval '46 days', true); perform pg_temp.vt(v_i, 'Club America');
   -- Broadcaster 2: one highlight about América, 10 hours ago.
   v_i := pg_temp.vid('t-mx-tv2', 'b6', 'TV2 highlight 10h', v_now - interval '10 hours', true); perform pg_temp.vt(v_i, 'Club America');
   -- A title that names América with no stored match: not theirs (matching happens at ingest only).
@@ -124,7 +124,7 @@ begin
   assert p->'team' = jsonb_build_object('id', (select id from teams where name = 'Club America' and source = 'videos-test'), 'name', 'Club America'), format('%s', p->'team');
   assert p->'league'->>'name' = 'Liga MX', format('%s', p->'league');
   assert pg_temp.titles(p, 'team_videos') = array['TV1 highlight 1h', 'TV2 highlight 10h', 'TV1 highlight 3h', 'TV1 highlight 5h', 'Club press conference'],
-    format('highlights first, round-robin across channels, then the club''s own video; no talk clip, nothing 31 days old or unmatched: %s', pg_temp.titles(p, 'team_videos'));
+    format('highlights first, round-robin across channels, then the club''s own video; no talk clip, nothing 46 days old or unmatched: %s', pg_temp.titles(p, 'team_videos'));
 
   p := app.football_videos(v_a, v_now, 2);
   assert pg_temp.titles(p, 'team_videos') = array['TV1 highlight 1h', 'TV2 highlight 10h'], format('one channel cannot fill a short list: %s', pg_temp.titles(p, 'team_videos'));
@@ -133,11 +133,11 @@ begin
   assert p->'team_videos'->0 ?& array['id', 'youtube_id', 'url', 'title', 'channel', 'published_at', 'views', 'is_highlight', 'thumb', 'thumb_w', 'thumb_h', 'teams'], format('%s', p->'team_videos'->0);
   assert p->'team_videos'->0->'teams' = '["Club America"]'::jsonb and p->'team_videos'->0->>'channel' = 'Channel t-mx-tv1', format('%s', p->'team_videos'->0);
   assert (p->'team_videos'->4->>'thumb')::boolean and (p->'team_videos'->4->>'thumb_w')::int = 320, format('%s', p->'team_videos'->4);
-  raise notice 'PASS videos team: stored matches only, 30 days, highlights first, broadcasters'' highlights only, channels mixed';
+  raise notice 'PASS videos team: stored matches only, 45 days, highlights first, broadcasters'' highlights only, channels mixed';
 end $$;
 
 -- ---------------------------------------------------------------------------
--- League: highlights of 7 days from the league's channels, or broadcasters' about two of its teams; not already in team.
+-- League: highlights of 14 days from the league's channels, or broadcasters' about two of its teams; not already in team.
 do $$
 declare
   v_a   uuid := '99990000-0000-4000-8000-0000000003b1';
@@ -148,7 +148,7 @@ declare
 begin
   v_i := pg_temp.vid('t-mx-league', 'l1', 'League: Chivas 3-0 Cruz Azul', v_now - interval '2 days', true);
   perform pg_temp.vt(v_i, 'Guadalajara Chivas'); perform pg_temp.vt(v_i, 'Cruz Azul');
-  perform pg_temp.vid('t-mx-league', 'l2', 'League highlight 8 days', v_now - interval '8 days', true);
+  perform pg_temp.vid('t-mx-league', 'l2', 'League highlight 15 days', v_now - interval '15 days', true);
   perform pg_temp.vid('t-mx-league', 'l3', 'League tunnel clip', v_now - interval '1 day', false);
   v_i := pg_temp.vid('t-mx-tv2', 'l4', 'TV2: Cruz Azul vs Chivas resumen', v_now - interval '1 day', true);
   perform pg_temp.vt(v_i, 'Guadalajara Chivas'); perform pg_temp.vt(v_i, 'Cruz Azul');
@@ -194,7 +194,7 @@ begin
   p := app.football_videos(v_a, v_now);
   assert not exists (select 1 from jsonb_array_elements(p->'team_videos' || p->'league_videos') e where e->>'channel' = 'Channel t-mx-tv2'), format('%s', p);
   update video_channels set active = true where key = 't-mx-tv2';
-  raise notice 'PASS videos league: 7 days of highlights, league channels or broadcasters naming two teams, not repeated; no team gets the country''s league';
+  raise notice 'PASS videos league: 14 days of highlights, league channels or broadcasters naming two teams, not repeated; no team gets the country''s league';
 end $$;
 
 -- ---------------------------------------------------------------------------

@@ -1,0 +1,62 @@
+{
+  "_about": [
+    "How video titles name the four national teams. Read by videos/nations.mjs; edit here, not in code.",
+    "aliases: names that mean the national team wherever they appear in a video title.",
+    "guarded: names that are also a country, a place, its people or a word ('México', 'Catrachos', 'la Bicolor'). They count only in a match title against another national team: 'México vs Panamá', 'Honduras 2-1 Costa Rica'.",
+    "women:   words that make it the women's national team (stored with women = true, never mixed into the men's). A women's alias ('Reggae Girlz') is women's by itself.",
+    "skip:    youth, Olympic, beach, futsal and esports sides: the title names no senior national team at all.",
+    "not:     phrases in which a name is not the national team (places, leagues, clubs, companies); removed first.",
+    "opponents: other national teams, so a guarded name has a match to be in.",
+    "signals: on a national federation's own channel (which also posts referees, youth and league content, and on FMF and JFF the women's team), a title counts for the men's team only when it names the team with one of these, an alias or a guarded name."
+  ],
+  "women": ["femenil", "femenina", "femenino", "fem", "women", "womens", "ladies", "girlz", "feminine"],
+  "skip": [
+    "sub 15", "sub 16", "sub 17", "sub 18", "sub 19", "sub 20", "sub 21", "sub 23", "sub15", "sub16", "sub17", "sub18", "sub19", "sub20", "sub21", "sub23",
+    "u15", "u16", "u17", "u19", "u20", "u21", "u23", "under 15", "under 17", "under 20", "under 23", "u 15", "u 16", "u 17", "u 19", "u 20", "u 21", "u 23", "hu17", "hu20", "juvenil", "juveniles", "olimpica", "olimpico", "preolimpico", "preolimpica",
+    "futbol playa", "futbol de playa", "beach soccer", "futsal", "futbol sala", "futbol 7", "esports", "e sports", "efootball", "fifa 26", "amputados", "talla baja", "sordos",
+    "schoolboy", "manning cup", "dacosta cup", "issa"
+  ],
+  "not": [
+    "ciudad de mexico", "estado de mexico", "nuevo mexico", "new mexico", "golfo de mexico", "gulf of mexico", "mexico city", "gran premio de mexico", "gp de mexico", "mexico gp",
+    "el tri de alex lora", "alex lora", "banco de mexico", "universidad de mexico", "copa mexico",
+    "ciudad de guatemala", "guatemala city", "antigua guatemala", "liga nacional de guatemala", "liga guate", "universidad de san carlos de guatemala", "copa guatemala", "municipal de guatemala",
+    "liga nacional de honduras", "honduras progreso", "real espana", "universidad nacional autonoma de honduras", "copa honduras",
+    "jamaica premier league", "jamaica college", "jamaica defence force", "jamaica national stadium", "bank of jamaica", "jamaica observer", "jamaica gleaner", "radio jamaica", "television jamaica", "air jamaica", "visit jamaica", "jamaica football federation"
+  ],
+  "teams": [
+    { "country": "MX",
+      "aliases": ["Selección Mexicana", "Selección de México", "Selección Nacional de México", "El Tri", "Mexico national team", "Mexican national team", "Mexico men's national team"],
+      "women_aliases": ["Tri Femenil", "Selección Mexicana Femenil", "Selección Femenil de México"],
+      "guarded": ["México", "Tri", "Tricolor"],
+      "signals": ["Selección", "Seleccionado", "Seleccionador", "El Tri", "ElTri", "México", "Mexico", "Tricolor", "El Búnker"] },
+    { "country": "HN",
+      "aliases": ["Selección de Honduras", "Selección Honduras", "Selección Nacional de Honduras", "Selección Catracha", "Honduras national team"],
+      "women_aliases": ["Selección Femenina de Honduras", "Selección Femenil de Honduras", "La H Femenina"],
+      "guarded": ["Honduras", "La H", "Catrachos", "Catracha", "Bicolor Catracha"],
+      "signals": ["Selección", "Seleccionado", "Seleccionador", "La H", "Honduras", "Catrachos", "Catracha"] },
+    { "country": "GT",
+      "aliases": ["Selección de Guatemala", "Selección Guatemala", "Selección Nacional de Guatemala", "Guatemala national team"],
+      "women_aliases": ["Selección Femenina de Guatemala", "Selección Femenil de Guatemala", "Bicolor Femenina"],
+      "guarded": ["Guatemala", "Bicolor", "La Azul y Blanco", "Chapines"],
+      "signals": ["Selección", "Seleccionado", "Seleccionador", "Guatemala", "Bicolor", "Azul y Blanco"] },
+    { "country": "JM",
+      "aliases": ["Reggae Boyz", "Jamaica national team", "Jamaica's senior men", "Jamaica senior men's team"],
+      "women_aliases": ["Reggae Girlz", "Jamaica women's national team", "Jamaica Women"],
+      "guarded": ["Jamaica"],
+      "signals": ["Reggae Boyz", "Boyz", "Jamaica", "national team", "senior men"] }
+  ],
+  "opponents": [
+    "México", "Mexico", "Honduras", "Guatemala", "Jamaica", "Estados Unidos", "EE UU", "EEUU", "USA", "USMNT", "United States", "Canadá", "Canada", "Panamá", "Panama", "Costa Rica",
+    "El Salvador", "Nicaragua", "Belice", "Belize", "Haití", "Haiti", "Trinidad y Tobago", "Trinidad and Tobago", "Trinidad & Tobago", "Curazao", "Curaçao", "Curacao", "Surinam", "Suriname",
+    "Cuba", "República Dominicana", "Dominican Republic", "Puerto Rico", "Guyana", "Martinica", "Martinique", "Guadalupe", "Guadeloupe", "Granada", "Grenada", "San Cristóbal y Nieves",
+    "St Kitts and Nevis", "Santa Lucía", "St Lucia", "San Vicente", "St Vincent", "Antigua y Barbuda", "Antigua and Barbuda", "Bermudas", "Bermuda", "Barbados", "Bahamas", "Aruba",
+    "Dominica", "Montserrat", "Anguila", "Anguilla", "Islas Caimán", "Cayman Islands", "Islas Vírgenes", "Guayana Francesa", "French Guiana", "San Martín", "Sint Maarten", "Bonaire",
+    "Argentina", "Brasil", "Brazil", "Uruguay", "Colombia", "Ecuador", "Perú", "Peru", "Chile", "Paraguay", "Venezuela", "Bolivia",
+    "España", "Spain", "Francia", "France", "Alemania", "Germany", "Inglaterra", "England", "Portugal", "Italia", "Italy", "Países Bajos", "Netherlands", "Holanda", "Bélgica", "Belgium",
+    "Croacia", "Croatia", "Suiza", "Switzerland", "Escocia", "Scotland", "Gales", "Wales", "Irlanda", "Ireland", "Noruega", "Norway", "Suecia", "Sweden", "Dinamarca", "Denmark",
+    "Polonia", "Poland", "Serbia", "Turquía", "Turkey", "Ucrania", "Ukraine", "Austria", "Grecia", "Greece", "Islandia", "Iceland", "Rusia", "Russia",
+    "Japón", "Japan", "Corea del Sur", "South Korea", "Corea", "Korea", "Australia", "Nueva Zelanda", "New Zealand", "Arabia Saudita", "Saudi Arabia", "Catar", "Qatar", "Irán", "Iran",
+    "Marruecos", "Morocco", "Senegal", "Nigeria", "Ghana", "Egipto", "Egypt", "Túnez", "Tunisia", "Argelia", "Algeria", "Camerún", "Cameroon", "Costa de Marfil", "Ivory Coast", "Sudáfrica", "South Africa", "Cabo Verde", "Cape Verde",
+    "China", "Uzbekistán", "Uzbekistan", "Jordania", "Jordan", "Irak", "Iraq", "Emiratos Árabes Unidos", "UAE"
+  ]
+}

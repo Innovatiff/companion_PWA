@@ -57,3 +57,75 @@ export function classifyTitle(title) {
 }
 
 export const isHighlight = (title) => classifyTitle(title).highlight;
+
+/*
+ * Categories (0050): highlight | goals | interview | preview | other, from the
+ * title only, with classifyTitle's gates, so category in (highlight, goals) is
+ * exactly classifyTitle's highlight for the words both know.
+ *
+ *   other      named talk and magazine shows, other sports, podcasts and analysis,
+ *              tickets and trailers, first (even when a player "habla" in them)
+ *   interview  press conferences, post-match interviews, statements ("expresa", "speaks")
+ *   highlight  a summary word (resumen, highlights, lo mejor, mejores momentos), or a
+ *              result line "X 2-1 Y"
+ *   goals      a goal word without a summary word (gol, golazo, all goals, top 5 goles)
+ *   preview    before a match (previa, preview, se viene, ahead of, dónde ver)
+ *   other      live streams and full matches without a highlight word, reactions, the rest
+ */
+const OTHER_FIRST = [
+  "futbol picante", "fuera de juego", "la ultima palabra", "linea de 4", "cuadro titular", "nacion ca", "palabra deportiva",
+  "el palco", "color suzuki", "sportsmax zone", "smile jamaica",
+  // more talk shows from the 2026-09-15 dry run ("Las RAZONES de la derrota 4-3 ante Cruz Azul | HDP" is not a summary)
+  "hdp", "generacion f", "raza deportiva",
+  // esports ("Rayados Gaming Cup ya comenzó y te traemos los highlights", 2026-09-15)
+  "gaming", "gaming cup", "esports", "e sports", "efootball", "fifa 26", "videojuego", "videojuegos",
+  "box azteca", "pelea", "nocaut", "serie del rey", "lmb", "beisbol", "nfl", "nba", "cricket", "windies", "at the track",
+  "podcast", "analisis", "mesa de analisis", "tertulia", "debate", "polemica", "opinion", "sorteo", "boletos", "tickets", "unboxing", "trailer",
+  "pronostico", "pronosticos", "apuesta", "apuestas", "momios", "betting", "odds",
+  // training footage is not a match ("Resumen primer entreno", FEDEFUT; "Reggae Boyz Training", JFF)
+  "entreno", "entrenamiento", "entrenamientos", "training",
+];
+const INTERVIEW = [
+  "conferencia", "conferencia de prensa", "rueda de prensa", "press conference", "presser", "entrevista", "interview", "exclusiva",
+  "speaks", "reflects", "reacts", "post match", "post partido", "pospartido", "habla", "hablo", "declaraciones", "expresa", "destaca",
+  "asegura", "opina", "responde", "revela", "explica", "zona mixta", "mixed zone", "media day", "dia de medios", "sala de prensa",
+  // a player telling it ("#LaReacción de Esteban Lozano", "'Sando' nos cuenta en #LaReacción cómo fueron sus dos goles")
+  "la reaccion", "lareaccion", "nos cuenta", "platica",
+];
+const GOALS = ["gol", "goles", "golazo", "golazos", "goal", "goals", "all goals", "every goal", "todos los goles",
+  "convierte el", "abre el marcador", "abrir el marcador", "anotacion", "anotaciones", "anota", "anoto", "doblete", "triplete", "scores", "scored", "equaliser", "equalizer", "brace", "hat trick",
+  // TVJ Sports' JPL clips ("TAJAY GRANT OPENS THE ACCOUNT! Racing United Strike First", "3–2! Arnett Gardens Fight Back")
+  "opens the account", "opens the scoring", "strike first", "strikes first", "fight back", "fights back", "comeback"];
+const SUMMARY = HIGHLIGHT.filter((w) => !GOALS.includes(w) && w !== "resumen y goles").concat(["resumen y goles", "mejores momentos", "extended", "match summary"]);
+const PREVIEW = [
+  "previa", "preview", "se viene", "rumbo a", "rumbo al", "ahead of", "build up", "a que hora", "donde ver", "how to watch", "lo que viene",
+  "antesala", "posible alineacion", "posibles alineaciones", "alineacion probable", "pre match", "prematch", "matchday preview", "countdown",
+];
+const OTHER_F = toSet(OTHER_FIRST);
+const INTERVIEW_F = toSet(INTERVIEW);
+const GOALS_F = toSet(GOALS);
+const SUMMARY_F = toSet(SUMMARY);
+const PREVIEW_F = toSet(PREVIEW);
+
+/** { category, why } */
+export function classifyVideo(title) {
+  const raw = String(title ?? "");
+  // "Goool", "GOOOOL", "GOLAAAAAZO" as written on match days.
+  const t = fold(raw).replace(/ go{3,}l+ /g, " gol ").replace(/ gola{2,}zo+ /g, " golazo ");
+  const other = hasAny(t, OTHER_F);
+  if (other) return { category: "other", why: `other:${other.trim()}` };
+  const interview = hasAny(t, INTERVIEW_F);
+  if (interview) return { category: "interview", why: `interview:${interview.trim()}` };
+  const summary = hasAny(t, SUMMARY_F);
+  if (summary) return { category: "highlight", why: `word:${summary.trim()}` };
+  const goal = hasAny(t, GOALS_F);
+  if (goal) return { category: "goals", why: `goals:${goal.trim()}` };
+  const preview = hasAny(t, PREVIEW_F);
+  if (preview) return { category: "preview", why: `preview:${preview.trim()}` };
+  const unless = hasAny(t, UNLESS_F);
+  if (unless) return { category: "other", why: `not-unless-said:${unless.trim()}` };
+  if (SCORE_LINE.test(raw)) return { category: "highlight", why: "score-line" };
+  return { category: "other", why: "no-signal" };
+}
+
+export const CATEGORIES = ["highlight", "goals", "interview", "preview", "other"];

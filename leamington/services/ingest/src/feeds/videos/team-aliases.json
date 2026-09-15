@@ -25,6 +25,36 @@
     "victoria de guatemala", "la victoria", "marathon race", "boston marathon", "half marathon", "media maraton", "maraton de",
     "harbour view hotel", "portmore mall"
   ],
+  "news": {
+    "_about": [
+      "News stories (news/teams.mjs) are matched to clubs of the outlet's country with the names above, and stricter rules:",
+      "an alias counts only with a football word in the title or summary (context), or with another club of its league named;",
+      "a guarded name counts only in a match line ('Municipal vs Xelajú') or right after 'el', 'del' or 'al' ('del América'), and with a football word.",
+      "not: phrases removed from stories before matching (rivers, bands, ministries, city halls). not_context: phrases in which a football word is not football."
+    ],
+    "context": [
+      "futbol", "football", "soccer", "gol", "goles", "golazo", "golea", "goleada", "goleo", "goleador", "partido", "partidos", "jornada", "tecnico", "dt", "entrenador", "estratega",
+      "liga", "liguilla", "estadio", "fichaje", "fichajes", "refuerzo", "refuerzos", "vs", "torneo", "apertura", "clausura", "clasico", "campeonato", "aficion", "aficionados",
+      "convocatoria", "convocado", "convocados", "alineacion", "penal", "penales", "portero", "arquero", "delantero", "mediocampista", "volante", "zaguero", "defensor",
+      "empate", "empata", "empato", "remonta", "remontada", "liderato", "descenso", "tabla de posiciones", "plantel", "plantilla", "cancha", "marcador", "concacaf", "fifa",
+      "copa centroamericana", "campeones cup", "leagues cup", "nations league", "liga de naciones", "hondubet", "liga mx", "liga bbva mx", "liga nacional",
+      "match", "matchday", "goal", "goals", "striker", "midfielder", "defender", "goalkeeper", "head coach", "jpl", "premier league", "fixture", "standings", "kickoff"
+    ],
+    "not_context": [
+      "partido politico", "partidos politicos", "partido oficial", "partido oficialista", "partido de gobierno", "partido de oposicion", "partido morena", "partido liberal", "partido nacional",
+      "partido libre", "partido semilla", "partido vamos", "equipo tecnico", "apoyo tecnico", "asistencia tecnica", "personal tecnico", "empate tecnico", "mesa tecnica",
+      "dictamen tecnico", "informe tecnico", "servicio tecnico", "liga de consumidores", "premier league of", "goal of", "match the"
+    ],
+    "not": [
+      "rio motagua", "valle del motagua", "cuenca del motagua", "motagua river", "tigres del norte", "los tigres del norte", "mexico toluca", "toluca mexico", "autopista mexico toluca",
+      "ministerio de comunicaciones", "comunicaciones infraestructura y vivienda", "comunicaciones y transportes", "secretaria de comunicaciones", "telecomunicaciones",
+      "policia municipal", "policia municipal de transito", "concejo municipal", "consejo municipal", "corporacion municipal", "estadio municipal", "gobierno municipal",
+      "alcaldia municipal", "juez municipal", "juzgado municipal", "mercado municipal", "palacio municipal", "rastro municipal", "cementerio municipal", "panteon municipal",
+      "biblioteca municipal", "auxiliatura municipal", "direccion municipal", "oficina municipal", "presupuesto municipal", "planificacion municipal", "desarrollo municipal",
+      "servicio municipal", "empresa municipal", "paridad municipal", "elecciones municipal", "atlas de riesgo", "atlas de riesgos", "san luis potosi", "leon guanajuato",
+      "victoria electoral", "victoria del candidato", "victoria de la candidata", "vida nocturna", "calidad de vida", "estilo de vida"
+    ]
+  },
   "clubs": [
     { "key": "mx-america", "country": "MX", "names": ["Club America", "Club América", "América", "America"], "aliases": ["Club América", "Águilas del América", "Azulcremas", "Azulcrema"], "guarded": ["América", "Águilas"] },
     { "key": "mx-guadalajara", "country": "MX", "names": ["Guadalajara Chivas", "Guadalajara", "Chivas Guadalajara", "Chivas"], "aliases": ["Chivas", "Chivas Rayadas", "Rebaño Sagrado"], "guarded": ["Guadalajara", "Rebaño"] },

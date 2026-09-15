@@ -17,7 +17,10 @@
  *      at most IMAGE_CAP per run, shared out across outlets. An item whose
  *      picture fails is stored without one. Never hotlinked.
  *   4. Mentions of our clients' towns (the forecast feed's targets) in title and
- *      summary (news/mentions.mjs).
+ *      summary (news/mentions.mjs), and the clubs of the outlet's country the
+ *      story is about (news/teams.mjs, 0050). Stories stored before that, or while
+ *      no club of their country was known, are matched later, newest first, at
+ *      most TEAMS_CAP per run (teams_checked_at stays null until a match is tried).
  *   5. Prune stories older than 30 days and unused pictures.
  *
  * `dryDir` fetches everything and writes nothing to the database: pictures are
@@ -32,10 +35,13 @@ import { parseFeed, ogImage, normaliseUrl } from "./news/parse.mjs";
 import { makeVariants, sniff, DOWNLOAD_MAX_BYTES } from "./news/image.mjs";
 import { findMentions, sharedNames } from "./news/mentions.mjs";
 import { graphicTerm } from "./news/graphic.mjs";
+import { matchNewsTeams } from "./news/teams.mjs";
+import { buildTeamIndex } from "./videos/teams.mjs";
 
 export const IMAGE_CAP = 40;        // new pictures made per run
 export const PAGE_CAP = 40;         // article pages read for og:image per run
 export const MAX_AGE_DAYS = 30;
+export const TEAMS_CAP = 2000;      // stored stories matched to clubs per run
 const FEED_MAX_BYTES = 5_000_000;
 const PAGE_MAX_BYTES = 1_500_000;
 const FEED_TIMEOUT_MS = 20_000;
@@ -178,6 +184,23 @@ export function dbStore() {
         [source.id, it.guid, it.url, it.urlKey, it.title, it.summary, it.publishedAt, imageId, Boolean(checked), suppressed]);
       return rows[0]?.id ?? null;
     },
+    async teams() {
+      return (await query(`select id, league_id, country::text, name, short_name from teams`)).rows;
+    },
+    /** A story's clubs, and when they were looked for. */
+    async saveTeams(itemId, matches) {
+      for (const m of matches) {
+        await query(`insert into news_teams (item_id, team_id, matched, rule) values ($1, $2, $3, $4) on conflict do nothing`,
+          [itemId, m.teamId, m.matched.slice(0, 120), m.rule]);
+      }
+      await query(`update news_items set teams_checked_at = now() where id = $1`, [itemId]);
+    },
+    async uncheckedTeams(countries, limit) {
+      return (await query(
+        `select i.id, i.title, i.summary, s.country::text from news_items i join news_sources s on s.id = i.source_id
+          where i.teams_checked_at is null and s.country::text = any($1::text[])
+          order by i.published_at desc limit $2`, [countries, limit])).rows;
+    },
     async saveMentions(itemId, mentions) {
       for (const m of mentions) {
         await query(`insert into news_mentions (item_id, municipality_id, matched, rule) values ($1, $2, $3, $4) on conflict do nothing`,
@@ -193,7 +216,7 @@ export function dbStore() {
 const safe = (s) => String(s).replace(/[^\p{L}\p{N}]+/gu, "_").slice(0, 60);
 
 /** A store that writes nothing to the database: pictures go to `dir`. Sources and towns are given. */
-export function dryStore(dir, { sources, towns, catalogue }) {
+export function dryStore(dir, { sources, towns, catalogue, teams = [] }) {
   mkdirSync(dir, { recursive: true });
   let seq = 0;
   const images = new Map();
@@ -213,6 +236,9 @@ export function dryStore(dir, { sources, towns, catalogue }) {
     },
     saveItem: async () => ++seq,
     saveMentions: async () => {},
+    teams: async () => teams,
+    saveTeams: async () => {},
+    uncheckedTeams: async () => [],
     prune: async () => null,
   };
 }
@@ -221,15 +247,18 @@ export function dryStore(dir, { sources, towns, catalogue }) {
  * The feed. Options: fetchImpl (tests), now, imageCap, pageCap, store (dryStore
  * for a dry run). Returns { recordsWritten, sourceResult, stats, mentions }.
  */
-export async function ingestNews(ctx, { fetchImpl = globalThis.fetch, now = new Date(), imageCap = IMAGE_CAP, pageCap = PAGE_CAP, store = dbStore() } = {}) {
+export async function ingestNews(ctx, { fetchImpl = globalThis.fetch, now = new Date(), imageCap = IMAGE_CAP, pageCap = PAGE_CAP, teamsCap = TEAMS_CAP, store = dbStore() } = {}) {
   const log = ctx.log ?? { info() {}, warn() {} };
   const warnings = ctx.warnings ?? (ctx.warnings = []);
   const sources = await store.sources();
   if (!sources.length) {
     warnings.push("no active news sources; nothing was fetched");
-    return { recordsWritten: 0, stats: [], mentions: [] };
+    return { recordsWritten: 0, stats: [], mentions: [], teams: [] };
   }
   const towns = await store.towns();
+  const teamIndex = buildTeamIndex(await store.teams());
+  // Countries with clubs to match: elsewhere a story stays unchecked (no club known is not "about no club").
+  const teamCountries = [...teamIndex.byCountry.keys()];
   const shared = sharedNames(await store.catalogue());
   const oldest = now.getTime() - MAX_AGE_DAYS * 864e5;
   const newest = now.getTime() + 3600e3;
@@ -294,6 +323,7 @@ export async function ingestNews(ctx, { fetchImpl = globalThis.fetch, now = new 
   const pages = budget(pageCap);
   const byUrl = new Map();
   const mentionsFound = [];
+  const teamsFound = [];
   const suppressedFound = [];
   const pictured = [];
   let written = 0;
@@ -348,6 +378,11 @@ export async function ingestNews(ctx, { fetchImpl = globalThis.fetch, now = new 
         await store.saveMentions(itemId, mentions);
         for (const m of mentions) mentionsFound.push({ ...m, town: towns.find((t) => t.id === m.municipalityId)?.name, source: source.key, title: it.title });
       }
+      if (teamCountries.includes(source.country)) {
+        const clubs = matchNewsTeams(it, source, teamIndex);
+        await store.saveTeams(itemId, clubs);
+        for (const m of clubs) teamsFound.push({ ...m, source: source.key, country: source.country, title: it.title, graphic: term });
+      }
     } catch (err) {
       warnings.push(`${source.key}: item not stored (${err.message.slice(0, 120)})`);
     }
@@ -367,13 +402,28 @@ export async function ingestNews(ctx, { fetchImpl = globalThis.fetch, now = new 
     }
   }
 
+  // Stories stored before club matching (or before their country had clubs): matched now, newest first.
+  let teamsBackfilled = 0;
+  if (teamCountries.length) {
+    for (const row of await store.uncheckedTeams(teamCountries, teamsCap)) {
+      try {
+        const clubs = matchNewsTeams(row, { country: row.country }, teamIndex);
+        await store.saveTeams(row.id, clubs);
+        teamsBackfilled++;
+        for (const m of clubs) teamsFound.push({ ...m, source: null, country: row.country, title: row.title, backfill: true });
+      } catch (err) {
+        warnings.push(`news item ${row.id}: clubs not matched (${err.message.slice(0, 120)})`);
+      }
+    }
+  }
+
   // 5. Prune.
   const pruned = await store.prune(now);
 
   const list = [...stats.values()];
   log.info("news", {
     sources: sources.length, answered: answered.length, stored: written, backfilled, images: images.used, pages: pages.used,
-    imageFailures: list.reduce((n, s) => n + s.imageFailures, 0), mentions: mentionsFound.length, pruned,
+    imageFailures: list.reduce((n, s) => n + s.imageFailures, 0), mentions: mentionsFound.length, teams: teamsFound.length, teamsBackfilled, pruned,
   });
-  return { recordsWritten: written, sourceResult: "items", stats: list, mentions: mentionsFound, suppressed: suppressedFound, pictured, imagesUsed: images.used, pagesUsed: pages.used };
+  return { recordsWritten: written, sourceResult: "items", stats: list, mentions: mentionsFound, teams: teamsFound, teamsBackfilled, suppressed: suppressedFound, pictured, imagesUsed: images.used, pagesUsed: pages.used };
 }

@@ -5,9 +5,11 @@
  * feed's tolerant element scanner (news/parse.mjs), not a second XML reader.
  *
  * Each entry becomes { youtubeId, url, title, publishedAt, views, thumbUrl,
- * isShort }. The feed carries Shorts too (link /shorts/{id}); they are marked,
- * and the feed skips them (vertical clips of tunnels and reactions, not
- * highlights). Entries without a valid video id, a title or a date are dropped.
+ * isShort }. The feed carries Shorts too: the only sign in the feed is the
+ * link, /shorts/{id} instead of watch?v={id} (its media:thumbnail is the same
+ * 480 x 360 hqdefault.jpg; checked on LIGA BBVA MX and FMF, 2026-09-15). A
+ * Short's url is its /shorts/ page. Entries without a valid video id, a title
+ * or a date are dropped.
  */
 import { elements, attr, plainText, parseDate } from "../news/parse.mjs";
 
@@ -18,8 +20,11 @@ export const THUMB_HOST = /^i\d?\.ytimg\.com$/;
 
 export const feedUrl = (channelId) => `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`;
 export const watchUrl = (id) => `https://www.youtube.com/watch?v=${id}`;
+export const shortUrl = (id) => `https://www.youtube.com/shorts/${id}`;
 /** 320 x 180, the size Hoy shows: no crop, only a re-encode. */
 export const mqThumbUrl = (id) => `https://i.ytimg.com/vi/${id}/mqdefault.jpg`;
+/** 480 x 360. For a Short, its vertical picture fills the centre 9:16 band (checked 2026-09-15). */
+export const hqThumbUrl = (id) => `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
 
 /** A thumbnail url from the feed, only when it is YouTube's own CDN over https. */
 export function ytimgUrl(raw) {
@@ -55,14 +60,15 @@ export function parseYouTubeFeed(xml) {
     const rawViews = attr(elements(x, "media:statistics")[0]?.attrs ?? "", "views");
     const views = rawViews == null || rawViews === "" ? NaN : Number(rawViews);
     const thumb = elements(x, "media:thumbnail")[0];
+    const isShort = /\/shorts\//.test(link);
     entries.push({
       youtubeId,
-      url: watchUrl(youtubeId),
+      url: isShort ? shortUrl(youtubeId) : watchUrl(youtubeId),
       title,
       publishedAt,
       views: Number.isSafeInteger(views) && views >= 0 ? views : null,
       thumbUrl: thumb ? ytimgUrl(attr(thumb.attrs, "url")) : null,
-      isShort: /\/shorts\//.test(link),
+      isShort,
     });
   }
   return { channelId, channelName, entries, dropped };
