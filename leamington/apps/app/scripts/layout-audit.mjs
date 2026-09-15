@@ -234,7 +234,8 @@ async function loteriaCheck(cookie) {
 async function pagesFor(code) {
   const cookie = await signIn(code);
   const check = await loteriaCheck(cookie);
-  const pages = ["/", "/clima", "/clima/aqui", "/futbol", "/futbol/videos", "/futbol/videos?s=league", "/mas", "/mas/miembro", "/mas/semana", "/mas/loteria", check,
+  const pages = ["/", "/clima", "/clima/aqui", "/futbol", "/futbol/videos", "/futbol/videos?s=league", "/futbol/videos?s=shorts", "/futbol/videos?s=national", "/futbol/videos?s=women",
+    "/futbol/videos?f=highlight", "/futbol/videos?f=goals", "/futbol/videos?f=interview", "/mas", "/mas/miembro", "/mas/semana", "/mas/loteria", check,
     "/mas/tasa?r=7", "/mas/tasa?r=30", "/mas/tasa?r=90", "/mas/tasa?r=30&cad=100", "/mas/tasa?dir=local&n=1000",
     "/noticias", "/noticias?s=local", "/noticias?s=region", "/noticias?s=national",
     "/mas/feriados", "/mas/escuela", "/mas/consulado", "/mas/emergencias", "/mas/transporte", "/mas/avisos",

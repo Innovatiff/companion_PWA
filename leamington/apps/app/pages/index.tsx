@@ -39,6 +39,7 @@ import { AllaAqui, BadgesRow, SeasonCard, WelcomeScreen, type MemberCard, type S
 import { WeekDots, type WeekPoint } from "../lib/money";
 import { HomeNews, type NewsHome } from "../lib/news";
 import { EXPIRY_CSS } from "../lib/page-css";
+import { HOME_CSS } from "@leamington/shared/src/ui/css.ts";
 import { DstCard, HoursStrip, WorkdayCard, type Hourly, type Workday } from "../lib/workday";
 import {
   Art, Balls, Credit, Crest, DateBlock, FLAG, Icon, Num, Pic, Ring, SKY_PHASES, TownPhoto, dayArt, drawTime, localDayEnd, skyPhase, tel,
@@ -412,6 +413,7 @@ export default function Home(props: Props) {
       <Head>
         <title>Hoy</title>
         <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+        <style dangerouslySetInnerHTML={{ __html: HOME_CSS }} />
       </Head>
       <main data-render={renderId} data-rendered={renderedAt} data-lang={lang}>
         <OfflineBar at={renderedAt} tz={tz} lang={lang} />

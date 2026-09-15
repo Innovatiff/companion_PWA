@@ -68,18 +68,7 @@ export const APP_CSS = BASE +
   ".hello .ico{width:3.6rem;height:3.6rem;border-radius:50%;background:rgba(255,255,255,.16);color:#fff}.art{flex:none;display:block}" +
   ".lbl{display:inline-flex;align-items:center;gap:.35rem;padding:.25rem .75rem;border-radius:999px;background:rgba(10,14,60,.2);font-size:.8rem;font-weight:700}" +
   // Home's live sky: dawn, day, dusk, night in Leamington right now
-  ".sk{display:block;min-height:10rem}.sk>.art{position:absolute;top:.8rem;right:.8rem;width:5.75rem;height:5.75rem}.sk>div{position:relative}.sk h1{padding-right:5.25rem}" +
-  ".s-day{background:radial-gradient(circle at 86% 18%,rgba(255,226,140,.35),transparent 34%),linear-gradient(135deg,#3e46c4,#2a74c9)}" +
-  ".s-dawn{background:radial-gradient(circle at 86% 20%,rgba(255,196,120,.45),transparent 36%),linear-gradient(135deg,#43389e,#8a4a9e 55%,#c24a6e)}" +
-  ".s-dusk{background:radial-gradient(circle at 86% 20%,rgba(255,160,90,.42),transparent 36%),linear-gradient(135deg,#312d86,#7a3f93 55%,#bf5a4a)}" +
-  ".s-night{background:linear-gradient(135deg,#12163f,#2c3281)}" +
-  ".s-night::after{content:\"\";position:absolute;inset:0;z-index:-1;animation:tw 2.8s ease-in-out infinite alternate;background:" +
-  "radial-gradient(1.6px 1.6px at 12% 22%,#fff 50%,transparent 70%),radial-gradient(1.2px 1.2px at 36% 10%,#fff 50%,transparent 70%),radial-gradient(1.4px 1.4px at 60% 34%,#fff 50%,transparent 70%)," +
-  "radial-gradient(1px 1px at 74% 72%,#fff 50%,transparent 70%),radial-gradient(1.6px 1.6px at 48% 86%,#fff 50%,transparent 70%),radial-gradient(1.2px 1.2px at 92% 90%,#fff 50%,transparent 70%)," +
-  "radial-gradient(1px 1px at 24% 66%,#fff 50%,transparent 70%),radial-gradient(1.3px 1.3px at 66% 6%,#fff 50%,transparent 70%)}" +
   // Their hometown photo inside the hero, with its credit
-  ".ht{display:flex;align-items:center;gap:.75rem;margin:1rem 0 0;padding:.5rem;border-radius:18px;background:rgba(10,14,60,.24)}" +
-  ".ht>a{flex:none;display:block}.ht img{display:block;width:5.5rem;height:4.2rem;border-radius:13px;object-fit:cover}.ht>span{min-width:0}" +
   ".place{display:inline-flex;align-items:center;gap:.3rem;font-size:.95rem;font-weight:750}" +
   ".credit{display:block;margin:.35rem .2rem 0;font-size:.7rem;line-height:1.35;color:var(--muted);overflow-wrap:anywhere}.credit a{color:inherit}" +
   ".hello .credit{margin:.4rem .1rem 0;color:rgba(255,255,255,.9)}" +
@@ -104,39 +93,15 @@ export const APP_CSS = BASE +
   // "Ahora" beside its forecast fallback: the fallback shows only once "Ahora" is gone
   ".tile.x{flex-wrap:wrap}.tile.x .tx{flex:1 1 7rem}span.ahora,span.fc{display:contents}.ahora+span.fc{display:none}.tx{flex:1;min-width:0}.aw{font-weight:800;color:var(--brand-ink)}.tb .aw{display:inline}.hello .aw{color:#fff}" +
   // Round 2 on home: the season ring card, the badges row, Allá y aquí
-  ".season{position:relative;isolation:isolate;overflow:hidden;display:flex;align-items:center;gap:.9rem;color:#fff;border-radius:24px;padding:1.15rem 1.2rem;margin:0 0 .75rem;" +
-  "background:radial-gradient(circle at 90% 10%,rgba(255,255,255,.18),transparent 40%),linear-gradient(125deg,#3b44b5,#6a4fd8);box-shadow:0 16px 34px rgba(63,75,196,.26)}" +
-  ".season{flex-wrap:wrap}.season>div{flex:1 1 9rem;min-width:0}.season .lbl{background:rgba(255,255,255,.18)}.season small{display:block;color:rgba(255,255,255,.92)}.season a{color:#fff;font-weight:750}" +
-  ".sbig{margin:.35rem 0 .15rem;font-size:2.6rem;font-weight:800;line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums}.sbig em{display:inline-block;font-style:normal;font-size:1rem;font-weight:700;margin-left:.35rem;letter-spacing:0}.sbig.sm{font-size:1.2rem;line-height:1.25}.sbig .pc{margin-left:.05rem}.tile small.at{font-weight:600;color:var(--muted)}" +
-  ".sring{position:relative;display:grid;place-items:center;flex:none;width:6rem;height:6rem;text-align:center;line-height:1.05}" +
-  ".sring>i{position:absolute;inset:0;border-radius:50%;background:conic-gradient(#fff calc(var(--p)*1%),rgba(255,255,255,.22) 0);" +
-  "-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 12px),#000 calc(100% - 11px));mask:radial-gradient(farthest-side,transparent calc(100% - 12px),#000 calc(100% - 11px));animation:fill 1.3s .2s cubic-bezier(.2,.7,.3,1) both}" +
-  ".sring b{display:block;font-size:1.4rem;font-weight:800}.sring small{font-size:.76rem}.sring .art{width:3.4rem;height:3.4rem}" +
   ".brow .bar{margin-top:.35rem}" +
   // Round 4 on home (0044): the workday card, the next hours strip, the clock change
-  ".work{display:block;background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:1rem 1.1rem;margin:0 0 .75rem;color:var(--ink);text-decoration:none}" +
-  ".wtop2{display:flex;align-items:center;justify-content:space-between;gap:.4rem;flex-wrap:wrap}.work .lbl{background:var(--brand);color:#fff}" +
-  ".wnum{display:flex;flex-wrap:wrap;gap:.2rem 1.5rem;margin:.6rem 0 .1rem}.wnum small{display:block;font-weight:650}.wnum b{font-size:2rem;font-weight:800;line-height:1.05;font-variant-numeric:tabular-nums}" +
-  ".wflags{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.5rem;margin:.7rem 0 0}" +
-  ".wf{display:flex;flex-direction:column;align-items:flex-start;gap:.1rem;min-width:0;padding:.65rem .75rem;border-radius:16px;background:var(--tile)}.wf small{overflow-wrap:anywhere}" +
-  ".wf .art{animation:hop .6s .3s ease-out both}@keyframes hop{40%{transform:translateY(-6px)}}" +
-  ".hstrip{display:flex;gap:.5rem;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -1rem .75rem;padding:.2rem 1rem .6rem;text-decoration:none;color:var(--ink)}" +
-  ".hs{flex:none;scroll-snap-align:start;display:flex;flex-direction:column;align-items:center;gap:.1rem;min-width:4.5rem;padding:.6rem .4rem;background:var(--card);border-radius:18px;box-shadow:var(--shadow)}" +
-  ".hs b{font-size:1.1rem;font-weight:800}.hs small{font-weight:650}.hsr{color:var(--rain)}" +
   ".dst{display:flex;align-items:center;gap:.9rem}.dst b{display:block;line-height:1.3}.dst small{display:block;margin-top:.25rem}" +
   // Round 5: the offline line, Clima's gallery strip, theme previews
   // Noticias (0047), on home and /noticias: the picture in a fixed box, source and time, the title, the credit
   ".nimg{display:block;aspect-ratio:16/9;overflow:hidden;margin:0 0 .6rem;border-radius:16px;background:var(--tile)}.nimg img{display:block;width:100%;height:100%;object-fit:cover}" +
   ".nmeta{display:block;font-weight:650}.nt{display:block;margin:.15rem 0 .3rem;font-size:1.02rem;line-height:1.3;font-weight:750;hyphens:manual}.nw{white-space:nowrap}.nt a{color:var(--ink);text-decoration:none}.ncr{display:block;font-size:.72rem}" +
-  ".nmore{list-style:none;margin:0;padding:0}.nhl+.nmore{margin-top:.6rem}.nmore li+li,.nhl+.nmore li{padding-top:.55rem;margin-top:.55rem;border-top:1px solid var(--line)}.nmore a{display:block;color:var(--ink);font-weight:700;line-height:1.3;text-decoration:none}.nmore small{display:block}" +
   ".offbar{margin:0 0 .75rem;padding:.6rem 1rem;border-radius:16px;background:#1b1f3b;color:#fff;font-weight:700}" +
   // Home's rate row: the week of the rate as seven dots (0042)
-  ".wd{display:flex;gap:.3rem;margin-top:.4rem}.wd i{width:.72rem;height:.72rem;border-radius:50%;border:2px solid var(--brand)}.wd i.up{background:var(--brand)}.wd i.same{border-color:#8f98f5}.wd i.nd{border-style:dashed;border-color:#aab2e6}.wd i.no{background:transparent}" +
-  ".alla{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:.85rem 1rem 1rem;margin:0 0 .75rem}.alla>header{display:flex;align-items:center;gap:.5rem;font-weight:750}" +
-  ".ah2{display:grid;gap:.4rem;margin-top:.5rem}" +
-  ".ah{display:flex;flex-wrap:wrap;align-items:center;gap:.15rem .6rem;min-width:0;padding:.4rem .7rem;border-radius:16px;background:var(--tile)}.ah .art{width:2.1rem;height:2.1rem}.ah small{flex:1 1 6.5rem;min-width:0;font-size:.9rem;font-weight:700;color:var(--ink);line-height:1.25;hyphens:auto}.ah .nowt{min-width:2.5rem;text-align:right}" +
-  ".clk{font-size:1.3rem;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}.nowt{font-size:1.05rem;font-weight:800;color:var(--brand-ink)}" +
-  ".dif{justify-self:start;margin-left:.7rem;padding:.25rem .7rem;border-radius:999px;background:var(--tile);color:var(--brand-ink);font-size:.78rem;font-weight:750;text-align:center;line-height:1.2}" +
   // Letra grande's two previews (Más)
   "a.tile.x::after{display:none}" +
   "a.tile::after{content:\"›\";display:grid;place-items:center;flex:none;width:2.2rem;height:2.2rem;margin-left:auto;border-radius:50%;background:var(--tile);color:var(--brand-ink);font-size:1.4rem;line-height:1}" +
@@ -342,3 +307,45 @@ export const PORTAL_CSS =
   ".hero{padding:1.1rem 1.1rem 4.8rem}.hero h1{font-size:1.45rem}.stats{grid-template-columns:repeat(2,minmax(0,1fr));margin:-3.9rem .5rem .8rem;gap:.6rem}" +
   ".stat{padding:.8rem}.stat .value{font-size:1.5rem}.grid{grid-template-columns:1fr}.card{padding:1rem}.list>li{flex-wrap:wrap}.main{overflow:hidden}}" +
   "@media print{.side,.hero,.noprint{display:none!important}body{background:#fff}.app{display:block;padding:0}.card{border:0}}";
+
+/**
+ * Home only (moved out of APP_CSS so every other page stays lighter): the live sky,
+ * the hometown photo row, the season ring, the workday card, the next hours, the
+ * rate's dots, Allá y aquí and the news card's headlines. Inlined by pages/index.tsx.
+ */
+export const HOME_CSS =
+  ".sk{display:block;min-height:10rem}.sk>.art{position:absolute;top:.8rem;right:.8rem;width:5.75rem;height:5.75rem}.sk>div{position:relative}.sk h1{padding-right:5.25rem}" +
+  ".s-day{background:radial-gradient(circle at 86% 18%,rgba(255,226,140,.35),transparent 34%),linear-gradient(135deg,#3e46c4,#2a74c9)}" +
+  ".s-dawn{background:radial-gradient(circle at 86% 20%,rgba(255,196,120,.45),transparent 36%),linear-gradient(135deg,#43389e,#8a4a9e 55%,#c24a6e)}" +
+  ".s-dusk{background:radial-gradient(circle at 86% 20%,rgba(255,160,90,.42),transparent 36%),linear-gradient(135deg,#312d86,#7a3f93 55%,#bf5a4a)}" +
+  ".s-night{background:linear-gradient(135deg,#12163f,#2c3281)}" +
+  ".s-night::after{content:\"\";position:absolute;inset:0;z-index:-1;animation:tw 2.8s ease-in-out infinite alternate;background:" +
+  "radial-gradient(1.6px 1.6px at 12% 22%,#fff 50%,transparent 70%),radial-gradient(1.2px 1.2px at 36% 10%,#fff 50%,transparent 70%),radial-gradient(1.4px 1.4px at 60% 34%,#fff 50%,transparent 70%)," +
+  "radial-gradient(1px 1px at 74% 72%,#fff 50%,transparent 70%),radial-gradient(1.6px 1.6px at 48% 86%,#fff 50%,transparent 70%),radial-gradient(1.2px 1.2px at 92% 90%,#fff 50%,transparent 70%)," +
+  "radial-gradient(1px 1px at 24% 66%,#fff 50%,transparent 70%),radial-gradient(1.3px 1.3px at 66% 6%,#fff 50%,transparent 70%)}" +
+  ".ht{display:flex;align-items:center;gap:.75rem;margin:1rem 0 0;padding:.5rem;border-radius:18px;background:rgba(10,14,60,.24)}" +
+  ".ht>a{flex:none;display:block}.ht img{display:block;width:5.5rem;height:4.2rem;border-radius:13px;object-fit:cover}.ht>span{min-width:0}" +
+  ".season{position:relative;isolation:isolate;overflow:hidden;display:flex;align-items:center;gap:.9rem;color:#fff;border-radius:24px;padding:1.15rem 1.2rem;margin:0 0 .75rem;" +
+  "background:radial-gradient(circle at 90% 10%,rgba(255,255,255,.18),transparent 40%),linear-gradient(125deg,#3b44b5,#6a4fd8);box-shadow:0 16px 34px rgba(63,75,196,.26)}" +
+  ".season{flex-wrap:wrap}.season>div{flex:1 1 9rem;min-width:0}.season .lbl{background:rgba(255,255,255,.18)}.season small{display:block;color:rgba(255,255,255,.92)}.season a{color:#fff;font-weight:750}" +
+  ".sbig{margin:.35rem 0 .15rem;font-size:2.6rem;font-weight:800;line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums}.sbig em{display:inline-block;font-style:normal;font-size:1rem;font-weight:700;margin-left:.35rem;letter-spacing:0}.sbig.sm{font-size:1.2rem;line-height:1.25}.sbig .pc{margin-left:.05rem}.tile small.at{font-weight:600;color:var(--muted)}" +
+  ".sring{position:relative;display:grid;place-items:center;flex:none;width:6rem;height:6rem;text-align:center;line-height:1.05}" +
+  ".sring>i{position:absolute;inset:0;border-radius:50%;background:conic-gradient(#fff calc(var(--p)*1%),rgba(255,255,255,.22) 0);" +
+  "-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 12px),#000 calc(100% - 11px));mask:radial-gradient(farthest-side,transparent calc(100% - 12px),#000 calc(100% - 11px));animation:fill 1.3s .2s cubic-bezier(.2,.7,.3,1) both}" +
+  ".sring b{display:block;font-size:1.4rem;font-weight:800}.sring small{font-size:.76rem}.sring .art{width:3.4rem;height:3.4rem}" +
+  ".work{display:block;background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:1rem 1.1rem;margin:0 0 .75rem;color:var(--ink);text-decoration:none}" +
+  ".wtop2{display:flex;align-items:center;justify-content:space-between;gap:.4rem;flex-wrap:wrap}.work .lbl{background:var(--brand);color:#fff}" +
+  ".wnum{display:flex;flex-wrap:wrap;gap:.2rem 1.5rem;margin:.6rem 0 .1rem}.wnum small{display:block;font-weight:650}.wnum b{font-size:2rem;font-weight:800;line-height:1.05;font-variant-numeric:tabular-nums}" +
+  ".wflags{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.5rem;margin:.7rem 0 0}" +
+  ".wf{display:flex;flex-direction:column;align-items:flex-start;gap:.1rem;min-width:0;padding:.65rem .75rem;border-radius:16px;background:var(--tile)}.wf small{overflow-wrap:anywhere}" +
+  ".wf .art{animation:hop .6s .3s ease-out both}@keyframes hop{40%{transform:translateY(-6px)}}" +
+  ".hstrip{display:flex;gap:.5rem;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -1rem .75rem;padding:.2rem 1rem .6rem;text-decoration:none;color:var(--ink)}" +
+  ".hs{flex:none;scroll-snap-align:start;display:flex;flex-direction:column;align-items:center;gap:.1rem;min-width:4.5rem;padding:.6rem .4rem;background:var(--card);border-radius:18px;box-shadow:var(--shadow)}" +
+  ".hs b{font-size:1.1rem;font-weight:800}.hs small{font-weight:650}.hsr{color:var(--rain)}" +
+  ".nmore{list-style:none;margin:0;padding:0}.nhl+.nmore{margin-top:.6rem}.nmore li+li,.nhl+.nmore li{padding-top:.55rem;margin-top:.55rem;border-top:1px solid var(--line)}.nmore a{display:block;color:var(--ink);font-weight:700;line-height:1.3;text-decoration:none}.nmore small{display:block}" +
+  ".wd{display:flex;gap:.3rem;margin-top:.4rem}.wd i{width:.72rem;height:.72rem;border-radius:50%;border:2px solid var(--brand)}.wd i.up{background:var(--brand)}.wd i.same{border-color:#8f98f5}.wd i.nd{border-style:dashed;border-color:#aab2e6}.wd i.no{background:transparent}" +
+  ".alla{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:.85rem 1rem 1rem;margin:0 0 .75rem}.alla>header{display:flex;align-items:center;gap:.5rem;font-weight:750}" +
+  ".ah2{display:grid;gap:.4rem;margin-top:.5rem}" +
+  ".ah{display:flex;flex-wrap:wrap;align-items:center;gap:.15rem .6rem;min-width:0;padding:.4rem .7rem;border-radius:16px;background:var(--tile)}.ah .art{width:2.1rem;height:2.1rem}.ah small{flex:1 1 6.5rem;min-width:0;font-size:.9rem;font-weight:700;color:var(--ink);line-height:1.25;hyphens:auto}.ah .nowt{min-width:2.5rem;text-align:right}" +
+  ".clk{font-size:1.3rem;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}.nowt{font-size:1.05rem;font-weight:800;color:var(--brand-ink)}" +
+  ".dif{justify-self:start;margin-left:.7rem;padding:.25rem .7rem;border-radius:999px;background:var(--tile);color:var(--brand-ink);font-size:.78rem;font-weight:750;text-align:center;line-height:1.2}";

@@ -1,11 +1,15 @@
 /**
- * Videos (0049, app.football_videos): their team's videos (30 days, highlights
- * first) and their league's highlights (7 days), one column of big cards that
- * link to YouTube. Stance (docs/OPEN-DECISIONS.md 3.25): our cached thumbnail,
- * "YouTube · {channel}", never a player, and the note that watching opens
- * YouTube and uses a lot of data. A tab without videos is not shown; never
- * "no videos". When the feed has not answered within 3 hours: when it last did,
- * and that the list may not be current.
+ * Videos (0049, 0050, app.football_videos): tabs for their team's videos, their
+ * league's highlights, Shorts, their national team, and the women's national
+ * team when there are any. The team tab filters by category (Todos · Resúmenes ·
+ * Goles · Entrevistas; only categories present). Big cards, and Shorts in a
+ * two-column grid of vertical cards, all linking to YouTube.
+ *
+ * Stance (docs/OPEN-DECISIONS.md 3.25, 3.26): our cached thumbnail, "YouTube ·
+ * {channel}", never a player, and the note (once) that watching opens YouTube
+ * and uses a lot of data. A tab without videos is not shown; never "no videos".
+ * When the feed has not answered within 3 hours: when it last did, and that the
+ * list may not be current.
  */
 import Head from "next/head";
 import type { GetServerSideProps } from "next";
@@ -14,18 +18,21 @@ import { db } from "../../lib/db";
 import { loadClient, recordView } from "../../lib/client";
 import { t } from "../../lib/t";
 import { OfflineBar, PageHead, TabBar } from "../../lib/frame";
-import { VideoCard, VideoNote, type FootballVideos } from "../../lib/videos";
+import { ShortsNote, VideoCard, VideoNote, type Category, type FootballVideos } from "../../lib/videos";
 import { VIDEOS_CSS } from "../../lib/page-css";
 
 export const config = { unstable_runtimeJS: false };
 
 /** Videos per tab: the page stays within its budget. */
 export const VIDEOS_LIMIT = 12;
-const SECTIONS = ["team", "league"] as const;
+const SECTIONS = ["team", "league", "shorts", "national", "women"] as const;
 type Section = (typeof SECTIONS)[number];
-type Props = { lang: "es" | "en"; tz: string; fv: FootballVideos | null; section: Section | null; renderedAt: string };
+const FILTERS = ["highlight", "goals", "interview"] as const;
+type Filter = (typeof FILTERS)[number];
+type Props = { lang: "es" | "en"; tz: string; fv: FootballVideos | null; section: Section | null; filter: Filter | null; renderedAt: string };
 
-const listOf = (fv: FootballVideos | null, s: Section) => (s === "team" ? fv?.team_videos : fv?.league_videos) ?? [];
+const listOf = (fv: FootballVideos | null, s: Section) =>
+  (s === "team" ? fv?.team_videos : s === "league" ? fv?.league_videos : s === "shorts" ? fv?.shorts : s === "national" ? fv?.national : fv?.national_women) ?? [];
 
 export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
   const loaded = await loadClient(ctx);
@@ -34,17 +41,30 @@ export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
   const fv = ((await db().query("select app.football_videos($1, now(), $2) as v", [client.id, VIDEOS_LIMIT])).rows[0]?.v ?? null) as FootballVideos | null;
   const asked = SECTIONS.find((s) => s === ctx.query.s);
   const section = asked && listOf(fv, asked).length > 0 ? asked : SECTIONS.find((s) => listOf(fv, s).length > 0) ?? null;
+  const filter = section === "team" ? FILTERS.find((c) => c === ctx.query.f && listOf(fv, "team").some((v) => v.category === c)) ?? null : null;
   await recordView(client.id, "futbol_videos", {
-    section, team: fv?.team_videos.length ?? null, league: fv?.league_videos.length ?? null, stale: fv?.stale ?? null,
+    section, filter, team: fv?.team_videos.length ?? null, league: fv?.league_videos.length ?? null, shorts: fv?.shorts.length ?? null,
+    national: fv?.national.length ?? null, women: fv?.national_women.length ?? null, stale: fv?.stale ?? null,
   });
-  return { props: { lang: client.language, tz: client.timezone, fv, section, renderedAt: new Date().toISOString() } };
+  return { props: { lang: client.language, tz: client.timezone, fv, section, filter, renderedAt: new Date().toISOString() } };
 };
 
-export default function Videos({ lang, tz, fv, section, renderedAt }: Props) {
+const FILTER_LABEL: Record<Filter | "all", [string, string]> = {
+  all: ["Todos", "All"], highlight: ["Resúmenes", "Highlights"], goals: ["Goles", "Goals"], interview: ["Entrevistas", "Interviews"],
+};
+
+export default function Videos({ lang, tz, fv, section, filter, renderedAt }: Props) {
   const nowMs = Date.parse(renderedAt);
   const tabs = SECTIONS.filter((s) => listOf(fv, s).length > 0);
   const updated = fv?.updated_at ? formatTime12(fv.updated_at, tz) : null;
-  const label = (s: Section) => (s === "team" ? fv?.team?.name : fv?.league?.name) ?? (s === "team" ? t(lang, "Tu equipo", "Your team") : t(lang, "Tu liga", "Your league"));
+  const label = (s: Section) =>
+    s === "team" ? fv?.team?.name ?? t(lang, "Tu equipo", "Your team")
+      : s === "league" ? t(lang, "Liga", "League")
+      : s === "shorts" ? t(lang, "Cortos", "Shorts")
+      : s === "national" ? t(lang, "Selección", "National team")
+      : t(lang, "Femenil", "Women");
+  const cats: Filter[] = section === "team" ? FILTERS.filter((c) => listOf(fv, "team").some((v) => v.category === c)) : [];
+  const list = section ? listOf(fv, section).filter((v) => !filter || v.category === (filter as Category)) : [];
   return (
     <>
       <Head>
@@ -66,13 +86,31 @@ export default function Videos({ lang, tz, fv, section, renderedAt }: Props) {
         )}
         {tabs.length > 0 && (
           <nav className="seg" aria-label={t(lang, "Secciones", "Sections")}>
-            {tabs.map((s) => <a key={s} href={s === "team" ? "/futbol/videos" : "/futbol/videos?s=league"} data-section={s} aria-current={s === section ? "page" : undefined}>{label(s)}</a>)}
+            {tabs.map((s) => (
+              <a key={s} href={s === "team" ? "/futbol/videos" : `/futbol/videos?s=${s}`} data-section={s} aria-current={s === section ? "page" : undefined}>{label(s)}</a>
+            ))}
+          </nav>
+        )}
+        {section && <VideoNote lang={lang} />}
+        {cats.length > 0 && (
+          <nav className="cats" aria-label={t(lang, "Tipo de video", "Kind of video")}>
+            {([null, ...cats] as (Filter | null)[]).map((c) => (
+              <a key={c ?? "all"} href={c ? `/futbol/videos?f=${c}` : "/futbol/videos"} data-filter={c ?? "all"} aria-current={c === filter ? "page" : undefined}>
+                {t(lang, ...FILTER_LABEL[c ?? "all"])}
+              </a>
+            ))}
           </nav>
         )}
         {section && (
           <section data-videos={section}>
-            <VideoNote lang={lang} />
-            {listOf(fv, section).map((v) => <VideoCard key={v.id} v={v} lang={lang} tz={tz} nowMs={nowMs} big />)}
+            {section === "shorts" ? (
+              <>
+                <ShortsNote lang={lang} />
+                <div className="vgrid">{list.map((v) => <VideoCard key={v.id} v={v} lang={lang} tz={tz} nowMs={nowMs} />)}</div>
+              </>
+            ) : (
+              list.map((v) => <VideoCard key={v.id} v={v} lang={lang} tz={tz} nowMs={nowMs} big />)
+            )}
           </section>
         )}
         {fv && fv.channels.length > 0 && (

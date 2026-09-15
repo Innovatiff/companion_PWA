@@ -16,9 +16,22 @@ const TABLE =
   "th{font-size:.74rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}.n{text-align:right;font-variant-numeric:tabular-nums}";
 
 // Football videos (0049): the data note, the strip of cards, the big cards of /futbol/videos. Never a player.
-const VIDEO = ".vnote{display:flex;align-items:center;gap:.45rem;margin:-.1rem .2rem .55rem;color:var(--muted);font-size:.82rem;font-weight:650}.vnote svg{flex:none}.vstrip{display:flex;align-items:flex-start;gap:.65rem;overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding-inline:1rem;margin:0 -1rem .9rem;padding:.1rem 1rem .6rem}.vcard{display:flex;flex-direction:column;text-decoration:none;color:var(--ink)}.vstrip .vcard{flex:none;width:14.5rem;scroll-snap-align:start;background:var(--card);border-radius:18px;box-shadow:var(--shadow)}.vth{position:relative;display:block;aspect-ratio:16/9;overflow:hidden;border-radius:18px 18px 0 0;background:var(--tile)}.vth img{display:block;width:100%;height:100%;object-fit:cover}.play{position:absolute;left:50%;top:50%;width:2.6rem;height:2.6rem;margin:-1.3rem 0 0 -1.3rem;border-radius:50%;background:rgba(10,12,40,.62)}.play::after{content:\"\";position:absolute;left:1.02rem;top:.75rem;border-style:solid;border-width:.55rem 0 .55rem .9rem;border-color:transparent transparent transparent #fff}.vbadge{position:absolute;left:.5rem;top:.5rem;padding:.12rem .55rem;border-radius:999px;background:var(--brand);color:#fff;font-size:.72rem;font-weight:800}.vbadge.in{position:static;align-self:flex-start;margin-bottom:.2rem}.vb{display:flex;flex-direction:column;gap:.15rem;min-width:0;padding:.6rem .75rem .75rem}.vt{font-size:.92rem;line-height:1.3;font-weight:750}.vstrip .vt{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}.nw{white-space:nowrap}.card.vcard.big{padding:0}.vcard.big .vth{border-radius:var(--r) var(--r) 0 0}.vcard.big .vt{font-size:1.02rem}.vcard.big .vb{padding:.75rem 1rem .9rem}";
+const VIDEO = ".vnote{display:flex;align-items:center;gap:.45rem;margin:-.1rem .2rem .55rem;color:var(--muted);font-size:.82rem;font-weight:650}.vnote svg{flex:none}.vstrip{display:flex;align-items:flex-start;gap:.65rem;overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding-inline:1rem;margin:0 -1rem .9rem;padding:.1rem 1rem .6rem}.vcard{display:flex;flex-direction:column;text-decoration:none;color:var(--ink)}.vstrip .vcard{flex:none;width:14.5rem;scroll-snap-align:start;background:var(--card);border-radius:18px;box-shadow:var(--shadow)}.vth{position:relative;display:block;aspect-ratio:16/9;overflow:hidden;border-radius:18px 18px 0 0;background:var(--tile)}.vth img{display:block;width:100%;height:100%;object-fit:cover}.play{position:absolute;left:50%;top:50%;width:2.6rem;height:2.6rem;margin:-1.3rem 0 0 -1.3rem;border-radius:50%;background:rgba(10,12,40,.62)}.play::after{content:\"\";position:absolute;left:1.02rem;top:.75rem;border-style:solid;border-width:.55rem 0 .55rem .9rem;border-color:transparent transparent transparent #fff}.vbadge{position:absolute;left:.5rem;top:.5rem;padding:.12rem .55rem;border-radius:999px;background:var(--brand);color:#fff;font-size:.72rem;font-weight:800}.vbadge.in{position:static;align-self:flex-start;margin-bottom:.2rem}.vb{display:flex;flex-direction:column;gap:.15rem;min-width:0;padding:.6rem .75rem .75rem}.vt{font-size:.92rem;line-height:1.3;font-weight:750}.vstrip .vt{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}.nw{white-space:nowrap}.card.vcard.big{padding:0}.vcard.big .vth{border-radius:var(--r) var(--r) 0 0}.vcard.big .vt{font-size:1.02rem}.vcard.big .vb{padding:.75rem 1rem .9rem}.vcard.big{margin:0 0 .75rem}" +
+  // Shorts: vertical cards (9:16), in a strip or a two-column grid; their title in 2 lines
+  ".vstrip .vcard.short{width:7.5rem}.short .vth{aspect-ratio:9/16;border-radius:16px 16px 0 0}.short .vb{padding:.45rem .55rem .6rem}.short .vt{font-size:.82rem}.vstrip .short .vt{-webkit-line-clamp:2}" +
+  ".short .play{width:2rem;height:2rem;margin:-1rem 0 0 -1rem}.short .play::after{left:.78rem;top:.55rem;border-width:.45rem 0 .45rem .72rem}.short .vbadge{left:.4rem;top:.4rem;font-size:.66rem}" +
+  "" +
+  ".snote{margin:-.2rem .2rem .55rem;color:var(--muted);font-size:.82rem;font-weight:650}";
+// A compact news card (Noticias, and team news on Fútbol).
+const NEWSROW = ".nrow{display:flex;flex-wrap:wrap;align-items:flex-start;gap:.6rem .85rem;padding:.8rem .9rem}.nth{flex:none;width:80px;height:80px;border-radius:12px;object-fit:cover;background:var(--tile)}" + ".nx{flex:1 1 9.5rem;min-width:0}.nrow .nt{font-size:.98rem}.nrow .nt a::after{content:\" \\2197\";color:var(--brand-ink)}.ntowns{display:flex;flex-wrap:wrap;gap:.3rem;margin:.1rem 0 .2rem}" + ".nres summary{display:flex;align-items:center;min-height:48px;cursor:pointer;font-weight:700;color:var(--brand-ink)}.nres p{margin:0 0 .2rem}" + "html.big .nth{width:64px;height:64px}";
 
-export const FUTBOL_CSS = VIDEO + TABLE +
+// Fútbol adds these only when it shows a table, or team news.
+export const TABLE_CSS = TABLE;
+export const NEWSROW_CSS = NEWSROW + ".nread{display:inline-flex;align-items:center;min-height:48px;font-weight:750;text-decoration:none}";
+
+export const FUTBOL_CSS = VIDEO +
+  // Section jump pills under the hero (an intentional horizontal scroller)
+  ".jump{display:flex;gap:.4rem;overflow-x:auto;margin:0 -1rem .8rem;padding:.1rem 1rem .35rem}.jump a{flex:none;display:inline-flex;align-items:center;min-height:48px;padding:0 1.05rem;border-radius:999px;background:var(--card);box-shadow:var(--shadow);color:var(--ink);font-weight:700;font-size:.9rem;text-decoration:none;white-space:nowrap}.vids,#noticias,#resultados{scroll-margin-top:1rem}" +
   // The hero: an indigo pitch with the crest, league and flag, form and goals
   ".hero{position:relative;isolation:isolate;overflow:hidden;color:#fff;border-radius:24px;padding:1rem 1.15rem 1.15rem;margin:0 0 1rem;" +
   "background:repeating-linear-gradient(90deg,rgba(255,255,255,.045) 0 26px,transparent 26px 52px),linear-gradient(135deg,#3b44b5,#5f6be3);box-shadow:0 16px 34px rgba(63,75,196,.28)}" +
@@ -42,7 +55,7 @@ export const FUTBOL_CSS = VIDEO + TABLE +
   ".grp{padding:.8rem 1rem .4rem}.grp>header{display:flex;align-items:center;gap:.6rem;padding-bottom:.6rem;border-bottom:1px solid var(--line)}" +
   ".grp h3{flex:1;margin:0;font-size:.98rem}.grp .flag{font-size:1.2rem;margin:0}" +
   ".fxs{list-style:none;margin:0;padding:0}.fx{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:.5rem;padding:.7rem 0;border-bottom:1px solid var(--line);font-size:.9rem}" +
-  ".fx:last-child{border-bottom:0}.fx>span.h,.fx>span.a{display:flex;align-items:center;gap:.45rem;min-width:0;line-height:1.2;overflow-wrap:anywhere;hyphens:auto}.fx>span>b{min-width:0}.fx>span.a{justify-content:flex-end;text-align:right}" +
+  ".fx:last-child{border-bottom:0}.fx>span.h,.fx>span.a{display:flex;align-items:center;gap:.45rem;min-width:0;line-height:1.2;overflow-wrap:anywhere;hyphens:auto}.fx>span>b{min-width:0}html.big .fx{font-size:.8rem;gap:.3rem}html.big .fx .cr{width:1.35rem;height:1.35rem;font-size:.5rem}@media (max-width:400px){html.big .fx .cr{display:none}}html.big .fx>span.h,html.big .fx>span.a{gap:.3rem;hyphens:manual}.fx>span.a{justify-content:flex-end;text-align:right}" +
   ".fx b{font-weight:700}.fx .sc{font-size:1.15rem;font-weight:800;font-variant-numeric:tabular-nums;padding:0 .2rem}.fx>small{grid-column:1/-1;text-align:center;margin-top:-.25rem;font-size:.76rem}" +
   ".team{display:flex;align-items:center;gap:1rem}.team h1{margin:0}.team p{margin:.15rem 0 0}";
 
@@ -264,10 +277,8 @@ export const NOTICIAS_CSS =
   ".nupd{margin:-.35rem .2rem .7rem}.stale{margin:0 0 .85rem;padding:.65rem .95rem;border-radius:16px;background:var(--warn-soft);color:var(--warn);font-weight:650}" +
   ".nlead{padding:.8rem .85rem 1rem}.nlead .nt{font-size:1.2rem;margin:.25rem 0 .35rem}.nsum{margin:0 0 .3rem}" +
   ".nread{display:inline-flex;align-items:center;min-height:48px;font-weight:750;text-decoration:none}" +
-  ".nrow{display:flex;flex-wrap:wrap;align-items:flex-start;gap:.6rem .85rem;padding:.8rem .9rem}.nth{flex:none;width:80px;height:80px;border-radius:12px;object-fit:cover;background:var(--tile)}" +
-  ".nx{flex:1 1 9.5rem;min-width:0}.nrow .nt{font-size:.98rem}.nrow .nt a::after{content:\" \\2197\";color:var(--brand-ink)}.ntowns{display:flex;flex-wrap:wrap;gap:.3rem;margin:.1rem 0 .2rem}" +
-  ".nres summary{display:flex;align-items:center;min-height:48px;cursor:pointer;font-weight:700;color:var(--brand-ink)}.nres p{margin:0 0 .2rem}" +
-  ".nsrc{margin:1rem .2rem}html.big .nth{width:64px;height:64px}";
+  NEWSROW +
+  ".nsrc{margin:1rem .2rem}";
 
 // Rows with a picture (Escuela, Transporte) and tap-to-call rows (Emergencias, Consulado): only those pages carry them.
 export const EV_CSS = ROWS + ".ev{display:flex;gap:.85rem;align-items:center}.ev>span:not(.pic){flex:1;min-width:0}.ev{flex-wrap:wrap;align-items:flex-start}.ev>span:not(.pic){flex:1 1 11rem}";
@@ -276,4 +287,6 @@ export const DIAL_CSS = ROWS + ".dialrow{display:flex;flex-wrap:wrap;align-items
 // /futbol/videos (0049): the tabs, the update line, one column of big video cards.
 export const VIDEOS_CSS = VIDEO +
   ".seg{display:flex;gap:.3rem;padding:.3rem;margin:0 0 1rem;background:var(--card);border-radius:999px;box-shadow:var(--shadow);overflow-x:auto}.seg a{flex:1 0 auto;display:grid;place-items:center;min-height:48px;padding:0 1rem;border-radius:999px;text-decoration:none;color:var(--ink);font-weight:650;font-size:.92rem;white-space:nowrap}.seg a[aria-current]{background:var(--brand);color:#fff}" +
-  ".nupd{margin:-.35rem .2rem .7rem}.stale{margin:0 0 .85rem;padding:.65rem .95rem;border-radius:16px;background:var(--warn-soft);color:var(--warn);font-weight:650}.vsrc{margin:1rem .2rem}";
+  ".nupd{margin:-.35rem .2rem .7rem}.stale{margin:0 0 .85rem;padding:.65rem .95rem;border-radius:16px;background:var(--warn-soft);color:var(--warn);font-weight:650}.vsrc{margin:1rem .2rem}" +
+  // The Shorts grid and the team tab's category filter
+  ".vgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.65rem}.vgrid .vcard{min-width:0;background:var(--card);border-radius:18px;box-shadow:var(--shadow)}.vgrid .vt{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.cats{display:flex;flex-wrap:wrap;gap:.4rem;margin:0 0 .8rem}.cats a{display:inline-flex;align-items:center;min-height:48px;padding:0 1rem;border-radius:999px;background:var(--tile);color:var(--brand-ink);font-weight:700;font-size:.88rem;text-decoration:none}.cats a[aria-current]{background:var(--brand);color:#fff}";

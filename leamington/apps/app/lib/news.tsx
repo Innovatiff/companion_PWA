@@ -60,7 +60,8 @@ export function NewsLead({ n, lang, tz, nowMs, towns }: { n: NewsItem; lang: Lan
 }
 
 /** One more story: the thumb (or no picture at all), source and time, the title (the publisher's link, marked ↗), the towns it names, the summary folded. */
-export function NewsRow({ n, lang, tz, nowMs, towns }: { n: NewsItem; lang: Lang; tz: string; nowMs: number; towns: boolean }) {
+/** `compact` (team news on Fútbol): no folded summary, a "Leer en {source}" link instead. */
+export function NewsRow({ n, lang, tz, nowMs, towns, compact }: { n: NewsItem; lang: Lang; tz: string; nowMs: number; towns: boolean; compact?: boolean }) {
   return (
     <article className="card nrow" data-item={n.id}>
       {n.image && <img className="nth" src={`/news-image/${n.id}/thumb`} width={n.thumb_w ?? 160} height={n.thumb_h ?? 90} alt="" loading="lazy" decoding="async" />}
@@ -68,7 +69,8 @@ export function NewsRow({ n, lang, tz, nowMs, towns }: { n: NewsItem; lang: Lang
         <small className="nmeta">{`${n.source} · `}<span className="nw">{ago(n.published_at, nowMs, lang, tz)}</span></small>
         <h3 className="nt"><Out href={n.url}>{n.title}</Out></h3>
         {towns && <Towns n={n} />}
-        {n.summary && (
+        {compact && <Out href={n.url} className="nread">{t(lang, `Leer en ${n.source} ↗`, `Read on ${n.source} ↗`)}</Out>}
+        {!compact && n.summary && (
           <details className="nres">
             <summary>{t(lang, "Resumen", "Summary")}</summary>
             <p>{n.summary}</p>

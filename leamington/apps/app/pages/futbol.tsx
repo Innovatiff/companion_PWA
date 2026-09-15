@@ -11,10 +11,14 @@
  * appears only on a finished match. An empty list renders nothing, never
  * "no matches". Crests and league logos come from our own domain when stored.
  *
- * Videos (0049, OPEN-DECISIONS 3.25), right after the hero: their team's videos
- * and the league's highlights as strips of cards linking to YouTube, with our
- * cached thumbnail and the note that watching opens YouTube and uses a lot of
- * data. Never a player. A section without videos is not rendered.
+ * Fútbol v2 (0050, OPEN-DECISIONS 3.25, 3.26): the football provider is thin, so
+ * the page is rich from videos and news, right after the hero: section jump
+ * pills; "Lo mejor de {team}" (the newest highlight or goals video big, then a
+ * strip); Cortos (vertical Shorts); the league's highlights; their national team
+ * (and the women's, separately, only when there are any); news about their team.
+ * Every video links to YouTube with our cached thumbnail; never a player, and one
+ * note that watching opens YouTube and uses a lot of data. Strips hold 4; the
+ * full lists live on /futbol/videos. A section without content is not rendered.
  */
 import Head from "next/head";
 import type { GetServerSideProps } from "next";
@@ -24,8 +28,9 @@ import { db } from "../lib/db";
 import { loadClient, recordView } from "../lib/client";
 import { t } from "../lib/t";
 import { Crest, FLAG, Icon, LeagueLogo, roundName } from "../lib/ui";
-import { FUTBOL_CSS } from "../lib/page-css";
-import { VideoCard, VideoNote, type Video } from "../lib/videos";
+import { FUTBOL_CSS, NEWSROW_CSS, TABLE_CSS } from "../lib/page-css";
+import { ShortsNote, VideoCard, VideoNote, nationName, type Video } from "../lib/videos";
+import { NewsRow, type NewsItem } from "../lib/news";
 
 export const config = { unstable_runtimeJS: false };
 
@@ -43,24 +48,34 @@ type Football = {
   goals?: { matches: number; for: number; against: number } | null;
   league_today?: Match[] | null; league_recent?: Match[] | null; region_today?: Match[] | null;
   table?: { state: string; reason: string | null; rows: Standing[] | null } | null;
-  videos?: { team: Video[]; league: Video[]; updated_at: string | null; stale: boolean } | null;
+  videos?: { team: Video[]; league: Video[]; shorts: Video[]; national: Video[]; updated_at: string | null; stale: boolean } | null;
+  team_news?: { items: NewsItem[]; updated_at: string | null; stale: boolean } | null;
 };
-type Props = { f: Football; now: string };
+type Props = { f: Football; women: Video[]; now: string };
+
+/** Cards in each strip on this page; /futbol/videos has the full lists. */
+export const STRIP = 4;
 
 export const getServerSideProps: GetServerSideProps<Props> = async (ctx) => {
   const loaded = await loadClient(ctx);
   if ("redirect" in loaded) return loaded;
-  const { rows } = await db().query("select app.football_page($1) as f", [loaded.client.id]);
+  // The women's national team is not in football_page: read it once, with the strips' limit.
+  const [{ rows }, womenRows] = await Promise.all([
+    db().query("select app.football_page($1) as f", [loaded.client.id]),
+    db().query("select app.football_videos($1, now(), $2)->'national_women' as w", [loaded.client.id, STRIP]),
+  ]);
   const f = rows[0]?.f as Football;
+  const women = (womenRows.rows[0]?.w ?? []) as Video[];
   await recordView(loaded.client.id, "futbol", {
     team: Boolean(f.team), league: f.league_id ?? null, fixtures_current: f.fixtures_current,
     upcoming: f.upcoming?.length ?? null, results: f.results?.length ?? null,
     league_today: f.league_today?.length ?? null, league_recent: f.league_recent?.length ?? null,
     region_today: f.region_today?.length ?? null,
     table: f.table?.state ?? null, table_reason: f.table?.reason ?? null,
-    videos_team: f.videos?.team.length ?? null, videos_league: f.videos?.league.length ?? null,
+    videos_team: f.videos?.team.length ?? null, videos_league: f.videos?.league.length ?? null, videos_shorts: f.videos?.shorts.length ?? null,
+    videos_national: f.videos?.national.length ?? null, videos_women: women.length, team_news: f.team_news?.items.length ?? null,
   });
-  return { props: { f, now: new Date().toISOString() } };
+  return { props: { f, women, now: new Date().toISOString() } };
 };
 
 const STATUS: Record<string, [string, string]> = {
@@ -73,7 +88,7 @@ const LETTER: Record<string, [string, string]> = { W: ["G", "W"], D: ["E", "D"],
 const HOUR = 3_600_000;
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-export default function Futbol({ f, now }: Props) {
+export default function Futbol({ f, women, now }: Props) {
   const lang = f.language;
   const en = lang === "en";
   const tz = f.timezone;
@@ -104,9 +119,27 @@ export default function Futbol({ f, now }: Props) {
   const regionGroups = [...new Set(region.map((m) => m.league_id))].map((id) => region.filter((m) => m.league_id === id));
   const tableGroups = f.table?.state === "available" && f.table.rows
     ? [...new Set(f.table.rows.map((r) => r.group ?? ""))] : [];
-  const teamVideos = f.videos?.team ?? [];
-  const leagueVideos = f.videos?.league ?? [];
   const seeAll = t(lang, "Ver todo", "See all");
+  // Videos: the newest highlight or goals video of their team is featured; each strip holds STRIP.
+  const teamAll = f.team ? f.videos?.team ?? [] : [];
+  const featured = [...teamAll].filter((v) => v.category === "highlight" || v.category === "goals")
+    .sort((a, b) => Date.parse(b.published_at) - Date.parse(a.published_at))[0] ?? null;
+  const teamRest = teamAll.filter((v) => v !== featured).slice(0, STRIP);
+  const shorts = (f.videos?.shorts ?? []).slice(0, STRIP);
+  const leagueVideos = (f.videos?.league ?? []).slice(0, STRIP);
+  const national = (f.videos?.national ?? []).slice(0, STRIP);
+  const womenVideos = women.slice(0, STRIP);
+  const teamNews = f.team_news?.items ?? [];
+  const hasTeamVideos = Boolean(featured) || teamRest.length > 0;
+  const anyVideo = hasTeamVideos || shorts.length > 0 || leagueVideos.length > 0 || national.length > 0 || womenVideos.length > 0;
+  const strip = (list: Video[]) => <div className="vstrip">{list.map((v) => <VideoCard key={v.id} v={v} lang={lang} tz={tz} nowMs={nowMs} />)}</div>;
+  const jumps: [string, string][] = [
+    ...(hasTeamVideos || leagueVideos.length > 0 ? [["videos", t(lang, "Videos", "Videos")] as [string, string]] : []),
+    ...(shorts.length > 0 ? [["cortos", t(lang, "Cortos", "Shorts")] as [string, string]] : []),
+    ...(national.length > 0 || womenVideos.length > 0 ? [["seleccion", t(lang, "Selección", "National team")] as [string, string]] : []),
+    ...(teamNews.length > 0 ? [["noticias", t(lang, "Noticias", "News")] as [string, string]] : []),
+    ...(results.length > 0 || recent.length > 0 ? [["resultados", t(lang, "Resultados", "Results")] as [string, string]] : []),
+  ];
 
   // One match as a row: both teams with crest or initials; the final score, or the kickoff (or status) chip.
   const row = (m: Match, sub?: string | null) => (
@@ -137,7 +170,7 @@ export default function Futbol({ f, now }: Props) {
       <Head>
         <title>{`${t(lang, "Fútbol", "Football")} · Hoy`}</title>
         <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-        <style dangerouslySetInnerHTML={{ __html: FUTBOL_CSS }} />
+        <style dangerouslySetInnerHTML={{ __html: FUTBOL_CSS + (tableGroups.length > 0 ? TABLE_CSS : "") + (f.team_news?.items.length ? NEWSROW_CSS : "") }} />
       </Head>
       <main>
         <section className="hero">
@@ -176,18 +209,50 @@ export default function Futbol({ f, now }: Props) {
           )}
         </section>
 
-        {teamVideos.length > 0 && (
-          <section className="vids" data-videos="team">
-            <div className="sh"><h2>{t(lang, `Videos de ${f.team}`, `${f.team} videos`)}</h2><a href="/futbol/videos">{seeAll}</a></div>
-            <VideoNote lang={lang} />
-            <div className="vstrip">{teamVideos.map((v) => <VideoCard key={v.id} v={v} lang={lang} tz={tz} nowMs={nowMs} />)}</div>
+        {jumps.length > 0 && (
+          <nav className="seg jump" aria-label={t(lang, "Secciones", "Sections")}>
+            {jumps.map(([id, text]) => <a key={id} href={`#${id}`}>{text}</a>)}
+          </nav>
+        )}
+        {anyVideo && <VideoNote lang={lang} />}
+
+        {hasTeamVideos && (
+          <section className="vids" id="videos" data-videos="team">
+            <div className="sh"><h2>{t(lang, `Lo mejor de ${f.team}`, `The best of ${f.team}`)}</h2><a href="/futbol/videos">{seeAll}</a></div>
+            {featured && <VideoCard v={featured} lang={lang} tz={tz} nowMs={nowMs} big />}
+            {teamRest.length > 0 && strip(teamRest)}
+          </section>
+        )}
+        {shorts.length > 0 && (
+          <section className="vids" id="cortos" data-videos="shorts">
+            <div className="sh"><h2>{t(lang, "Cortos", "Shorts")}</h2><a href="/futbol/videos?s=shorts">{seeAll}</a></div>
+            <ShortsNote lang={lang} />
+            {strip(shorts)}
           </section>
         )}
         {leagueVideos.length > 0 && (
-          <section className="vids" data-videos="league">
+          <section className="vids" id={hasTeamVideos ? undefined : "videos"} data-videos="league">
             <div className="sh"><h2>{t(lang, "Resúmenes de la liga", "League highlights")}</h2><a href="/futbol/videos?s=league">{seeAll}</a></div>
-            {teamVideos.length === 0 && <VideoNote lang={lang} />}
-            <div className="vstrip">{leagueVideos.map((v) => <VideoCard key={v.id} v={v} lang={lang} tz={tz} nowMs={nowMs} />)}</div>
+            {strip(leagueVideos)}
+          </section>
+        )}
+        {national.length > 0 && (
+          <section className="vids" id="seleccion" data-videos="national">
+            <div className="sh"><h2>{`${t(lang, "Tu selección", "Your national team")} ${FLAG[f.country] ?? ""}`.trim()}</h2><a href="/futbol/videos?s=national">{seeAll}</a></div>
+            <p className="snote">{nationName(f.country, lang)}</p>
+            {strip(national)}
+          </section>
+        )}
+        {womenVideos.length > 0 && (
+          <section className="vids" id={national.length > 0 ? undefined : "seleccion"} data-videos="women">
+            <div className="sh"><h2>{t(lang, "Selección femenil", "Women's national team")}</h2><a href="/futbol/videos?s=women">{seeAll}</a></div>
+            {strip(womenVideos)}
+          </section>
+        )}
+        {teamNews.length > 0 && (
+          <section id="noticias" data-news="team">
+            <div className="sh"><h2>{t(lang, `Noticias de ${f.team}`, `${f.team} news`)}</h2><a href="/noticias">{seeAll}</a></div>
+            {teamNews.map((n) => <NewsRow key={n.id} n={n} lang={lang} tz={tz} nowMs={nowMs} towns={false} compact />)}
           </section>
         )}
 
@@ -213,7 +278,7 @@ export default function Futbol({ f, now }: Props) {
 
         {results.length > 0 && (
           <>
-            <h2>{t(lang, "Resultados", "Results")}</h2>
+            <h2 id="resultados">{t(lang, "Resultados", "Results")}</h2>
             {results.map((m) => {
               const r = outcome(m);
               return (
@@ -237,7 +302,7 @@ export default function Futbol({ f, now }: Props) {
 
         {recent.length > 0 && (
           <>
-            <h2>{t(lang, "Resultados de la semana", "This week's results")}</h2>
+            <h2 id={results.length > 0 ? undefined : "resultados"}>{t(lang, "Resultados de la semana", "This week's results")}</h2>
             {group(recent, (m) => shortDay(m))}
           </>
         )}

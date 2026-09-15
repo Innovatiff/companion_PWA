@@ -597,6 +597,26 @@ YouTube · usa muchos datos".
 - **Home:** no video row. Home's fullest page is 10,927 bytes, and a thumbnail
   row would take its 1 KB margin.
 
+### Fútbol v2 (0050)
+
+The owner asked for "more videos" while the football provider is suspended, so
+Fútbol is rich from videos and news (OPEN-DECISIONS 3.26; stance of 3.25
+unchanged). After the hero: section jump pills (Videos · Cortos · Selección ·
+Noticias · Resultados, only those present); one data note; "Lo mejor de {team}"
+(the newest highlight or goals video as a big card, then a strip); Cortos
+(vertical 9:16 Shorts linking to /shorts/, "Cortos · usan menos datos");
+"Resúmenes de la liga"; "Tu selección" with the flag, and "Selección femenil"
+separately only when there are videos; "Noticias de {team}" (compact news cards
+with "Leer en…"); then the results. Category badges: Resumen, Goles, Entrevista,
+Previa, Corto. Strips hold 4; /futbol/videos has tabs (team · Liga · Cortos ·
+Selección · Femenil), category filters in the team tab, big cards and a
+two-column Shorts grid.
+
+To keep Fútbol within budget, home-only rules (the sky, the hometown photo row,
+the season ring, the workday card, the next hours, the rate's dots, Allá y aquí,
+the news card's headlines) moved from APP_CSS to HOME_CSS, inlined by home only;
+every other page is about 1.2 KB lighter.
+
 ## 5. Language
 
 - Spanish is the default everywhere. Hoy uses English when the client's country

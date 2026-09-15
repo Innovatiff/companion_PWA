@@ -711,69 +711,118 @@ async function news(cookie, code, label) {
   }
 }
 
-// Football videos (0049, OPEN-DECISIONS 3.25): links to official channels' videos on YouTube with our
-// cached thumbnail, never a player, and the note that watching opens YouTube and uses a lot of data.
+// Football videos (0049, 0050, OPEN-DECISIONS 3.25, 3.26): links to official channels' videos on YouTube with our
+// cached thumbnail, never a player, one note that watching opens YouTube and uses a lot of data. Fútbol v2: a
+// featured video and strips of 6 (team, Shorts, league, national, women's national), team news; /futbol/videos tabs.
 const VIDEOS_LIMIT = 12;
-const NO_VIDEOS = /no hay videos|sin videos|no videos/i;
+const STRIP = 4;
 const NO_YOUTUBE_LOAD = /<iframe|ytimg\.com|youtube\.com\/embed|youtube-nocookie/i;
+const VIDEO_CAT = { highlight: ["Resumen", "Highlights"], goals: ["Goles", "Goals"], interview: ["Entrevista", "Interview"], preview: ["Previa", "Preview"], other: null };
+const DATA_NOTE = /Se abre en YouTube · usa muchos datos|Opens YouTube · uses a lot of data/g;
 async function videos(cookie, code, label) {
   if (!DB) { console.log(`SKIP ${label}: videos vs database (set DATABASE_URL)`); return; }
-  const fp = (await q("select app.football_page(id)->'videos' as v from clients where code = $1", [code])).rows[0].v;
-  const fv = (await q("select app.football_videos(id, now(), $2) as v from clients where code = $1", [code, VIDEOS_LIMIT])).rows[0].v;
-  const cardsIn = (html, sec) => {
-    const at = html.indexOf(`<section class="vids" data-videos="${sec}">`) >= 0 ? html.indexOf(`<section class="vids" data-videos="${sec}">`) : html.indexOf(`<section data-videos="${sec}">`);
-    if (at < 0) return null;
-    return html.slice(at, html.indexOf("</section>", at)).split(/(?=<a class="(?:card )?vcard)/).slice(1);
+  const row = (await q(`select c.language, app.football_page(c.id) as f, app.football_videos(c.id, now(), $2) as fv,
+                               app.football_videos(c.id, now(), $3)->'national_women' as w from clients c where c.code = $1`, [code, VIDEOS_LIMIT, STRIP])).rows[0];
+  const { f, fv } = row;
+  const en = row.language === "en";
+  const women = row.w ?? [];
+  const badge = (v) => (v.is_short ? (en ? "Short" : "Corto") : VIDEO_CAT[v.category] ? VIDEO_CAT[v.category][en ? 1 : 0] : null);
+  const sectionOf = (html, name) => {
+    const m = new RegExp(`<section\\b[^>]*data-videos="${name}"[^>]*>`).exec(html);
+    return m ? html.slice(m.index, html.indexOf("</section>", m.index)) : null;
   };
+  const cards = (chunk) => (chunk ?? "").split(/(?=<a class="(?:card )?vcard)/).slice(1);
   const open = (c) => c.slice(0, c.indexOf(">") + 1);
-  const holds = (cards, want, tl) => {
-    check(cards.map((c) => attr(open(c), "data-video")).join() === want.map((v) => String(v.id)).join(), `${tl}: exactly the database's videos, in order`, `${cards.length} vs ${want.length}`);
-    if (cards.length !== want.length) return;
-    check(cards.every((c, k) => attr(open(c), "href") === `https://www.youtube.com/watch?v=${want[k].youtube_id}` && want[k].url === attr(open(c), "href")
-      && / target="_blank"/.test(open(c)) && / rel="noopener"/.test(open(c))), `${tl}: every card links to its YouTube video (new tab, rel=noopener)`);
-    check(cards.every((c, k) => c.includes(`<b class="vt">${esc(want[k].title)}</b>`) && c.includes(`YouTube · ${esc(want[k].channel)} · `)), `${tl}: every title and channel are the database's, credited to YouTube`);
-    check(cards.every((c, k) => {
+  const holds = (cs, want, tl) => {
+    check(cs.map((c) => attr(open(c), "data-video")).join() === want.map((v) => String(v.id)).join(), `${tl}: exactly the database's videos, in order`, `${cs.length} vs ${want.length}`);
+    if (cs.length !== want.length) return;
+    check(cs.every((c, k) => attr(open(c), "href") === want[k].url
+      && want[k].url === `https://www.youtube.com/${want[k].is_short ? "shorts/" : "watch?v="}${want[k].youtube_id}` && / target="_blank"/.test(open(c)) && / rel="noopener"/.test(open(c))),
+      `${tl}: every card links to its video on YouTube (a Short to its shorts page; new tab, rel=noopener)`);
+    check(cs.every((c, k) => c.includes(`<b class="vt">${esc(want[k].title)}</b>`) && c.includes(`YouTube · ${esc(want[k].channel)}`)), `${tl}: every title and channel are the database's, credited to YouTube`);
+    check(cs.every((c, k) => {
       const imgs = [...c.matchAll(/<img\b[^>]*>/g)].map((m) => m[0]);
       return imgs.length === (want[k].thumb ? 1 : 0) && imgs.every((i) => attr(i, "src") === `/video-thumb/${want[k].id}` && / loading="lazy"/.test(i));
     }), `${tl}: a lazy thumbnail exactly where the video has one, never a broken picture`);
-    check(cards.every((c, k) => /class="vbadge( in)?"/.test(c) === want[k].is_highlight), `${tl}: the "Resumen" badge exactly on highlights`);
-    check(cards.every((c, k) => /class="vv">/.test(c) === (want[k].views != null)), `${tl}: views exactly where the database has them`);
-    check(cards.every((c) => !/class="vv">[^<]*\bk\b/.test(c)) && cards.every((c) => !/class="vv">/.test(c) || /class="vv">[\d.,]+( mil| millón| millones de)? vistas<|class="vv">[\d.,]+[KMB]? views</.test(c)),
-      `${tl}: views written in words ("705 mil vistas")`);
+    check(cs.every((c, k) => (/<b class="vbadge(?: in)?">([^<]*)<\/b>/.exec(c)?.[1] ?? null) === badge(want[k])),
+      `${tl}: each badge says the video's category (Resumen, Goles, Entrevista, Previa), Corto for Shorts, none otherwise`);
+    check(cs.every((c, k) => / class="vcard short"/.test(open(c)) === want[k].is_short), `${tl}: vertical cards exactly for Shorts`);
   };
-  // Fútbol: the two strips right after the hero, as football_page.videos says.
+  const clean = (html) => visible(html).replace(/<b class="vt">[^<]*<\/b>|<h3 class="nt">[\s\S]*?<\/h3>|<a\b[^>]*title="[^"]*"/g, " ").replace(/<[^>]+>/g, " ");
+
+  // Fútbol.
   const futbol = (await send("/futbol", { cookie })).text;
-  const any = Boolean(fp && (fp.team.length || fp.league.length));
-  for (const [sec, want] of [["team", fp?.team ?? []], ["league", fp?.league ?? []]]) {
-    const cards = cardsIn(futbol, sec);
-    check(Boolean(cards) === want.length > 0, `${label} /futbol: the ${sec} videos strip shows exactly when there are videos`, `${cards?.length} vs ${want.length}`);
-    if (cards) holds(cards, want, `${label} /futbol ${sec} videos`);
+  const team = f.team ? f.videos?.team ?? [] : [];
+  const featured = [...team].filter((v) => v.category === "highlight" || v.category === "goals").sort((a, b) => Date.parse(b.published_at) - Date.parse(a.published_at))[0] ?? null;
+  const want = {
+    team: [...(featured ? [featured] : []), ...team.filter((v) => v !== featured).slice(0, STRIP)],
+    shorts: (f.videos?.shorts ?? []).slice(0, STRIP), league: (f.videos?.league ?? []).slice(0, STRIP),
+    national: (f.videos?.national ?? []).slice(0, STRIP), women: women.slice(0, STRIP),
+  };
+  for (const [sec, list] of Object.entries(want)) {
+    const chunk = sectionOf(futbol, sec);
+    check(Boolean(chunk) === list.length > 0, `${label} /futbol: the ${sec} videos show exactly when there are videos`, `${cards(chunk).length} vs ${list.length}`);
+    if (chunk) holds(cards(chunk), list, `${label} /futbol ${sec}`);
   }
-  check(/Se abre en YouTube · usa muchos datos|Opens YouTube · uses a lot of data/.test(futbol) === any, `${label} /futbol: the data note shows exactly when videos are shown`);
-  if (any) {
-    const firstVids = futbol.indexOf('class="vids"');
-    const later = [/class="card match/, /class="card grp"/, /class="wrap"/].map((re) => futbol.search(re)).filter((i) => i >= 0);
-    check(futbol.indexOf('class="hero"') < firstVids && later.every((i) => firstVids < i), `${label} /futbol: the videos come right after the team hero`);
+  if (featured) check(/^<a class="card vcard big"/.test(cards(sectionOf(futbol, "team"))[0] ?? ""), `${label} /futbol: the newest highlight or goals video of their team is the big featured card`);
+  const any = Object.values(want).some((l) => l.length > 0);
+  check((futbol.match(DATA_NOTE) ?? []).length === (any ? 1 : 0), `${label} /futbol: the data note shows once, exactly when videos are shown`);
+  check(want.shorts.every((v) => v.is_short) && ["team", "league", "national", "women"].every((s) => want[s].every((v) => !v.is_short)), `${label} /futbol: Shorts only in Cortos`);
+  const womenIds = new Set(women.map((v) => String(v.id)));
+  check(["team", "shorts", "league", "national"].every((s) => cards(sectionOf(futbol, s)).every((c) => !womenIds.has(attr(open(c), "data-video")))),
+    `${label} /futbol: the women's national team's videos only in Selección femenil`);
+  // The jump pills: exactly the sections present, each to its anchor.
+  const news = f.team_news?.items ?? [];
+  const hasResults = /class="card match res [WDL]"/.test(futbol) || /Resultados de la semana|This week&#x27;s results/.test(futbol);
+  const pills = [...(/<nav class="seg jump"[^>]*>([\s\S]*?)<\/nav>/.exec(futbol)?.[1] ?? "").matchAll(/<a href="#([a-z]+)"/g)].map((m) => m[1]);
+  const wantPills = [(want.team.length || want.league.length) && "videos", want.shorts.length && "cortos", (want.national.length || want.women.length) && "seleccion",
+    news.length && "noticias", hasResults && "resultados"].filter(Boolean);
+  check(pills.join() === wantPills.join() && pills.every((id) => new RegExp(` id="${id}"`).test(futbol)), `${label} /futbol: the jump pills are exactly the sections present, each with its anchor`, `${pills} vs ${wantPills}`);
+  // Team news, as app.team_news; a graphic story never first and never with a picture.
+  const nsec = /<section\b[^>]*data-news="team"[^>]*>([\s\S]*?)<\/section>/.exec(futbol)?.[1];
+  check(Boolean(nsec) === news.length > 0, `${label} /futbol: team news shows exactly when there are stories about their team`);
+  if (nsec) {
+    const arts = nsec.split(/(?=<article )/).slice(1);
+    check(arts.map((a) => attr(a.slice(0, a.indexOf(">") + 1), "data-item")).join() === news.map((n) => String(n.id)).join(), `${label} /futbol: team news is team_news's stories, in order`);
+    const graphic = new Set((await q("select id::text from news_items where id = any($1::bigint[]) and image_suppressed is not null", [news.map((n) => n.id)])).rows.map((r) => r.id));
+    check(!graphic.has(String(news[0].id)) && arts.every((a, k) => /<img\b/.test(a) === news[k].image && (!graphic.has(String(news[k].id)) || !/<img\b/.test(a))),
+      `${label} /futbol: team news never leads with a graphic story, and a graphic story has no picture`);
+    check(arts.every((a, k) => a.includes(`href="${esc(news[k].url)}" target="_blank" rel="noopener">${esc(news[k].title)}</a>`) && a.includes(`${esc(news[k].source)} · `)),
+      `${label} /futbol: team news titles and sources are the database's, linking to the publisher`);
   }
-  check(!NO_YOUTUBE_LOAD.test(futbol) && !NO_VIDEOS.test(visible(futbol).replace(/<[^>]+>/g, " ")), `${label} /futbol loads nothing from YouTube (no player, no ytimg) and never says there are no videos`);
-  // /futbol/videos: the tabs, the big cards, the channels, the stale note.
+  check(!NO_YOUTUBE_LOAD.test(futbol) && !/no hay|sin videos|no videos|no news/i.test(clean(futbol)), `${label} /futbol loads nothing from YouTube (no player, ytimg or embed) and never says there is nothing`);
+
+  // /futbol/videos: a tab per list with videos; big cards, Shorts in a grid; the team tab's filters.
+  const lists = { team: fv.team_videos, league: fv.league_videos, shorts: fv.shorts, national: fv.national, women: fv.national_women };
+  const present = Object.keys(lists).filter((s) => lists[s].length > 0);
   const page0 = (await send("/futbol/videos", { cookie })).text;
-  const secs = [["team", fv.team_videos], ["league", fv.league_videos]].filter(([, l]) => l.length > 0);
-  check([...page0.matchAll(/<a\b[^>]*data-section="([a-z]+)"/g)].map((m) => m[1]).join() === secs.map(([s]) => s).join(), `${label} /futbol/videos: a tab exactly for each list with videos`);
+  check([...page0.matchAll(/<a\b[^>]*data-section="([a-z]+)"/g)].map((m) => m[1]).join() === present.join(), `${label} /futbol/videos: a tab exactly for each list with videos`, present.join());
   check(/puede no estar al día|may not be up to date/.test(page0) === Boolean(fv.stale), `${label} /futbol/videos: the not-current note exactly when stale`, String(fv.stale));
   check(fv.channels.every((c) => page0.includes(`href="${esc(c.url)}" target="_blank" rel="noopener">${esc(c.name)}</a>`)), `${label} /futbol/videos: every channel listed, linked to YouTube`);
-  check(!NO_YOUTUBE_LOAD.test(page0) && !NO_VIDEOS.test(visible(page0).replace(/<[^>]+>/g, " ")), `${label} /futbol/videos loads nothing from YouTube and never says there are no videos`);
-  for (const [sec, want] of secs) {
-    const html = sec === secs[0][0] ? page0 : (await send("/futbol/videos?s=league", { cookie })).text;
-    check(/Se abre en YouTube · usa muchos datos|Opens YouTube · uses a lot of data/.test(html), `${label} /futbol/videos ${sec}: the data note is there`);
-    holds(cardsIn(html, sec) ?? [], want, `${label} /futbol/videos ${sec}`);
+  for (const s of present) {
+    const html = s === present[0] ? page0 : (await send(`/futbol/videos?s=${s}`, { cookie })).text;
+    const tl = `${label} /futbol/videos ${s}`;
+    check((html.match(DATA_NOTE) ?? []).length === 1, `${tl}: the data note, once`);
+    check(!NO_YOUTUBE_LOAD.test(html) && !/no hay|sin videos|no videos/i.test(clean(html)), `${tl}: loads nothing from YouTube and never says there are no videos`);
+    holds(cards(sectionOf(html, s)), lists[s], tl);
+    check(html.includes('class="vgrid"') === (s === "shorts"), `${tl}: Shorts in a two-column grid, other videos as big cards`);
+    if (s === "team") {
+      const cats = ["highlight", "goals", "interview"].filter((c) => lists.team.some((v) => v.category === c));
+      const pills2 = [...html.matchAll(/<a\b[^>]*data-filter="([a-z]+)"/g)].map((m) => m[1]);
+      check(pills2.join() === (cats.length ? ["all", ...cats].join() : ""), `${tl}: category filters exactly for the categories present`, pills2.join());
+      for (const c of cats) {
+        const h = (await send(`/futbol/videos?f=${c}`, { cookie })).text;
+        holds(cards(sectionOf(h, "team")), lists.team.filter((v) => v.category === c), `${tl} filter ${c}`);
+      }
+    }
   }
+  check(Object.values(lists).flat().filter((v) => v.is_short).every((v) => lists.shorts.includes(v)), `${label}: football_videos keeps Shorts only in shorts`);
+
   // The thumbnail route: our cached copy with a town photo's headers; 404 otherwise.
-  const withThumb = [...fv.team_videos, ...fv.league_videos].find((v) => v.thumb);
-  if (withThumb) {
-    const path = `/video-thumb/${withThumb.id}`;
+  for (const v of [Object.values(lists).flat().find((x) => x.thumb && !x.is_short), lists.shorts.find((x) => x.thumb)].filter(Boolean)) {
+    const path = `/video-thumb/${v.id}`;
     const r = await send(path);
-    check(r.status === 200 && r.headers["content-type"] === "image/jpeg" && r.bytes > 0 && r.bytes <= 14_000, `${path} serves a JPEG of at most 14 KB`, `${r.status} ${r.bytes}`);
+    check(r.status === 200 && r.headers["content-type"] === "image/jpeg" && r.bytes > 0 && r.bytes <= 14_000, `${path} serves a JPEG of at most 14 KB${v.is_short ? " (a Short's)" : ""}`, `${r.status} ${r.bytes}`);
     check(/public/.test(r.headers["cache-control"] ?? "") && /max-age=2592000/.test(r.headers["cache-control"] ?? "") && /immutable/.test(r.headers["cache-control"] ?? "")
       && Boolean(r.headers.etag) && r.headers["x-content-type-options"] === "nosniff", `${path} is cached for 30 days, immutable, with an ETag and nosniff`, JSON.stringify(r.headers));
     check((await send(path, { headers: { "if-none-match": r.headers.etag } })).status === 304, `${path} answers 304 to its own ETag`);
@@ -1083,7 +1132,7 @@ const cookie = login.cookie;
 await welcome(cookie, CODE, CODE);
 
 for (const path of ["/", "/futbol", "/clima/aqui", "/mas", "/mas/miembro", "/mas/semana", "/mas/tasa", "/mas/feriados", "/mas/escuela", "/mas/consulado",
-  "/mas/emergencias", "/mas/transporte", "/mas/loteria", "/mas/avisos", "/noticias", "/noticias?s=national", "/futbol/videos", "/futbol/videos?s=league",
+  "/mas/emergencias", "/mas/transporte", "/mas/loteria", "/mas/avisos", "/noticias", "/noticias?s=national", "/futbol/videos", "/futbol/videos?s=league", "/futbol/videos?s=shorts", "/futbol/videos?s=national",
   "/setup/municipality?edit=1", "/setup/watch?edit=1", "/setup/segment?edit=1", "/setup/kids?edit=1", "/setup/corridor?edit=1"]) {
   await page(path, cookie);
 }
