@@ -62,6 +62,10 @@ function send(path, { method = "GET", cookie, form } = {}) {
 
 const row = (r) => `  ${r.label.slice(0, 44).padEnd(44)} ${String(r.status).padEnd(4)} ${r.encoding.padEnd(5)} body ${String(r.body).padStart(6)}  headers ${String(r.headers).padStart(4)}  total ${String(r.body + r.headers).padStart(6)}`;
 const total = (rs) => rs.reduce((s, r) => s + r.body + r.headers, 0);
+// docs/DESIGN.md section 1 budgets a "Warm page". The renewal's warm run is five
+// requests (three pages and two redirects), so it is checked page by page; its
+// total is printed for information.
+const largestOf = (rs) => Math.max(...rs.map((r) => r.body + r.headers));
 
 const cold = [];
 cold.push(await send("/login"));
@@ -109,6 +113,35 @@ async function renewalFlow(confirm) {
 const renewCold = await renewalFlow(false);
 const renewWarm = await renewalFlow(true);
 
+// Vista previa, cold: a fresh sign-in, the dashboard, the country, the search and
+// the preview of a Mexican town. Warm: the same preview after changing the team
+// (more=1). Its pictures are cached files outside the page budget (docs/DESIGN.md
+// section 1, as Hoy's photos); their bytes are listed apart.
+const PREVIEW_Q = process.env.PREVIEW_Q ?? "morelia";
+const previewCold = [await send("/login")];
+const login2 = await send("/api/login", { method: "POST", form: { login: LOGIN, password: PASSWORD } });
+previewCold.push(login2);
+const cookie2 = login2.cookie;
+if (!cookie2) { console.error("second sign-in did not set a cookie"); process.exit(1); }
+previewCold.push(await send("/", { cookie: cookie2 }));
+previewCold.push(await send("/vista-previa", { cookie: cookie2 }));
+// Exactly one town matches: the search answers with its preview.
+const shown = await send(`/vista-previa?country=MX&q=${encodeURIComponent(PREVIEW_Q)}`, { cookie: cookie2 });
+previewCold.push(shown);
+const townId = /name="m" value="(\d+)"/.exec(shown.decoded)?.[1];
+if (!townId) { console.error(`"${PREVIEW_Q}" did not match exactly one town`); process.exit(1); }
+// Several towns match: the list, then the chosen town (the same sign-in, dashboard and form rows).
+const PREVIEW_MANY = process.env.PREVIEW_MANY ?? "san";
+const previewPick = previewCold.slice(0, 4);
+const list = await send(`/vista-previa?country=MX&q=${encodeURIComponent(PREVIEW_MANY)}`, { cookie: cookie2 });
+previewPick.push(list);
+const pickId = /country=MX&amp;m=(\d+)/.exec(list.decoded)?.[1];
+if (!pickId) { console.error(`"${PREVIEW_MANY}" listed no towns`); process.exit(1); }
+previewPick.push(await send(`/vista-previa?country=MX&m=${pickId}`, { cookie: cookie2 }));
+const previewWarm = [await send(`/vista-previa?country=MX&m=${townId}&more=1&team=none`, { cookie: cookie2 })];
+const pictures = [];
+for (const [, src] of shown.decoded.matchAll(/src="(\/api\/preview\/[^"]+)"/g)) pictures.push(await send(src, { cookie: cookie2 }));
+
 console.log("Cold: sign in, clients, register a client, its code page");
 cold.forEach((r) => console.log(row(r)));
 console.log(`  TOTAL ${total(cold)} bytes (budget ${COLD_BUDGET})`);
@@ -120,9 +153,22 @@ renewCold.forEach((r) => console.log(row(r)));
 console.log(`  TOTAL ${total(renewCold)} bytes (budget ${COLD_BUDGET})`);
 console.log("\nRenewal, warm: the same again at once (warning + confirmation box)");
 renewWarm.forEach((r) => console.log(row(r)));
-console.log(`  TOTAL ${total(renewWarm)} bytes (budget ${WARM_BUDGET})`);
+console.log(`  TOTAL ${total(renewWarm)} bytes over ${renewWarm.length} requests; largest page ${largestOf(renewWarm)} (warm page budget ${WARM_BUDGET})`);
 
-const html = [...cold, ...warm, ...renewCold, ...renewWarm].filter((r) => /<html/i.test(r.decoded));
+console.log("\nVista previa, cold: sign in, dashboard, the form, a search matching one town (its preview)");
+previewCold.forEach((r) => console.log(row(r)));
+console.log(`  TOTAL ${total(previewCold)} bytes (budget ${COLD_BUDGET})`);
+console.log("\nVista previa, cold: sign in, dashboard, the form, a search listing several towns, the chosen one");
+previewPick.forEach((r) => console.log(row(r)));
+console.log(`  TOTAL ${total(previewPick)} bytes (budget ${COLD_BUDGET})`);
+console.log("\nVista previa, warm: the preview again with another team choice");
+previewWarm.forEach((r) => console.log(row(r)));
+console.log(`  TOTAL ${total(previewWarm)} bytes (budget ${WARM_BUDGET})`);
+console.log("\nVista previa pictures (cached 30 days, outside the page budget)");
+pictures.forEach((r) => console.log(row({ ...r, label: r.label.replace(/\?.*$/, "") })));
+console.log(`  TOTAL ${total(pictures)} bytes`);
+
+const html = [...cold, ...warm, ...renewCold, ...renewWarm, ...previewCold, ...previewWarm].filter((r) => /<html/i.test(r.decoded));
 const scripts = html.flatMap((r) => [...r.decoded.matchAll(/<script\b[^>]*>/g)].map((m) => `${r.label}: ${m[0]}`));
 const external = scripts.filter((s) => /\bsrc=/.test(s));
 const nextRefs = html.reduce((n, r) => n + (r.decoded.match(/\/_next\//g) ?? []).length, 0);
@@ -135,7 +181,10 @@ const over = [];
 if (total(cold) > COLD_BUDGET) over.push(`cold ${total(cold)} > ${COLD_BUDGET}`);
 if (total(warm) > WARM_BUDGET) over.push(`warm ${total(warm)} > ${WARM_BUDGET}`);
 if (total(renewCold) > COLD_BUDGET) over.push(`renewal cold ${total(renewCold)} > ${COLD_BUDGET}`);
-if (total(renewWarm) > WARM_BUDGET) over.push(`renewal warm ${total(renewWarm)} > ${WARM_BUDGET}`);
+if (largestOf(renewWarm) > WARM_BUDGET) over.push(`renewal warm page ${largestOf(renewWarm)} > ${WARM_BUDGET}`);
+if (total(previewCold) > COLD_BUDGET) over.push(`preview cold ${total(previewCold)} > ${COLD_BUDGET}`);
+if (total(previewPick) > COLD_BUDGET) over.push(`preview cold, picked from a list ${total(previewPick)} > ${COLD_BUDGET}`);
+if (total(previewWarm) > WARM_BUDGET) over.push(`preview warm ${total(previewWarm)} > ${WARM_BUDGET}`);
 if (scripts.length || nextRefs) over.push("framework or page JavaScript present");
 console.log(over.length ? `\nOVER BUDGET: ${over.join("; ")}` : "\nWITHIN BUDGET");
 process.exit(over.length ? 1 : 0);

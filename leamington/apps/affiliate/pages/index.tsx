@@ -74,6 +74,7 @@ export default function Clients({ viewer, now, clients, earnedThisMonth }: Props
         title={t.clientsTitle}
         subtitle={t.clientsSub(viewer.name, due.length)}
         action={<>
+          <HeroAction href="/vista-previa" icon="search">{t.navPreview}</HeroAction>
           <HeroAction href="/renew" icon="refresh">{t.navRenew}</HeroAction>
           <HeroAction href="/register" icon="plus">{t.registerClient}</HeroAction>
         </>}

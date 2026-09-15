@@ -12,7 +12,7 @@ import { AuthLayout, Shell, type NavItem } from "@leamington/shared/src/ui/Porta
 import { STRINGS, strings, type Lang } from "./strings.ts";
 
 export type Viewer = { lang: Lang; name: string; isTest: boolean };
-export type Nav = "clients" | "register" | "renew" | "earnings" | null;
+export type Nav = "clients" | "register" | "preview" | "renew" | "earnings" | null;
 /** Sidebar counts, only where the page already has them from the database. */
 export type Badges = { clients?: number; due?: number };
 
@@ -21,6 +21,11 @@ export const viewerOf = (p: PortalPerson): Viewer => ({ lang: p.language, name: 
 /** For pages/_document.tsx: <html lang> follows the signed-in person. */
 export function setPageLang(req: IncomingMessage, lang: string): void {
   (req as { appLang?: string }).appLang = lang;
+}
+
+/** For pages/_document.tsx: "lite" inlines only the rules a page without tables or stat cards uses (lib/lite-css.ts). */
+export function setPageCss(req: IncomingMessage, css: "full" | "lite"): void {
+  (req as { appCss?: string }).appCss = css;
 }
 
 const Title = ({ title, portal }: { title: string; portal: string }) => (
@@ -37,6 +42,7 @@ export function Page({ title, viewer, nav = null, badges = {}, children }: {
   const items: NavItem[] = [
     { href: "/", label: t.navMyClients, icon: "users", current: nav === "clients", badge: badges.clients },
     { href: "/register", label: t.navRegister, icon: "userPlus", current: nav === "register" },
+    { href: "/vista-previa", label: t.navPreview, icon: "search", current: nav === "preview" },
     { href: "/renew", label: t.navRenew, icon: "refresh", current: nav === "renew", badge: badges.due, tone: "warn" },
     { href: "/earnings", label: t.navEarnings, icon: "wallet", current: nav === "earnings" },
   ];

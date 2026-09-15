@@ -136,11 +136,20 @@ const PROVIDERS = [
  *   hourly    12 runs a day (every 2 hours) per local place (hourly.mjs), up to
  *             HOURLY_OPENWEATHER_MAX_PLACES local places.
  *
- * The local places (Leamington, Windsor) are among the current and forecast places.
+ * The current and forecast places are forecast.mjs's targetMunicipalities:
+ * client towns, the local places (Leamington, Windsor), and up to 15 towns shown
+ * in the affiliate portal's Vista previa in the last 14 days (0051). Previews
+ * add places, so a run crosses these thresholds sooner; the thresholds count
+ * every place, so the day stays bounded. The worst cases (5 local places, the
+ * most hourly calls OpenWeather for):
  *
- *   17 places, 2 local:  17 x (48 + 4) + 2 x 12 = 884 + 24 = 908
- *   30 places, 2 local:  30 x (24 + 4) + 2 x 12 = 840 + 24 = 864
- *   17 places, 5 local:  884 + 5 x 12 = 944 (the most local places hourly calls it for)
+ *   17 places:        17 x (48 + 4) + 5 x 12 = 884 + 60 = 944
+ *   30 places:        30 x (24 + 4) + 5 x 12 = 840 + 60 = 900
+ *   N above 30:       N x 4 + 60 (forecast and hourly only), within 950 up to 222 places
+ *
+ * Above 222 places the forecast feed alone passes the budget: it has no
+ * OpenWeather threshold of its own. That limit predates previews, which move it
+ * by at most 15 places (to 207 client and watched towns).
  *
  * The air feed does not call OpenWeather. Exported for tests.
  */

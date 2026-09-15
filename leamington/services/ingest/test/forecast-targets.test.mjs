@@ -13,14 +13,14 @@ import { localDbUnavailable, useFreshDatabase } from "./helpers/local-db.mjs";
 const unavailable = localDbUnavailable();
 const skip = unavailable ?? false;
 
-let db, runFeed, ingestForecast;
+let db, runFeed, ingestForecast, targetMunicipalities;
 
 before(async () => {
   if (unavailable) return;
   useFreshDatabase("leamington_ingest_test_forecast");
   db = await import("../src/db.mjs");
   ({ runFeed } = await import("../src/run-feed.mjs"));
-  ({ ingestForecast } = await import("../src/feeds/forecast.mjs"));
+  ({ ingestForecast, targetMunicipalities } = await import("../src/feeds/forecast.mjs"));
 });
 
 after(async () => { await db?.closePool(); });
@@ -29,8 +29,9 @@ beforeEach(async () => {
   process.env.OPENWEATHER_KEY = "test-openweather";
   process.env.WEATHERAPI_KEY = "test-weatherapi";
   if (!unavailable) {
-    await db.query("truncate source_runs, forecasts, local_forecasts, client_watch_locations restart identity cascade");
+    await db.query("truncate source_runs, forecasts, local_forecasts, client_watch_locations, affiliate_previews restart identity cascade");
     await db.query("delete from clients");
+    await db.query("delete from affiliates");
   }
 });
 
@@ -104,4 +105,79 @@ test("without every provider key it stays partial even with clients", { skip }, 
   const { run } = await runForecast();
   assert.equal(run.status, "partial");
   assert.deepEqual(run.notes.warnings, ["providers skipped (no key): openweather"]);
+});
+
+// ---------------------------------------------------------------------------
+// Towns shown in Vista previa (0051): fetched for 14 days, at most 15, most recent first.
+
+const PREVIEW_AFFILIATE = "77777777-7777-7777-7777-777777777777";
+
+/** One anonymous preview count of a town, `daysAgo` days ago (fractions allowed). */
+async function preview(municipalityId, daysAgo, affiliateId = PREVIEW_AFFILIATE) {
+  await db.query("insert into affiliates (id, name) values ($1, 'Preview Test') on conflict do nothing", [affiliateId]);
+  await db.query(
+    "insert into affiliate_previews (affiliate_id, municipality_id, created_at) values ($1, $2, now() - $3::numeric * interval '1 day')",
+    [affiliateId, municipalityId, daysAgo]);
+}
+const towns = async (country, n) =>
+  (await db.query("select id::text from municipalities where country = $1 order by id limit $2", [country, n])).rows.map((r) => r.id);
+const municipalityIds = (targets) => targets.filter((t) => t.kind === "municipality").map((t) => String(t.id));
+
+test("a town previewed in the last 14 days is a target with no client at all, and the forecast fetches it", { skip }, async () => {
+  const [town] = await towns("HN", 1);
+  await preview(town, 1);
+  const targets = await targetMunicipalities();
+  assert.deepEqual(municipalityIds(targets), [town]);
+  assert.equal(targets.filter((t) => t.kind === "local").length, 0, "Leamington and Windsor only while a client is active");
+  const { run } = await runForecast();
+  assert.equal(run.status, "ok");
+  assert.equal((await db.query("select count(*)::int as n from forecasts where municipality_id = $1", [town])).rows[0].n, 9, "3 providers x 3 days");
+});
+
+test("a preview older than 14 days is not a target", { skip }, async () => {
+  const [recent, old] = await towns("MX", 2);
+  await preview(recent, 13.9);
+  await preview(old, 14.1);
+  assert.deepEqual(municipalityIds(await targetMunicipalities()), [recent]);
+});
+
+test("at most 15 distinct previewed towns, the most recent first; a town previewed twice counts once", { skip }, async () => {
+  const ids = await towns("MX", 20);
+  for (const [i, id] of ids.entries()) await preview(id, 0.01 + i * 0.1);   // ids[0] most recent
+  await preview(ids[19], 0.001);                                           // the oldest, previewed again just now
+  await preview(ids[0], 5);                                                // an older repeat changes nothing
+  assert.deepEqual(municipalityIds(await targetMunicipalities()), [ids[19], ...ids.slice(0, 14)]);
+});
+
+test("a deactivated affiliate's previews and an inactive client's town still count; a client town previewed too appears once", { skip }, async () => {
+  await addClientInJamaica();
+  const { rows: [{ id: clientTown }] } = await db.query("select municipality_id::text as id from clients where code = 'FCZT2346'");
+  const [shown] = await towns("GT", 1);
+  const gone = "88888888-8888-8888-8888-888888888888";
+  await db.query("insert into affiliates (id, name, active) values ($1, 'Deactivated', false)", [gone]);
+  await preview(shown, 1, gone);
+  await preview(clientTown, 2);
+
+  let targets = await targetMunicipalities();
+  assert.deepEqual(municipalityIds(targets), [clientTown, shown], "client towns first, then previewed ones");
+  assert.equal(targets.filter((t) => t.kind === "local").length, 2);
+
+  await db.query("update clients set active = false");
+  targets = await targetMunicipalities();
+  assert.deepEqual(municipalityIds(targets), [shown, clientTown], "only previewed now, the most recent first");
+  assert.equal(targets.filter((t) => t.kind === "local").length, 0);
+});
+
+test("OpenWeather stays within 950 calls a day at every count the thresholds allow, preview towns included", async () => {
+  const { openWeatherCallsPerDay, OPENWEATHER_DAILY_BUDGET, HOURLY_OPENWEATHER_MAX_PLACES } = await import("../src/feeds/current.mjs");
+  const { PREVIEW_TOWNS_MAX, PREVIEW_TOWN_DAYS } = await import("../src/feeds/forecast.mjs");
+  assert.equal(PREVIEW_TOWNS_MAX, 15);
+  assert.equal(PREVIEW_TOWN_DAYS, 14);
+  for (let n = 1; n <= 222; n++) {
+    const calls = openWeatherCallsPerDay(n, Math.min(n, HOURLY_OPENWEATHER_MAX_PLACES));
+    assert.ok(calls <= OPENWEATHER_DAILY_BUDGET, `${n} places: ${calls} calls`);
+  }
+  assert.equal(openWeatherCallsPerDay(17, 5), 944, "the every-run worst case in current.mjs");
+  assert.equal(openWeatherCallsPerDay(30, 5), 900, "the hourly worst case in current.mjs");
+  assert.ok(openWeatherCallsPerDay(223, 5) > OPENWEATHER_DAILY_BUDGET, "the forecast-only ceiling current.mjs documents");
 });

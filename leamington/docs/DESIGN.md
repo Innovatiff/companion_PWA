@@ -695,3 +695,50 @@ The affiliate portal and admin share one dashboard look: `PORTAL_CSS` in
 - **Unchanged rules:** system fonts, no framework JavaScript, inline icons (no
   icon font), 44 px targets, every number with its period, absent means absent,
   and the byte budgets in section 1.
+
+### Affiliate preview: "Vista previa" (2026-09-15)
+
+A page of the affiliate portal (`/vista-previa`) for showing a prospect, across
+the counter, what Hoy would show them today. It follows this section's frame,
+plus a phone-shaped panel for the preview itself.
+
+- **Choices are GET steps, with no JavaScript:**
+  - One form holds the country and the town (`app.search_municipalities`).
+  - When exactly one town matches, or exactly one has the typed name, its
+    preview opens at once. Otherwise the matching towns are listed as links.
+  - The team is optional and chosen on the preview.
+- **Budget:** the preview pages inline a lighter copy of the portal CSS
+  (`apps/affiliate/lib/lite-css.ts`: no tables, stat cards or print rules),
+  about 0.9 KB less per page. Measured cold:
+  - 19,280 bytes for sign-in, dashboard, form and a one-match preview
+  - 23,084 bytes when picking from a list
+  - Warm is 5,412 bytes.
+- **Weather for a newly previewed town:**
+  - The weather feeds fetch towns previewed in the last 14 days, at most 15.
+  - Until their next run, the portal (never the phone) says the weather will
+    be ready in a few minutes. It says so only when "Ahora" and the forecast are
+    both absent.
+- **The phone speaks the prospect's language:** Spanish, English for Jamaica.
+  - The type is large (2.1 rem values) and the hometown photo leads, with its
+    credit.
+  - The page chrome stays in the affiliate's language.
+- **Every part is from `app.prospect_preview` (0051) and shows its date or time:**
+  - "Ahora", or today's forecast labelled as a forecast
+  - local time and the difference from Leamington
+  - the reference rate with its date
+  - the team's newest highlight, or the league's, labelled as such
+  - the latest result
+  - the next holiday with "Verificado"
+  - up to two local stories
+- **An absent part is not drawn.** There is no placeholder, no sample and no
+  "sin datos".
+  - Official warnings are listed among "Además, en Hoy" only while
+    `alerts_active` is true (a monitored source, checked within 45 minutes).
+- **Pictures come from the portal's own routes** (`/api/preview/photo`, `crest`,
+  `video-thumb`, `news-thumb`).
+  - They use the same headers as Hoy's routes, and sit outside the page budget
+    as Hoy's photos do.
+- **"Registrar a esta persona"** opens the register form with the country, the
+  department or parish, and the team already chosen.
+- **Nothing about the prospect is saved.** One anonymous count (affiliate,
+  country, time) records that a preview was opened.

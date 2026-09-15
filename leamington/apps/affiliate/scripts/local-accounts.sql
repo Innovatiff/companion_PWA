@@ -15,6 +15,8 @@
 grant usage on schema public, app, extensions, auth to authenticated;
 grant select on all tables in schema public to authenticated;
 revoke all on table portal_logins from authenticated;
+-- The preview counter (0051) is the one table an affiliate inserts into directly.
+grant insert on affiliate_previews to authenticated;
 
 -- The owner, created the way 10_sales_ledger_test.sql does it.
 select app.portal_create_owner('owner.local')
@@ -26,6 +28,12 @@ insert into teams (league_id, country, name, source, source_team_id)
 select l.id, 'MX', t.name, 'local-affiliate', t.sid
   from leagues l, (values ('Club América', 'la-1'), ('Guadalajara', 'la-2')) t(name, sid)
  where l.name = 'Liga MX'
+on conflict do nothing;
+-- And two Honduran clubs, so the preview's team choice has something for Honduras.
+insert into teams (league_id, country, name, source, source_team_id)
+select l.id, 'HN', t.name, 'local-affiliate', t.sid
+  from leagues l, (values ('CD Olimpia', 'la-3'), ('CD Motagua', 'la-4')) t(name, sid)
+ where l.country = 'HN'
 on conflict do nothing;
 
 select app.create_affiliate(a.name, a.business, null, 0.40, a.login, a.lang::ui_language)

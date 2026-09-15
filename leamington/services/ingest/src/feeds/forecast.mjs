@@ -84,20 +84,50 @@ export function openWeatherDays(j, now = Date.now()) {
 }
 
 /**
- * Only places someone actually reads: clients' homes and watched towns, plus
- * the local places where clients work (Leamington, Windsor; 0036). Shared with
- * the current-conditions feed.
+ * Towns shown in the affiliate portal's Vista previa (affiliate_previews, 0051)
+ * are fetched too, so a prospect's town has "Ahora" and a forecast from the
+ * next run: the last PREVIEW_TOWN_DAYS days, most recent first, at most
+ * PREVIEW_TOWNS_MAX distinct towns. The cap bounds the extra provider calls (15
+ * places at most; current.mjs's OpenWeather arithmetic counts them). A preview
+ * row holds no personal data, and it counts whether or not the affiliate or any
+ * client is still active.
+ */
+export const PREVIEW_TOWNS_MAX = 15;
+export const PREVIEW_TOWN_DAYS = 14;
+
+/**
+ * Only places someone actually reads: clients' homes and watched towns, the
+ * local places where clients work (Leamington, Windsor; 0036), and recently
+ * previewed towns (above). Order: local places, client towns by id, then
+ * previewed towns not already among them, most recent first. Shared with the
+ * current-conditions feed and the news feed's town mentions.
  */
 export async function targetMunicipalities() {
   const { rows } = await query(
-    `select distinct m.id, m.lat, m.lng, m.name, m.country::text, 'municipality' as kind
-       from municipalities m
-      where m.id in (select municipality_id from clients where active and municipality_id is not null)
-         or m.id in (select municipality_id from client_watch_locations)
-     union all
-     select lp.id, lp.lat, lp.lng, lp.name, 'CA', 'local' from local_places lp
-      where lp.active and exists (select 1 from clients where active)
-      order by kind, id`);
+    `with previewed as (
+       select v.municipality_id as id, max(v.created_at) as last
+         from affiliate_previews v
+        where v.created_at > now() - make_interval(days => $1::int)
+        group by v.municipality_id
+        order by last desc, v.municipality_id
+        limit $2::int
+     ), towns as (
+       select m.id, m.lat, m.lng, m.name, m.country::text as country, 0 as grp, null::timestamptz as last
+         from municipalities m
+        where m.id in (select municipality_id from clients where active and municipality_id is not null)
+           or m.id in (select municipality_id from client_watch_locations)
+       union all
+       select m.id, m.lat, m.lng, m.name, m.country::text, 1, p.last
+         from previewed p join municipalities m on m.id = p.id
+     )
+     select id, lat, lng, name, country, kind from (
+       select * from (select distinct on (t.id) t.id, t.lat, t.lng, t.name, t.country, 'municipality' as kind, t.grp, t.last
+                        from towns t order by t.id, t.grp) d
+       union all
+       select lp.id, lp.lat, lp.lng, lp.name, 'CA', 'local', 0, null from local_places lp
+        where lp.active and exists (select 1 from clients where active)
+     ) x
+     order by kind, grp, last desc nulls last, id`, [PREVIEW_TOWN_DAYS, PREVIEW_TOWNS_MAX]);
   return rows;
 }
 

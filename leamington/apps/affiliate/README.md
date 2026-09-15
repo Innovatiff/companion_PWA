@@ -16,6 +16,8 @@ list). Plus sign-in and the one-time password setup link.
 | `/renew`, `POST /api/renew/lookup` | type the code from the client's receipt; `app.renewal_lookup` (any client, throttled) |
 | `/renew/[clientId]`, `POST /api/renew/record` | status, who earns, the period bought; `app.affiliate_record_renewal` with a per-render request key |
 | `/renew/done/[key]` | `app.renewal_receipt`, printable; 404 unless you collected it |
+| `/vista-previa`, `?country=HN&q=…`, `?country=HN&m=…&team=…` | Vista previa: what Hoy would show a prospect today (`app.prospect_preview`, 0051); one anonymous count per preview (`affiliate_previews`); "Registrar a esta persona" opens `/register` prefilled |
+| `/api/preview/photo/[id]`, `/crest/[id]`, `/video-thumb/[id]`, `/news-thumb/[id]` | the preview's pictures from our database, Hoy's cache headers, 404 without a session |
 | `/earnings` | registrations and renewals apart (`affiliate_earnings`), renewals you collected (`app.my_renewal_collections`), payouts |
 | `POST /api/logout` | sign out |
 | `/health` | `healthHandler("affiliate")` |

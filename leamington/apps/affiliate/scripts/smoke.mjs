@@ -49,10 +49,10 @@ function check(name, ok, detail = "") {
   return ok;
 }
 
-function send(path, { method = "GET", cookie, form, origin } = {}) {
+function send(path, { method = "GET", cookie, form, origin, extra } = {}) {
   const body = form ? new URLSearchParams(form).toString() : null;
   return new Promise((resolve, reject) => {
-    const headers = { accept: "text/html,*/*" };
+    const headers = { accept: "text/html,*/*", ...extra };
     if (cookie) headers.cookie = cookie;
     if (origin) headers.origin = origin;
     if (body != null) {
@@ -64,7 +64,7 @@ function send(path, { method = "GET", cookie, form, origin } = {}) {
       res.on("data", (c) => chunks.push(c));
       res.on("end", () => resolve({
         status: res.statusCode, location: res.headers.location ?? "", text: Buffer.concat(chunks).toString(),
-        setCookie: res.headers["set-cookie"] ?? [],
+        setCookie: res.headers["set-cookie"] ?? [], headers: res.headers, bytes: Buffer.concat(chunks).length,
       }));
     });
     req.on("error", reject);
@@ -443,6 +443,166 @@ for (const path of ["/renew/not-a-uuid", "/renew/00000000-0000-4000-8000-0000000
   r = await get(path, cookieB);
   check(`renew 9: ${path} is 404`, r.status === 404, r.status);
 }
+
+// ---------------------------------------------------------------------------
+// Vista previa: a JM, an HN and an MX town. Every part on the page is the part
+// app.prospect_preview returns for the same affiliate (and only those), the
+// pictures come from the portal's own routes, "Registrar a esta persona"
+// prefills the register form, and the counter counts once per preview.
+// Needs the three towns in the database's catalogue (seeds) and, for the teams,
+// scripts/local-accounts.sql.
+const sqlScript = (script) => execFileSync("psql", ["-v", "ON_ERROR_STOP=1", "-X", "-q", "-At", "-f", "-", PSQL_DB], { input: script, encoding: "utf8" }).trim();
+const authOf = (login) => sql(`select auth_user_id from portal_logins where login = ${loginLiteral(login)}`);
+/** app.prospect_preview as that affiliate, under row-level security, as the portal calls it. */
+const previewAs = (login, m, team, lang) => JSON.parse(sqlScript(`begin;
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '${authOf(login)}', true), set_config('request.jwt.claim.role', 'authenticated', true) \\g /dev/null
+select app.prospect_preview(${Number(m)}, ${team ? Number(team) : "null"}, '${lang}')::text;
+rollback;`));
+const previewCount = (login) => Number(sql(`select count(*) from affiliate_previews v join portal_logins p on p.affiliate_id = v.affiliate_id where p.login = ${loginLiteral(login)}`));
+const hhmm = (s) => { const [h, m] = s.split(":").map(Number); return h * 60 + m; };
+
+r = await get("/", cookieA);
+check("preview: the dashboard has a Vista previa button and a sidebar link", (r.text.match(/href="\/vista-previa"/g) ?? []).length >= 2);
+r = await get("/vista-previa", cookieA);
+check("preview: step 1 is one GET form, the country and the town", /<form(?=[^>]*\baction="\/vista-previa")(?=[^>]*\bmethod="get")[^>]*>/.test(r.text)
+  && ["MX", "GT", "HN", "JM"].every((c) => options(r.text, "country").some((o) => o.value === c)) && /name="q"/.test(r.text)
+  && /href="\/vista-previa" aria-current="page"/.test(r.text));
+const manyBefore = previewCount(A.login);
+r = await get("/vista-previa?country=MX&q=san", cookieA);
+const manyLinks = [...r.text.matchAll(/href="\/vista-previa\?country=MX&amp;m=(\d+)"/g)].length;
+check("preview: several matching towns come back as GET links, and nothing is counted",
+  r.status === 200 && manyLinks > 1 && !r.text.includes('class="phone"') && previewCount(A.login) === manyBefore, manyLinks);
+r = await get("/vista-previa?country=HN&q=zzqqxx", cookieA);
+check("preview: a search with no match says so for our list, not as a fact about the place", r.status === 200 && plain(decode(r.text)).includes("no está en nuestra lista de Honduras"));
+
+// A name that is exactly one town's and part of other towns' names: the exact one is previewed at once.
+const exactTown = sql(`select m.id || '|' || m.name from municipalities m
+   where m.country = 'MX'
+     and exists (select 1 from municipalities o where o.country = 'MX' and o.id <> m.id and o.name like m.name || ' %')
+     and (select count(*) from municipalities x where x.country = 'MX' and lower(x.name) = lower(m.name)) = 1
+     and (select count(*) from app.search_municipalities('MX', null, m.name, 30)) between 2 and 12
+   order by m.id limit 1`);
+if (exactTown) {
+  const [exactId, exactName] = exactTown.split("|");
+  r = await get(`/vista-previa?country=MX&q=${encodeURIComponent(exactName.toLowerCase())}`, cookieA);
+  check(`preview: "${exactName}" matches several towns but is exactly one's name, so that town is previewed at once`,
+    r.status === 200 && r.text.includes('class="phone"') && hidden(r.text, "m") === exactId, hidden(r.text, "m"));
+} else {
+  check("preview: the catalogue has a name that is exactly one town's and part of others'", false);
+}
+
+const PREVIEW_TOWNS = [
+  { country: "JM", q: "montego", name: "Montego Bay", region: "St. James", lang: "en", team: null },
+  { country: "HN", q: "ceiba", name: "La Ceiba", region: "Atlántida", lang: "es", team: "CD Olimpia" },
+  { country: "MX", q: "morelia", name: "Morelia", region: "Michoacán", lang: "es", team: "Club América" },
+];
+for (const town of PREVIEW_TOWNS) {
+  const tag = `preview ${town.country} ${town.name}`;
+  const before = previewCount(A.login);
+  r = await get(`/vista-previa?country=${town.country}&q=${encodeURIComponent(town.q)}`, cookieA);
+  const m = hidden(r.text, "m");
+  check(`${tag}: the only town matching "${town.q}" is previewed at once, with one anonymous count`,
+    r.status === 200 && r.text.includes('class="phone"') && Boolean(m)
+    && m === sql(`select id from municipalities where country = '${town.country}' and admin_region = '${town.region}' and name = '${town.name}'`)
+    && previewCount(A.login) === before + 1, `${r.status} m=${m} +${previewCount(A.login) - before}`);
+  if (!m) continue;
+  r = await get(`/vista-previa?country=${town.country}&m=${m}`, cookieA);
+  check(`${tag}: the town's own preview link answers, and is a new count`, r.status === 200 && previewCount(A.login) === before + 2, previewCount(A.login) - before);
+  let teamId = null;
+  if (town.team) {
+    teamId = options(r.text, "team").find((o) => o.label === town.team)?.value ?? null;
+    check(`${tag}: the team select offers ${town.team}`, Boolean(teamId));
+    r = await get(`/vista-previa?country=${town.country}&m=${m}&more=1&team=${teamId}`, cookieA);
+    check(`${tag}: changing the team (more=1) is not counted again`, r.status === 200 && previewCount(A.login) === before + 2, previewCount(A.login) - before);
+  }
+  const p = previewAs(A.login, m, teamId, town.lang);
+  const html = r.text;
+  const text = decode(plain(html));
+
+  check(`${tag}: the count names the town and its country, nothing about the person`,
+    sql(`select v.municipality_id || ' ' || v.country from affiliate_previews v join portal_logins pl on pl.affiliate_id = v.affiliate_id
+          where pl.login = ${loginLiteral(A.login)} order by v.id desc limit 1`) === `${m} ${town.country}`);
+  const phone = /<section class="phone"[\s\S]*?<\/section>/.exec(html)?.[0] ?? "";
+  check(`${tag}: the "weather ready in a few minutes" line shows only when now and today are both absent (${!p.now && !p.today}), outside the phone`,
+    html.includes('id="weather-pending"') === (!p.now && !p.today) && !phone.includes("weather-pending")
+    && (p.now || p.today || text.includes("El clima de este pueblo estará listo en unos minutos; vuelve a abrir la vista previa.")));
+  check(`${tag}: the page inlines the lighter CSS (no table or stat-card rules)`,
+    /<style>/.test(html) && !/[}>]table\{/.test(html) && !html.includes(".stats{") && html.includes(".card{"));
+
+  const expected = new Set(["time"]);
+  for (const k of ["photo", "now", "today", "fx", "video", "result", "holiday"]) if (p[k]) expected.add(k);
+  if (p.news.length) expected.add("news");
+  if (p.alerts_active) expected.add("alerts");
+  const shown = new Set([...html.matchAll(/data-part="([a-z]+)"/g)].map((x) => x[1]));
+  check(`${tag}: the parts shown are exactly the parts prospect_preview returns (${[...expected].sort().join(", ")})`,
+    [...expected].every((k) => shown.has(k)) && [...shown].every((k) => expected.has(k)), `shown ${[...shown]} expected ${[...expected]}`);
+  check(`${tag}: the phone speaks ${town.lang}, with the town and its region`,
+    new RegExp(`<section class="phone"[^>]*lang="${town.lang}"`).test(html) && text.includes(`<h2>${town.name}<small>${town.region}</small></h2>`));
+  if (p.photo) {
+    check(`${tag}: the photo comes from the portal's route, with its credit`, html.includes(`src="/api/preview/photo/${m}"`) && text.includes(`${p.photo.author} · ${p.photo.license}`));
+    const img = await send(`/api/preview/photo/${m}`, { cookie: cookieA });
+    check(`${tag}: /api/preview/photo answers the JPEG with 30-day immutable caching and an ETag`,
+      img.status === 200 && /^image\//.test(img.headers["content-type"]) && img.headers["cache-control"] === "public, max-age=2592000, immutable"
+      && Boolean(img.headers.etag) && img.headers["x-content-type-options"] === "nosniff" && img.bytes > 0, `${img.status} ${img.headers["cache-control"]}`);
+    const again = await send(`/api/preview/photo/${m}`, { cookie: cookieA, extra: { "if-none-match": img.headers.etag } });
+    check(`${tag}: the same ETag is 304`, again.status === 304, again.status);
+    const anon = await send(`/api/preview/photo/${m}`);
+    check(`${tag}: without a session the photo route is 404`, anon.status === 404, anon.status);
+  }
+  if (p.now) check(`${tag}: Ahora shows ${p.now.temp}`, text.includes(p.now.temp));
+  if (p.today) check(`${tag}: the forecast shows ${p.today.text}`, text.includes(p.today.text));
+  const local = /<span class="v">(\d\d:\d\d)<\/span>/.exec(html.slice(html.indexOf('data-part="time"')))?.[1];
+  check(`${tag}: local time ${p.time.local} (within a minute of the database)`, Boolean(local) && Math.abs(hhmm(local) - hhmm(p.time.local)) <= 1, local);
+  if (p.fx) check(`${tag}: the rate 1 CAD = ${Number(p.fx.rate).toFixed(2)} ${p.fx.currency}, labelled reference`,
+    text.includes(`1 CAD = ${Number(p.fx.rate).toFixed(2)} ${p.fx.currency}`) && text.includes(p.fx.note));
+  if (p.video) {
+    check(`${tag}: the video title, and its thumbnail from the portal's route`, text.includes(p.video.title) && (!p.video.thumb || html.includes(`src="/api/preview/video-thumb/${p.video.id}"`)));
+    if (p.video.thumb) {
+      const th = await send(`/api/preview/video-thumb/${p.video.id}`, { cookie: cookieA });
+      check(`${tag}: /api/preview/video-thumb answers a JPEG with the same caching`, th.status === 200 && th.headers["content-type"] === "image/jpeg"
+        && th.headers["cache-control"] === "public, max-age=2592000, immutable", th.status);
+    }
+  }
+  if (p.result) check(`${tag}: the latest result`, text.includes(`${p.result.home} ${p.result.home_score} – ${p.result.away_score} ${p.result.away}`));
+  if (p.holiday) check(`${tag}: the next holiday ${p.holiday.name}`, text.includes(p.holiday.name));
+  for (const n of p.news) {
+    check(`${tag}: news "${n.title.slice(0, 40)}"`, text.includes(n.title) && (!n.image || html.includes(`src="/api/preview/news-thumb/${n.id}"`)));
+    if (n.image) {
+      const th = await send(`/api/preview/news-thumb/${n.id}`, { cookie: cookieA });
+      check(`${tag}: /api/preview/news-thumb answers`, th.status === 200 && th.headers["cache-control"] === "public, max-age=2592000, immutable", th.status);
+    }
+  }
+  check(`${tag}: official warnings are offered only where active (${p.alerts_active})`,
+    text.includes(town.lang === "en" ? "Official weather warnings" : "Avisos oficiales") === p.alerts_active);
+  check(`${tag}: nothing about registered clients is on the page`, !text.includes(jm.name) && !text.includes(mx.name) && !text.includes(jmCode));
+
+  const reg = /id="register" href="([^"]+)"/.exec(html)?.[1];
+  const regUrl = reg ? decode(reg) : "";
+  r = await get(regUrl || "/register", cookieA);
+  const regionSelected = options(r.text, "region").find((o) => o.selected)?.value;
+  const teamSelected = options(r.text, "team").find((o) => o.selected)?.value;
+  check(`${tag}: "Registrar a esta persona" opens the register form with country, ${town.region}${town.team ? " and the team" : ""} chosen`,
+    regUrl.startsWith(`/register?country=${town.country}&`) && r.status === 200 && regionSelected === town.region
+    && (!town.team || teamSelected === teamId), `${regUrl} ${regionSelected} ${teamSelected}`);
+
+  const counted = previewCount(A.login);
+  r = await post(`/vista-previa?country=${town.country}&m=${m}`, {}, cookieA, "http://evil.example");
+  check(`${tag}: a POST from another origin is refused (405) and not counted`, r.status === 405 && previewCount(A.login) === counted, `${r.status}`);
+}
+r = await send("/api/preview/crest/999999999", { cookie: cookieA });
+check("preview: the crest route is 404 for a team without a crest", r.status === 404 && r.headers["cache-control"] === "no-cache", r.status);
+r = await send("/api/preview/photo/not-a-number", { cookie: cookieA });
+check("preview: a malformed picture id is 404", r.status === 404, r.status);
+r = await get("/vista-previa?country=MX&m=999999999", cookieA);
+check("preview: an unknown town goes back to the search, nothing counted", r.status === 200 && /name="q"/.test(r.text));
+r = await get(`/vista-previa?country=JM&m=${sql("select id from municipalities where country = 'MX' and name = 'Morelia'")}`, cookieA);
+check("preview: a town of another country is not previewed", r.status === 200 && !r.text.includes('class="phone"'));
+r = await get("/vista-previa", cookieB);
+check("preview: B's page is in English", r.status === 200 && r.text.includes(">Preview<"));
+check("preview: B's count reads none of A's", Number(sqlScript(`begin; set local role authenticated;
+select set_config('request.jwt.claim.sub', '${authOf(B.login)}', true) \\g /dev/null
+select count(*) from affiliate_previews; rollback;`)) === previewCount(B.login));
 
 // ---------------------------------------------------------------------------
 // No framework JS anywhere
