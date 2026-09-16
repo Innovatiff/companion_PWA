@@ -17,7 +17,7 @@ import { clientInstruction, countryName, isUuid } from "../../../lib/clients.ts"
 
 export const config = { unstable_runtimeJS: false };
 
-type Client = { fullName: string; code: string; country: string; adminRegion: string | null; language: string; periodEnd: string | null };
+type Client = { id: string; fullName: string; code: string; country: string; adminRegion: string | null; language: string; periodEnd: string | null };
 type Props = { viewer: Viewer; client: Client; hoyUrl: string | null };
 
 export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, params }) => {
@@ -34,7 +34,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
       `select full_name, code, country::text as country, admin_region, language::text as language, period_end::text as period_end
          from client_status where client_id = $1`, [id]);
     const r = rows[0];
-    return r ? { fullName: r.full_name, code: r.code, country: r.country, adminRegion: r.admin_region, language: r.language, periodEnd: r.period_end } : null;
+    return r ? { id: id as string, fullName: r.full_name, code: r.code, country: r.country, adminRegion: r.admin_region, language: r.language, periodEnd: r.period_end } : null;
   });
   if (!client) return { notFound: true };
   return { props: { viewer: viewerOf(person), client, hoyUrl: process.env.HOY_URL?.trim() || null } };
@@ -49,6 +49,7 @@ export default function Code({ viewer, client, hoyUrl }: Props) {
         title={t.codeTitle}
         subtitle={t.codeSub}
         action={<>
+          <HeroAction href={`/instalar?c=${client.id}`} icon="phone">{t.codeInstall}</HeroAction>
           <HeroAction href="/register" icon="userPlus">{t.registerAnother}</HeroAction>
           <HeroAction href="/" icon="users">{t.backToClients}</HeroAction>
         </>}

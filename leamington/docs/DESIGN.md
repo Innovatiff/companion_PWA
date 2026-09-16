@@ -644,6 +644,48 @@ tracking page inside the app: almost every member sends money home with Ria.
   reference rate, and it says nothing about Ria's rate or fees. The FX rule
   (never a provider next to the rate) stands.
 
+### Affiliate guide: "Instalar Hoy" (2026-09-16)
+
+The owner asked for a step-by-step guide with "Siguiente", because affiliates
+have trouble installing Hoy on clients' phones, and for a QR code so nobody
+types Hoy's address. It is a page of the affiliate portal (`/instalar`), linked
+from the sidebar ("Instalar Hoy") and from a client's code page ("Instalar Hoy
+en su teléfono").
+
+- **Pick the phone.** At the top, "¿Qué teléfono tiene el cliente?" with a pill
+  switch: Android | iPhone (`?t=`), and the hint "Si tiene una manzana atrás, es
+  iPhone."
+- **Slides without JavaScript.** One page holds every step as a slide in a CSS
+  scroll-snap row. They swipe, and "Anterior" / "Siguiente" are links to each
+  slide's anchor (`#s2`), so a step costs no request. Each slide has "Paso 3 de
+  8", a short title, one or two sentences, an optional "¿Problemas?" box, the
+  buttons and dots. The last slide's step pill is green.
+- **The steps.**
+  - **Android (Chrome):** scan the QR, tap the link, tap ⋮, tap "Agregar a
+    pantalla principal", tap "Instalar", open Hoy from the home screen, enter
+    the code, done.
+  - **iPhone (Safari):** scan the QR, tap the yellow Safari banner, tap Share,
+    tap "Agregar a inicio", tap "Agregar", open Hoy from the home screen, enter
+    the code, done.
+  - **Done** checks three things: the icon is on the home screen, Hoy opens
+    without the browser bar, and the top greets the client by name ("Buenos
+    días, …" or "Buenas tardes, …").
+- **Drawn phones.** Each step has a simplified phone screen in inline SVG
+  (`apps/affiliate/lib/install-art.tsx`), with the phone's own words, and an
+  orange ring pulsing on the one thing to tap. The ring holds still under
+  reduced motion.
+- **QR code.** Drawn on the server from `HOY_URL` (`lib/qr.ts`, the `qrcode`
+  package, error correction M, 4-module quiet zone) as one inline SVG path, with
+  the address written under it for typing. Without `HOY_URL` the slide says the
+  address is missing from the portal's settings.
+- **For one client.** Opened from a code page (`?c=`), the title is "Instalar
+  Hoy para {nombre}", the sign-in step shows that client's code, and the last
+  button returns to the code. The client is read inside `asPerson`, so another
+  affiliate's client is not found.
+- **Budget.** About 7.9 KB compressed (Android 7,754 bytes, iPhone 7,955, for
+  one client 7,866, plus 275 bytes of headers) with the lite portal CSS and
+  this page's own rules: within the 10 KB warm budget.
+
 ## 5. Language
 
 - Spanish is the default everywhere. Hoy uses English when the client's country
