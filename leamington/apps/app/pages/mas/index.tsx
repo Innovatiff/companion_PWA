@@ -11,7 +11,7 @@ import { db } from "../../lib/db";
 import { loadClient, recordView, type Client } from "../../lib/client";
 import { t } from "../../lib/t";
 import { PageHead, TabBar } from "../../lib/frame";
-import { FLAG, Pic, type ArtName } from "../../lib/ui";
+import { Art, FLAG, Pic, type ArtName } from "../../lib/ui";
 import { MAS_CSS } from "../../lib/page-css";
 
 export const config = { unstable_runtimeJS: false };
@@ -74,6 +74,15 @@ export default function Mas({ client, x, e, ok }: Props) {
       </Head>
       <main>
         <PageHead lang={lang} title={t(lang, "Más", "More")} art="crown" />
+        {/* Most members send money home with Ria: their tracking page, inside Hoy. */}
+        <a className="ria" href="/mas/rastrear-envio">
+          <Art name="ria" size={50} />
+          <span>
+            <b>{t(lang, "Rastrear envío", "Track transfer")}</b>
+            <small>{t(lang, "Ria · con el PIN de tu recibo", "Ria · with the PIN on your receipt")}</small>
+          </span>
+          <i aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" /></svg></i>
+        </a>
         <ul className="menu">
           {links.map(([href, art, es, en, sub]) => (
             <li key={href}>

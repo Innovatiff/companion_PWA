@@ -238,7 +238,7 @@ async function pagesFor(code) {
     "/futbol/videos?f=highlight", "/futbol/videos?f=goals", "/futbol/videos?f=interview", "/mas", "/mas/miembro", "/mas/semana", "/mas/loteria", check,
     "/mas/tasa?r=7", "/mas/tasa?r=30", "/mas/tasa?r=90", "/mas/tasa?r=30&cad=100", "/mas/tasa?dir=local&n=1000",
     "/noticias", "/noticias?s=local", "/noticias?s=region", "/noticias?s=national",
-    "/mas/feriados", "/mas/escuela", "/mas/consulado", "/mas/emergencias", "/mas/transporte", "/mas/avisos",
+    "/mas/feriados", "/mas/escuela", "/mas/consulado", "/mas/emergencias", "/mas/transporte", "/mas/rastrear-envio", "/mas/avisos",
     "/setup/municipality?edit=1", "/setup/municipality?edit=1&q=San", "/setup/watch?edit=1", "/setup/segment?edit=1",
     "/setup/kids?edit=1", "/setup/corridor?edit=1"].filter(Boolean);
   return pages.map((p) => ({ label: `${code} ${p}`, path: p, cookie }));

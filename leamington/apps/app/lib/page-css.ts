@@ -271,6 +271,12 @@ export const MAS_CSS = ERR +
   ".sw{flex:none;display:block;width:2.5rem;height:1.75rem;border-radius:8px;border:2px solid var(--line)}.sw.light{background:linear-gradient(135deg,#eef0fb 50%,#fff 50%)}.sw.dark{background:linear-gradient(135deg,#0e1230 50%,#1a2046 50%)}.sw.auto{background:linear-gradient(135deg,#eef0fb 50%,#1a2046 50%)}" +
   ".az{display:grid;place-items:center;flex:none;width:2.5rem;height:2.5rem;border-radius:12px;background:var(--card);color:var(--ink);font-size:1rem;font-weight:800;line-height:1}.az.l{font-size:1.4rem}" +
   // Letra grande: the words get the room (no chevron on menu rows, as on tiles; smaller previews and gaps on option rows)
+  // Rastrear envío: Ria's mark and orange (#ff6900 as a fill only; white text on it fails AA, so the words stay ink).
+  ".ria{display:flex;align-items:center;gap:.9rem;min-height:5rem;margin:0 0 .75rem;padding:.8rem 1rem;border-radius:var(--r);background:linear-gradient(120deg,rgba(255,105,0,.16),var(--card) 62%);box-shadow:var(--shadow),inset 0 0 0 1.5px rgba(255,105,0,.35);text-decoration:none;color:var(--ink);animation:up .5s cubic-bezier(.2,.7,.3,1) both}" +
+  ".ria .art{flex:none;width:3.1rem;height:3.1rem;border-radius:50%;box-shadow:0 4px 14px rgba(255,105,0,.35)}" +
+  ".ria>span{flex:1;min-width:0;hyphens:auto}.ria b{display:block;font-size:1.08rem;line-height:1.25}.ria small{display:block;margin-top:.15rem;line-height:1.3}" +
+  ".ria i{display:grid;place-items:center;flex:none;width:2.4rem;height:2.4rem;border-radius:50%;background:#e25c00;color:#fff}.ria i svg{width:1.2rem;height:1.2rem;fill:none;stroke:currentColor;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}" +
+  "html.big .ria i{display:none}" +
   "html.big .menu a::after{display:none}html.big form.optlist button{gap:.55rem;padding:.5rem .7rem}html.big .sw{width:2rem;height:1.5rem}html.big .az{width:2.1rem;height:2.1rem}html.big .ck{width:1.4rem;height:1.4rem}";
 
 // The expiry screen (home's route while a period has ended): the code and the steps.
@@ -298,3 +304,10 @@ export const VIDEOS_CSS = VIDEO +
   ".nupd{margin:-.35rem .2rem .7rem}.stale{margin:0 0 .85rem;padding:.65rem .95rem;border-radius:16px;background:var(--warn-soft);color:var(--warn);font-weight:650}.vsrc{margin:1rem .2rem}" +
   // The Shorts grid and the team tab's category filter
   ".vgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.65rem}.vgrid .vcard{min-width:0;background:var(--card);border-radius:18px;box-shadow:var(--shadow)}.vgrid .vt{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.cats{display:flex;flex-wrap:wrap;gap:.4rem;margin:0 0 .8rem}.cats a{display:inline-flex;align-items:center;min-height:48px;padding:0 1rem;border-radius:999px;background:var(--tile);color:var(--brand-ink);font-weight:700;font-size:.88rem;text-decoration:none}.cats a[aria-current]{background:var(--brand);color:#fff}";
+
+// Rastrear envío: Ria's tracking page inside Hoy, filling the screen under the header (no tab bar).
+export const RASTREO_CSS =
+  "main.rastreo{display:flex;flex-direction:column;min-height:100dvh;padding-bottom:calc(.75rem + env(safe-area-inset-bottom))}.rastreo .ph{margin-bottom:.6rem}" +
+  ".rhint{margin:0 .2rem .6rem;line-height:1.35}" +
+  ".rframe{flex:1;display:flex;min-height:32rem;border-radius:var(--r);overflow:hidden;background:#fff;box-shadow:var(--shadow)}.rframe iframe{flex:1;width:100%;min-height:32rem;border:0;display:block}" +
+  ".rout{display:flex;align-items:center;justify-content:center;gap:.4rem;min-height:48px;margin:.6rem 0 0;padding:.4rem 1rem;border-radius:999px;background:var(--card);box-shadow:var(--shadow);font-weight:750;text-decoration:none;text-align:center}";

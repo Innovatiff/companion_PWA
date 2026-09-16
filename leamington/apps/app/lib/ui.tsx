@@ -52,6 +52,8 @@ export const ART_NAMES = [
   "badge-fundador", "badge-pueblo", "badge-avisos", "badge-vigia", "badge-explorador", "badge-fiel", "badge-renovo", "badge-temporada",
   "globe", "wave", "chart", "calculator", "bell-reminder", "canada",
   "jacket", "umbrella", "sunscreen", "water", "leaf", "week", "news",
+  // Ria's own mark (not one of ours), for Rastrear envío.
+  "ria",
 ] as const;
 export type ArtName = (typeof ART_NAMES)[number];
 
