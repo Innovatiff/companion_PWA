@@ -617,6 +617,33 @@ the season ring, the workday card, the next hours, the rate's dots, Allá y aqu�
 the news card's headlines) moved from APP_CSS to HOME_CSS, inlined by home only;
 every other page is about 1.2 KB lighter.
 
+### Rastrear envío (Ria, 2026-09-16)
+
+The owner asked for a "Rastrear envío" button with Ria's logo that opens Ria's
+tracking page inside the app: almost every member sends money home with Ria.
+
+- **Más.** The first thing under the title is a full-width card, not a menu row:
+  Ria's mark (`/art/ria.svg`, Ria's own logo, stored on our domain),
+  "Rastrear envío" / "Track transfer", "Ria · con el PIN de tu recibo", and a
+  round orange arrow. A soft orange tint and edge on the card marks it as Ria's.
+  Ria's orange (`#ff6900`) is only a fill: white text on it fails AA, so the
+  words stay ink and the arrow circle is a darker `#e25c00`.
+- **/mas/rastrear-envio.** A back button, the title and Ria's mark, one hint
+  line ("Escribe el número PIN o de orden de tu recibo de Ria. Página de Ria ·
+  usa datos."), then Ria's page
+  in the member's language (Spanish: `https://www.riamoneytransfer.com/es-us/track-a-transfer/`;
+  English: `https://www.riamoneytransfer.com/en-ca/track-a-transfer/`) in a rounded
+  frame filling the screen. No tab bar here, so the frame gets the room. Under
+  it, "¿No carga? Abrir en el sitio de Ria ↗" opens the same page in the browser.
+- **Why a frame is allowed.** Our server never fetches Ria, and nothing the
+  member types reaches us. The phone loads Ria's page only when the member opens
+  this page, as it does for a YouTube link. Ria allows framing
+  (`frame-ancestors 'self' https:`), and its Cloudflare check passes inside the
+  frame (checked in Chrome for Android's user agent). Local http cannot frame it.
+- **Kept apart from the rate.** The card is never on Tasa or beside the
+  reference rate, and it says nothing about Ria's rate or fees. The FX rule
+  (never a provider next to the rate) stands.
+
 ## 5. Language
 
 - Spanish is the default everywhere. Hoy uses English when the client's country
