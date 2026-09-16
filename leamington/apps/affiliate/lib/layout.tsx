@@ -1,6 +1,6 @@
 /**
  * The page frame (docs/DESIGN.md section 9): for a signed-in affiliate the shared
- * sidebar (Mis clientes · Registrar · Renovar · Ganancias), the business name with
+ * sidebar (Mis clientes · Registrar · Instalar Hoy · Vista previa · Renovar · Ganancias), the business name with
  * a PRUEBA chip on test accounts, and a POST sign-out form, so no link prefetch or
  * crawler can sign anyone out. Signed-out pages use the single-card AuthLayout.
  */
@@ -12,7 +12,7 @@ import { AuthLayout, Shell, type NavItem } from "@leamington/shared/src/ui/Porta
 import { STRINGS, strings, type Lang } from "./strings.ts";
 
 export type Viewer = { lang: Lang; name: string; isTest: boolean };
-export type Nav = "clients" | "register" | "preview" | "renew" | "earnings" | null;
+export type Nav = "clients" | "register" | "install" | "preview" | "renew" | "earnings" | null;
 /** Sidebar counts, only where the page already has them from the database. */
 export type Badges = { clients?: number; due?: number };
 
@@ -42,6 +42,7 @@ export function Page({ title, viewer, nav = null, badges = {}, children }: {
   const items: NavItem[] = [
     { href: "/", label: t.navMyClients, icon: "users", current: nav === "clients", badge: badges.clients },
     { href: "/register", label: t.navRegister, icon: "userPlus", current: nav === "register" },
+    { href: "/instalar", label: t.navInstall, icon: "phone", current: nav === "install" },
     { href: "/vista-previa", label: t.navPreview, icon: "search", current: nav === "preview" },
     { href: "/renew", label: t.navRenew, icon: "refresh", current: nav === "renew", badge: badges.due, tone: "warn" },
     { href: "/earnings", label: t.navEarnings, icon: "wallet", current: nav === "earnings" },
