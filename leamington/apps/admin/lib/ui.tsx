@@ -12,13 +12,13 @@ import type { Viewer } from "./server.ts";
 
 export { Card, HeroAction, StatCard, AuthLayout } from "@leamington/shared/src/ui/Portal.tsx";
 
-export type Section = "sales" | "clients" | "renewals" | "affiliates" | "revenue" | "feeds" | "alerts";
+export type Section = "sales" | "clients" | "renewals" | "affiliates" | "collections" | "revenue" | "feeds" | "alerts";
 
 type Link = [Section, string, IconName];
 
 const NAV: Link[] = [
   ["sales", "/", "chart"], ["clients", "/clients", "users"], ["renewals", "/renewals", "refresh"],
-  ["affiliates", "/affiliates", "store"], ["revenue", "/revenue", "dollar"],
+  ["affiliates", "/affiliates", "store"], ["collections", "/collections", "receipt"], ["revenue", "/revenue", "dollar"],
 ];
 const MORE: Link[] = [["feeds", "/feeds", "activity"], ["alerts", "/alerts", "bell"]];
 

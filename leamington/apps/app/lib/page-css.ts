@@ -115,7 +115,9 @@ export const CLIMA_CSS = ROWS + AHORA + FAMILY + ".seg{display:flex;gap:.3rem;pa
   "main>details{background:var(--card);border-radius:var(--r);padding:.2rem 1rem;margin:.75rem 0;box-shadow:var(--shadow)}" +
   "details{margin:.5rem 0}summary{min-height:48px;padding:.7rem 0;cursor:pointer;font-weight:700}";
 
-export const TASA_CSS = ERR + TABLE + ".seg{display:flex;gap:.3rem;padding:.3rem;margin:0 0 1rem;background:var(--card);border-radius:999px;box-shadow:var(--shadow);overflow-x:auto}.seg a{flex:1 0 auto;display:grid;place-items:center;min-height:48px;padding:0 1rem;border-radius:999px;text-decoration:none;color:var(--ink);font-weight:650;font-size:.92rem;white-space:nowrap}.seg a[aria-current]{background:var(--brand);color:#fff}" + ".arr{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center}.arr input{flex:1 1 9rem;min-width:0}.arr button{flex:1 0 auto;width:auto;margin:0;padding:.7rem 1.2rem}" +
+const TASA_SEND = ".rsend{display:flex;flex-wrap:wrap;align-items:baseline;gap:.2rem .5rem;margin:-.4rem .2rem .9rem}.rsend b{font-size:1.25rem;font-weight:800}.rsend small{color:var(--muted)}.csend{display:block;margin-top:.25rem;color:var(--muted);line-height:1.35}";
+
+export const TASA_CSS = TASA_SEND + ERR + TABLE + ".seg{display:flex;gap:.3rem;padding:.3rem;margin:0 0 1rem;background:var(--card);border-radius:999px;box-shadow:var(--shadow);overflow-x:auto}.seg a{flex:1 0 auto;display:grid;place-items:center;min-height:48px;padding:0 1rem;border-radius:999px;text-decoration:none;color:var(--ink);font-weight:650;font-size:.92rem;white-space:nowrap}.seg a[aria-current]{background:var(--brand);color:#fff}" + ".arr{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center}.arr input{flex:1 1 9rem;min-width:0}.arr button{flex:1 0 auto;width:auto;margin:0;padding:.7rem 1.2rem}" +
   // Header: back, title, the reminder bell
   ".ph .bellbtn svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}" +
   // The rate big, its date; a plain note when it is not today's

@@ -4,6 +4,8 @@ import { PORTAL_CSS } from "@leamington/shared/src/ui/css.ts";
 // Inline, so a cold load is one HTML response (docs/DESIGN.md). The shared
 // dashboard look (section 9) plus the few pieces only the owner portal uses.
 const CSS = PORTAL_CSS +
+  // Cobros: the amount and its button on one row of the weekly table.
+  "form.inline{display:flex;gap:.4rem;align-items:center;margin:0}form.inline input{width:6.5rem;min-height:40px;margin:0}form.inline button{margin:0;white-space:nowrap}" +
   // Tables: row links without underlines until hovered; forms in cells sit flush; totals row.
   "td form{margin:0}tbody th a,td a:not(.pill){text-decoration:none}tbody th a:hover,td a:not(.pill):hover{text-decoration:underline}" +
   "tr.quiet>th{box-shadow:inset 3px 0 var(--bad)}tfoot th,tfoot td{border-top:1px solid var(--line);font-weight:650}" +
