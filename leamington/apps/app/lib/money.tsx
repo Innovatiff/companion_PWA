@@ -180,6 +180,19 @@ export function parseAmount(raw: string | undefined, cap: number): number | null
   return n > 0 && n <= cap ? n : null;
 }
 
+/**
+ * What sending money usually pays, as a rough estimate: about 2% under the
+ * reference rate (owner's direction, 2026-09-17). Transfer services pay under
+ * the reference rate and charge a fee, so the reference rate alone reads as
+ * more than arrives.
+ *
+ * This never replaces the reference rate and is never presented as one: the
+ * reference rate stays exactly what the sources say, this line is always
+ * labelled an estimate, and no service is named or quoted (CLAUDE.md, FX).
+ */
+export const SEND_SPREAD = 0.02;
+export const sendingRate = (rate: number) => rate * (1 - SEND_SPREAD);
+
 /** At the reference rate, rounded to the target currency's decimals. */
 export function convert(amount: number, rate: number, toLocal: boolean, currency: string): number {
   const d = toLocal ? decimalsFor(currency) : 2;

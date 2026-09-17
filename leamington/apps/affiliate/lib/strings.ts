@@ -67,6 +67,13 @@ const es = {
   errCode: "No se pudo generar un código. Inténtalo otra vez.",
   errRejected: "La base de datos no aceptó el registro. Revisa los datos e inténtalo otra vez.",
 
+  // Cobros semanales (0054): what this business owes the owner, week by week
+  weeksTitle: "Lo que debes por semana",
+  weeksNote: "De domingo a sábado. Del efectivo que cobraste te quedas tu comisión; el resto es del dueño. Una renovación que cobró el dueño no está aquí.",
+  keptCommission: "Comisión que te quedaste del efectivo que cobraste",
+  keptWeek: (week: string) => `Comisión que te quedaste de la semana del ${week}`,
+  weekCol: "Semana", weekSales: "Registros", weekRenewals: "Renov.", weekCash: "Cobraste", weekKeeps: "Te quedas",
+  weekOwed: "Debes", weekSettled: "Entregado", weekLeft: "Falta", weekCurrent: "Esta semana", weekDone: "Al día",
   // Code page
   codeTitle: "Código del cliente",
   codeFor: "Código de",
@@ -128,7 +135,7 @@ const es = {
   earningsTitle: "Mis ganancias",
   earned: "Ganado",
   earnedThisMonth: "Ganado este mes",
-  paidOut: "Pagado a ti",
+  paidOut: "Pagado o retenido por ti",
   owed: "Por pagarte",
   statRegistrationsLabel: "Registros",
   statRenewalsLabel: "Renovaciones",
@@ -314,6 +321,12 @@ const en: Strings = {
   errCode: "Could not issue a code. Try again.",
   errRejected: "The database did not accept this registration. Check the details and try again.",
 
+  weeksTitle: "What you owe, week by week",
+  weeksNote: "Sunday to Saturday. You keep your commission out of the cash you collected; the rest is the owner's. A renewal the owner collected is not here.",
+  keptCommission: "Commission you kept from the cash you collected",
+  keptWeek: (week: string) => `Commission you kept from the week of ${week}`,
+  weekCol: "Week", weekSales: "Sign-ups", weekRenewals: "Renewals", weekCash: "You collected", weekKeeps: "You keep",
+  weekOwed: "You owe", weekSettled: "Handed over", weekLeft: "Left", weekCurrent: "This week", weekDone: "Settled",
   codeTitle: "Client code",
   codeFor: "Code for",
   codeSub: "Give this code to the client: it is their Hoy account.",
@@ -370,7 +383,7 @@ const en: Strings = {
   earningsTitle: "My earnings",
   earned: "Earned",
   earnedThisMonth: "Earned this month",
-  paidOut: "Paid to you",
+  paidOut: "Paid to you or kept by you",
   owed: "Owed to you",
   statRegistrationsLabel: "Registrations",
   statRenewalsLabel: "Renewals",
@@ -501,3 +514,22 @@ export function monthLabel(now: Date, lang: Lang): string {
     month: "long", year: "numeric", timeZone: "America/Toronto",
   }).format(now);
 }
+
+/** A week as "13–19 sep" / "13–19 Sep"; across months, "28 sep – 4 oct". */
+export function weekRange(start: string, end: string, lang: Lang): string {
+  const [, sm, sd] = start.slice(0, 10).split("-").map(Number);
+  const [, em, ed] = end.slice(0, 10).split("-").map(Number);
+  const month = (m: number) => MONTHS_SHORT[lang][m - 1];
+  return sm === em ? `${sd}–${ed} ${month(sm)}` : `${sd} ${month(sm)} – ${ed} ${month(em)}`;
+}
+
+/** A week by its Sunday: "semana del 13 sep" / "week of 13 Sep". */
+export function weekLabel(start: string, lang: Lang): string {
+  const [, m, d] = start.slice(0, 10).split("-").map(Number);
+  return `${d} ${MONTHS_SHORT[lang][m - 1]}`;
+}
+
+const MONTHS_SHORT: Record<Lang, string[]> = {
+  es: ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"],
+  en: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+};

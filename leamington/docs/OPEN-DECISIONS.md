@@ -915,6 +915,42 @@ player, never full text.
 
 ---
 
+### 3.27 Weekly collection from the businesses (2026-09-17)
+
+The owner collects in person, once a week, and asked the portals to total it.
+
+- **Chosen:** the week is **Sunday to Saturday** on Leamington time. A week's
+  amount is the cash that business physically collected, less its own
+  commission (3.6a). Both portals show it; only the owner records a collection,
+  and a week can be settled in parts.
+- **The ledger stays as in 3.4** (a commission accrues to the business), and
+  recording a week's collection records that week's commission as a payout of
+  kind `kept`: the money stayed in their hands. Without it, "Por pagarte" would
+  grow forever against cash the business already holds.
+- **Reverse:** drop the `kept` insert in `app.record_week_collection` and the
+  weekly cards; nothing else depends on them.
+
+### 3.28 Tasa: an estimate of what sending pays (2026-09-17)
+
+The owner asked for the displayed rate to be about 2% lower than the reference
+rate, because that is closer to what a worker actually receives.
+
+- **Chosen:** the reference rate is **not** changed. Hoy shows it as it is, and
+  under it a clearly labelled estimate 2% lower ("aproximado al enviar"), plus
+  the same estimate in the calculator.
+- **Why not simply lower the number:** the app is used for decisions about
+  money, and a figure labelled "tasa de referencia" that is not the reference
+  rate is wrong-but-confident (CLAUDE.md working agreements). A worker
+  comparing the app against a counter would find the app wrong, and the rule
+  "never a provider, never a ranking, never advice" would be broken by quoting
+  what is effectively a service's rate.
+- **The 2% is a rule of thumb, not a quote**, and it is always called an
+  estimate. If the owner wants a real figure per service, that is a different
+  feature: stored quotes with their source and date.
+- **Reverse:** `SEND_SPREAD` in `apps/app/lib/money.tsx`, and the two lines on
+  `/mas/tasa`.
+
+
 ## 4. Warnings for the family's towns (built 2026-09-15) — decisions made on the owner's behalf, and findings
 
 **Status: BUILT, pending the owner's review of 4.1–4.4. No country was activated:** `alert_sources.active`

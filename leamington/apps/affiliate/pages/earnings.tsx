@@ -22,12 +22,13 @@ import { asPerson } from "@leamington/shared/src/server/db.ts";
 import { formatDate, formatDateTime, formatMoney } from "@leamington/shared/src/format.ts";
 import { Card, Hero, HeroAction, StatCard } from "@leamington/shared/src/ui/Portal.tsx";
 import { Page, setPageLang, viewerOf, type Viewer } from "../lib/layout.tsx";
-import { monthLabel, strings } from "../lib/strings.ts";
+import { monthLabel, strings, weekLabel, weekRange } from "../lib/strings.ts";
 import { commissionOf } from "../lib/renew.ts";
 
 export const config = { unstable_runtimeJS: false };
 
 const ROWS_SHOWN = 100;
+const WEEKS_SHOWN = 8;
 
 type Totals = {
   sales: number; renewals: number; earned: string; earnedThisMonth: string; paidOut: string; owed: string;
@@ -39,9 +40,13 @@ type Renewal = {
   key: string; paidAt: string; clientName: string; periodStart: string; periodEnd: string; commission: string;
   registeredBy: string; registeredByYou: boolean;
 };
-type Payout = { id: string; paidAt: string; amount: string; method: string | null; note: string | null };
+type Payout = { id: string; paidAt: string; amount: string; method: string | null; note: string | null; kind: string; weekStart: string | null };
+type Week = {
+  weekStart: string; weekEnd: string; sales: number; renewals: number; cash: string; keeps: string;
+  owed: string; settled: string; outstanding: string; isCurrent: boolean;
+};
 type List<T> = { rows: T[]; more: boolean };
-type Props = { viewer: Viewer; now: string; totals: Totals; renewals: List<Renewal>; registrations: List<Registration>; payouts: Payout[] };
+type Props = { viewer: Viewer; now: string; totals: Totals; renewals: List<Renewal>; registrations: List<Registration>; payouts: Payout[]; weeks: Week[] };
 
 const list = <R, T>(rows: R[], map: (r: R) => T): List<T> => ({ rows: rows.slice(0, ROWS_SHOWN).map(map), more: rows.length > ROWS_SHOWN });
 const iso = (v: string | Date) => new Date(v).toISOString();
@@ -76,8 +81,17 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }
         order by s.paid_at desc
         limit $1`, [ROWS_SHOWN + 1]);
 
+    // What this business owes the owner, week by week (0054). Its own rows only: the view filters by the signed-in affiliate.
+    const w = await q.query(
+      `select week_start::text, week_end::text, sales::int, renewals::int, cash_collected::text as cash,
+              affiliate_keeps::text as keeps, owed_to_owner::text as owed, settled::text, outstanding::text, is_current
+         from affiliate_week_collections
+        where week_start <= app.business_week()
+          and week_start > app.business_week() - ($1::int * 7)
+        order by week_start desc`, [WEEKS_SHOWN]);
+
     const o = await q.query(
-      `select id::text, paid_at, amount::text, method, note
+      `select id::text, paid_at, amount::text, method, note, kind, week_start::text
          from affiliate_payouts
         where affiliate_id = app.current_affiliate_id() and voided_at is null
         order by paid_at desc`);
@@ -101,13 +115,18 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res }
       })),
       payouts: o.rows.map((r): Payout => ({
         id: r.id, paidAt: iso(r.paid_at), amount: r.amount, method: r.method, note: r.note,
+        kind: r.kind, weekStart: r.week_start,
+      })),
+      weeks: w.rows.map((r): Week => ({
+        weekStart: r.week_start, weekEnd: r.week_end, sales: r.sales, renewals: r.renewals, cash: r.cash,
+        keeps: r.keeps, owed: r.owed, settled: r.settled, outstanding: r.outstanding, isCurrent: r.is_current,
       })),
     };
   });
   return { props: { viewer: viewerOf(person), now: new Date().toISOString(), ...data } };
 };
 
-export default function Earnings({ viewer, now, totals, renewals, registrations, payouts }: Props) {
+export default function Earnings({ viewer, now, totals, renewals, registrations, payouts, weeks }: Props) {
   const t = strings(viewer.lang);
   const lang = viewer.lang;
   const day = (d: string) => formatDate(d, lang, true);
@@ -128,6 +147,38 @@ export default function Earnings({ viewer, now, totals, renewals, registrations,
         </>}
       />
       {Number(totals.perRenewal) > 0 && <p className="note">{t.renewAnywhere(formatMoney(totals.perRenewal))}</p>}
+
+      {weeks.length > 0 && (
+        <Card title={t.weeksTitle}>
+          <p className="muted">{t.weeksNote}</p>
+          <div className="wrap">
+            <table>
+              <caption className="sr">{t.weeksTitle}</caption>
+              <thead>
+                <tr>
+                  <th>{t.weekCol}</th><th className="num">{t.weekSales}</th><th className="num">{t.weekRenewals}</th>
+                  <th className="num">{t.weekCash}</th><th className="num">{t.weekKeeps}</th>
+                  <th className="num">{t.weekOwed}</th><th className="num">{t.weekSettled}</th><th className="num">{t.weekLeft}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {weeks.map((w) => (
+                  <tr key={w.weekStart}>
+                    <td>{weekRange(w.weekStart, w.weekEnd, lang)}{w.isCurrent && <> <span className="chip">{t.weekCurrent}</span></>}</td>
+                    <td className="num">{w.sales}</td>
+                    <td className="num">{w.renewals}</td>
+                    <td className="num">{formatMoney(w.cash)}</td>
+                    <td className="num">{formatMoney(w.keeps)}</td>
+                    <td className="num"><b>{formatMoney(w.owed)}</b></td>
+                    <td className="num">{formatMoney(w.settled)}</td>
+                    <td className="num">{Number(w.outstanding) > 0 ? formatMoney(w.outstanding) : <span className="chip good">{t.weekDone}</span>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
 
       <div className="grid">
         <div>
@@ -199,7 +250,11 @@ export default function Earnings({ viewer, now, totals, renewals, registrations,
                   <li key={p.id}>
                     <div>
                       <div className="t">{formatDateTime(p.paidAt, lang)}</div>
-                      {(p.method || p.note) && (
+                      {p.kind === "kept" ? (
+                        <div className="meta">
+                          <span>{p.weekStart ? t.keptWeek(weekLabel(p.weekStart, lang)) : t.keptCommission}</span>
+                        </div>
+                      ) : (p.method || p.note) && (
                         <div className="meta">
                           {p.method && <span>{t.colMethod}: {p.method}</span>}
                           {p.note && <span>{t.colNote}: {p.note}</span>}

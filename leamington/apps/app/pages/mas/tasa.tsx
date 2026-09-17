@@ -20,7 +20,7 @@ import { OfflineBar, TabBar } from "../../lib/frame";
 import { EXPIRE_SCRIPT } from "../../lib/open-script";
 import { Art, FLAG, Pic } from "../../lib/ui";
 import {
-  CAD_CHIPS, CAD_MAX, LOCAL_CHIPS, RateChart, WeekCircles, convert, decimalsFor, num, parseAmount, rateText, shortDate,
+  CAD_CHIPS, CAD_MAX, LOCAL_CHIPS, RateChart, WeekCircles, convert, decimalsFor, num, parseAmount, rateText, sendingRate, shortDate,
   type FxHistory, type Reminder,
 } from "../../lib/money";
 import { TASA_CSS } from "../../lib/page-css";
@@ -127,6 +127,12 @@ export default function Tasa({ lang, r, h, rem, start, pushOff, calc, e, ok, ren
               </div>
               <small className="rdate"><time dateTime={latest.date}>{shortDate(latest.date, lang)}</time></small>
             </section>
+            {/* What a transfer usually pays: an estimate, never called a rate of any service (lib/money.tsx). */}
+            <p className="rsend">
+              <b>{`${rateText(sendingRate(rate))} ${cur}`}</b>
+              <small>{t(lang, "aproximado al enviar · casi siempre un 2% menos que la tasa de referencia",
+                              "roughly what sending pays · almost always about 2% less than the reference rate")}</small>
+            </p>
             {(!h.current || latest.stale) && (
               <p className="stale">{t(lang, `Esta tasa de referencia es del ${formatDate(latest.date, lang, true)}. No es la de hoy.`,
                                            `This reference rate is from ${formatDate(latest.date, lang, true)}. It is not today's.`)}</p>
@@ -176,6 +182,11 @@ export default function Tasa({ lang, r, h, rem, start, pushOff, calc, e, ok, ren
                 <p className="cres" data-dir={calc.local ? "local" : "cad"} data-amount={amount} data-result={result}>
                   <b>{`${amountText(amount, from)} ${from}`}</b>
                   <span className="big">{`≈ ${num(result, calc.local ? 2 : decimalsFor(cur), lang)} ${to}`}</span>
+                  {!calc.local && (
+                    <small className="csend">{t(lang,
+                      `Al enviar, calcula unos ${num(convert(amount, sendingRate(rate), true, cur), decimalsFor(cur), lang)} ${to}, antes de la comisión.`,
+                      `Sending, expect around ${num(convert(amount, sendingRate(rate), true, cur), decimalsFor(cur), lang)} ${to}, before the fee.`)}</small>
+                  )}
                 </p>
               )}
               <form method="get" action="/mas/tasa#calc" className="cform">

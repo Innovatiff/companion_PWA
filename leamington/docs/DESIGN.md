@@ -686,6 +686,52 @@ en su teléfono").
   one client 7,866, plus 275 bytes of headers) with the lite portal CSS and
   this page's own rules: within the 10 KB warm budget.
 
+### Cobros semanales (2026-09-17)
+
+The owner collects from each business once a week, in person. A business keeps
+its commission out of the $20 it took and hands over the rest (3.6a), so the
+portals show the same week and the same number on both sides before money
+changes hands.
+
+- **The week is Sunday to Saturday, Leamington time** (`app.business_week_start`,
+  0054), labelled "13–19 sep". Cash belongs to the week it was taken in.
+- **Admin, "Cobros"** (`/collections`): the last 8 weeks, newest first, a card
+  per week and a row per business: registros, renovaciones, cobró, se queda, te
+  debe, entregado, falta, and a small form (amount prefilled with what is left)
+  that records the collection. Stat cards: por cobrar (the weeks shown), te
+  deben and cobrado (this week). A week with nothing left shows "Cobrado".
+- **Affiliate, "Lo que debes por semana"** on Ganancias: the same weeks, read
+  only, ending in falta or "Al día".
+- **Only cash the business took.** A renewal the owner collected is the owner's
+  cash and is in no business's week. Test clients and businesses are excluded,
+  as in revenue.
+- **The commission is marked kept when the week is collected**, once per week
+  (`affiliate_payouts.kind = 'kept'`), so "Por pagarte" keeps meaning what the
+  owner still has to hand over. On the affiliate's page those rows read
+  "Comisión que te quedaste de la semana del 13 sep", never as a payment
+  received, and the total is "Pagado o retenido por ti".
+- **Refused rather than undone:** more than the week has left, a week that has
+  not started, a week that is not a Sunday, and the house or a test business.
+  A collection recorded by mistake is voided (`app.void_week_collection`), and
+  the week's kept commission goes back to being owed when nothing is left.
+
+### Tasa: what sending usually pays (2026-09-17)
+
+The owner asked for the rate shown about 2% lower, because a transfer pays under
+the reference rate and the reference rate alone reads as more than arrives.
+
+- **The reference rate is never altered.** It stays exactly what the sources
+  say, labelled "tasa de referencia", with its date.
+- **Under it, an estimate**, in its own line: the rate 2% lower
+  (`sendingRate`, `apps/app/lib/money.tsx`) with "aproximado al enviar · casi
+  siempre un 2% menos que la tasa de referencia".
+- **In the calculator** (CAD to their currency only): "Al enviar, calcula unos
+  {x} {moneda}, antes de la comisión."
+- **Still descriptive** (CLAUDE.md, FX): no service is named, nothing is
+  ranked, nothing is predicted, and the estimate is always called an estimate.
+- Home keeps the reference rate alone: its byte budget has no room for a second
+  line, and home is a glance.
+
 ## 5. Language
 
 - Spanish is the default everywhere. Hoy uses English when the client's country
